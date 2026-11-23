@@ -1,8 +1,13 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DefaultExport, provideRouter, Route, Routes } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from './app.routes';
 import { authGuard } from './core/auth/auth.guard';
+import { AuthStatus } from './core/auth/auth.models';
+import { AuthStore } from './core/auth/auth.store';
 import { guestGuard } from './core/auth/guest.guard';
 import { AuthLayoutComponent } from './core/layout/auth-layout.component';
 import { ShellComponent } from './core/layout/shell.component';
@@ -87,10 +92,24 @@ describe('Application routes', () => {
 
   describe('navigation to every route renders its placeholder heading', () => {
     let harness: RouterTestingHarness;
+    let authStatus: ReturnType<typeof signal<AuthStatus>>;
 
     beforeEach(async () => {
+      authStatus = signal<AuthStatus>('authenticated');
+      const mockAuthStore: Partial<AuthStore> = {
+        status: authStatus.asReadonly(),
+        pendingChallenge: signal<string | null>('test-challenge').asReadonly(),
+        init: () => Promise.resolve(),
+        getInvitation: () => Promise.reject(new Error('not-found')),
+      };
+
       TestBed.configureTestingModule({
-        providers: [provideRouter(routes)],
+        providers: [
+          provideRouter(routes),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: AuthStore, useValue: mockAuthStore },
+        ],
       });
       harness = await RouterTestingHarness.create();
     });
@@ -129,6 +148,7 @@ describe('Application routes', () => {
 
     for (const { url, heading } of cases) {
       it(`renders '${heading}' at ${url}`, async () => {
+        authStatus.set(url.startsWith('/auth/') ? 'anonymous' : 'authenticated');
         await harness.navigateByUrl(url);
         const h1 = harness.routeNativeElement?.querySelector('h1');
         expect(h1?.textContent?.trim()).toBe(heading);

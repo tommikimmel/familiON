@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ToastComponent } from '../../shared/ui/toast/toast.component';
 
 @Component({
   selector: 'fo-auth-layout',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, ToastComponent],
   template: `
     <main class="min-h-dvh flex items-center justify-center bg-bg px-4 py-8">
       <div class="w-full max-w-sm rounded-[var(--fo-radius)] border border-border bg-surface p-6 shadow-xs">
@@ -14,6 +15,7 @@ import { RouterOutlet } from '@angular/router';
         <router-outlet />
       </div>
     </main>
+    <fo-toast />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
