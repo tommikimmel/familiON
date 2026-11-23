@@ -14,5 +14,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByIdAndFamilyIdAndActiveTrue(UUID id, UUID familyId);
 
+    Optional<User> findByIdAndFamilyId(UUID id, UUID familyId);
+
     List<User> findAllByFamilyIdAndActiveTrueOrderByCreatedAtAsc(UUID familyId);
+
+    List<User> findAllByFamilyIdOrderByCreatedAtAsc(UUID familyId);
 }
