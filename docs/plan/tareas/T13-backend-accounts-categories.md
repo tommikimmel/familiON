@@ -75,7 +75,7 @@ type Category = { id; parentCategoryId: string|null; name; kind: 'EXPENSE'|'INCO
 6. **Categorías:** GET devuelve sistema + familia (activas), ordenadas por `kind`, padre, nombre; caché Redis `family:{familyId}:categories` TTL 1 h (JSON), invalidada al crear/editar; fail-open. POST: `parentCategoryId` debe ser del mismo `kind` y de primer nivel (profundidad máx 2) → si no `422`. Las de sistema no se editan → `403`.
 
 ## Tests
-- Seed: existen las 32 categorías de sistema y `VEHICLES_FUEL` tiene padre `VEHICLES`.
+- Seed: existen las 31 categorías de sistema y `VEHICLES_FUEL` tiene padre `VEHICLES`.
 - Saldo con mezcla de tipos y estados (POSTED/PROJECTED/borradas) — insertar transacciones con SQL.
 - Visibilidad: HIJO no ve cuentas compartidas en PERSONAL; HIJO `OWN_ONLY` en FAMILY → 403.
 - Crear tarjeta sin `closingDay` → 400; divisa no habilitada → 422; HIJO crea cuenta con `ownerUserId` ajeno → queda propia.
