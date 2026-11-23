@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 56" width="190" height="56" role="img" aria-label="FamiliON">
+  <defs>
+    <style>
+      .wordmark {
+        font-family: 'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: -1.1px;
+        fill: #f3f4f6;
+      }
+    </style>
+  </defs>
+
+  <!-- Wordmark: Famili -->
+  <text x="104" y="40" text-anchor="end" class="wordmark">Famili</text>
+
+  <!-- Toggle Track (ON state) -->
+  <rect x="110" y="12" width="70" height="32" rx="16" fill="#2dd4bf" />
+
+  <!-- Geometric "ON" inside toggle -->
+  <circle cx="127" cy="28" r="4.5" fill="none" stroke="#042f2e" stroke-width="2.2" />
+  <path d="M136.5 32.5V23.5L143.5 32.5V23.5" fill="none" stroke="#042f2e" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Toggle Knob (Right = ON) -->
+  <circle cx="164" cy="28" r="11.5" fill="#042f2e" />
+</svg>
