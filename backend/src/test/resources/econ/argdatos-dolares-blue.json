@@ -1,0 +1,26 @@
+[
+  {
+    "casa": "blue",
+    "compra": 1585,
+    "venta": 1605,
+    "fecha": "2026-11-18"
+  },
+  {
+    "casa": "blue",
+    "compra": 1610,
+    "venta": 1630,
+    "fecha": "2026-11-19"
+  },
+  {
+    "casa": "blue",
+    "compra": 1620,
+    "venta": 1640,
+    "fecha": "2026-11-20"
+  },
+  {
+    "casa": "blue",
+    "compra": 1655,
+    "venta": 1675,
+    "fecha": "2026-11-23"
+  }
+]
