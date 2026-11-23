@@ -160,4 +160,11 @@ flowchart LR
 | T07 | mergeada | [#19](https://github.com/tommikimmel/familiON/pull/19) | 36 unit + 38 IT; ajuste aprobado en `SecurityIT` |
 | T08 | mergeada | [#21](https://github.com/tommikimmel/familiON/pull/21) | 82 tests; usa `@lucide/angular` (lucide-angular deprecado) |
 | T09 | mergeada | [#20](https://github.com/tommikimmel/familiON/pull/20) | 48 unit + 32 IT; EUR_BLUE solo manual (DolarApi no lo expone) |
-| T10–T41 | pendiente | — | |
+| T10 | mergeada | [#23](https://github.com/tommikimmel/familiON/pull/23) | 132 tests; invitación pública vía SecurityFilterChain propio |
+| T11 | mergeada | [#25](https://github.com/tommikimmel/familiON/pull/25) | 134 tests; plantillas Thymeleaf |
+| T12 | mergeada | [#24](https://github.com/tommikimmel/familiON/pull/24) | 116 tests; 3 ajustes aprobados fuera de alcance |
+| T13 | mergeada | [#28](https://github.com/tommikimmel/familiON/pull/28) | 31 categorías de sistema (la tarjeta decía 32 por error) |
+| T14 | mergeada | [#26](https://github.com/tommikimmel/familiON/pull/26) | 134 tests |
+| T15 | mergeada | [#27](https://github.com/tommikimmel/familiON/pull/27) | amplió `fo-icon` con íconos de cuentas/categorías (aprobado) |
+| T16–T18 | en curso | — | Ola 2.2 |
+| T19–T41 | pendiente | — | |
