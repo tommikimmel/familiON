@@ -3,6 +3,7 @@ package com.familion.auth.infrastructure.web;
 import com.familion.auth.application.AuthService;
 import com.familion.auth.application.EmailVerificationService;
 import com.familion.auth.application.LoginCommand;
+import com.familion.auth.application.PasswordResetService;
 import com.familion.auth.application.RegisterCommand;
 import com.familion.auth.application.SessionService;
 import com.familion.auth.application.TwoFactorService;
@@ -33,6 +34,7 @@ public class AuthController {
     private final SessionService sessionService;
     private final EmailVerificationService emailVerificationService;
     private final TwoFactorService twoFactorService;
+    private final PasswordResetService passwordResetService;
     private final CurrentUserProvider currentUserProvider;
 
     public AuthController(
@@ -40,11 +42,13 @@ public class AuthController {
             SessionService sessionService,
             EmailVerificationService emailVerificationService,
             TwoFactorService twoFactorService,
+            PasswordResetService passwordResetService,
             CurrentUserProvider currentUserProvider) {
         this.authService = authService;
         this.sessionService = sessionService;
         this.emailVerificationService = emailVerificationService;
         this.twoFactorService = twoFactorService;
+        this.passwordResetService = passwordResetService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -97,6 +101,20 @@ public class AuthController {
             @Valid @RequestBody ResendTwoFactorRequest request, HttpServletRequest httpRequest) {
         twoFactorService.resend(
                 request.challengeToken(), ServletRequestIpProvider.extractClientIp(httpRequest));
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request, HttpServletRequest httpRequest) {
+        passwordResetService.requestPasswordReset(
+                request.email(), ServletRequestIpProvider.extractClientIp(httpRequest));
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.token(), request.newPassword());
     }
 
     @PostMapping("/refresh")
