@@ -31,6 +31,12 @@ public abstract class IntegrationTestBase {
     protected int port;
 
     @Autowired
+    protected TestFixtures fixtures;
+
+    @Autowired
+    protected JwtTestTokens tokens;
+
+    @Autowired
     private RestClient.Builder restClientBuilder;
 
     protected RestClient client() {
