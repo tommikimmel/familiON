@@ -1,4 +1,9 @@
-import { provideHttpClient, withFetch, withXsrfConfiguration } from '@angular/common/http';
+import {
+  provideHttpClient,
+  withFetch,
+  withInterceptors,
+  withXsrfConfiguration,
+} from '@angular/common/http';
 import {
   ApplicationConfig,
   inject,
@@ -9,6 +14,7 @@ import {
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
 import { routes } from './app.routes';
+import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthStore } from './core/auth/auth.store';
 
 export const appConfig: ApplicationConfig = {
@@ -17,6 +23,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(
       withFetch(),
+      withInterceptors([authInterceptor]),
       withXsrfConfiguration({
         cookieName: 'XSRF-TOKEN',
         headerName: 'X-XSRF-TOKEN',

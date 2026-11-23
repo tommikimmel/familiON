@@ -25,6 +25,7 @@ export class AuthStore {
   private readonly _pendingChallenge = signal<string | null>(null);
 
   private initPromise: Promise<void> | null = null;
+  private logoutRedirectPromise: Promise<boolean> | null = null;
 
   readonly status: Signal<AuthStatus> = this._status.asReadonly();
   readonly pendingChallenge: Signal<string | null> = this._pendingChallenge.asReadonly();
@@ -141,10 +142,19 @@ export class AuthStore {
 
   async logoutLocal(returnUrl?: string | null): Promise<void> {
     this.clearLocalSession();
+    if (this.logoutRedirectPromise) {
+      await this.logoutRedirectPromise;
+      return;
+    }
     const safeReturnUrl = sanitizeReturnUrl(returnUrl);
-    await this.router.navigate(['/auth/login'], {
-      queryParams: safeReturnUrl ? { returnUrl: safeReturnUrl } : undefined,
-    });
+    this.logoutRedirectPromise = this.router
+      .navigate(['/auth/login'], {
+        queryParams: safeReturnUrl ? { returnUrl: safeReturnUrl } : undefined,
+      })
+      .finally(() => {
+        this.logoutRedirectPromise = null;
+      });
+    await this.logoutRedirectPromise;
   }
 
   private async runInit(): Promise<void> {
