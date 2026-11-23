@@ -1,0 +1,11 @@
+FamiliON
+
+Hola [(${fullName})],
+
+Detectamos un inicio de sesión desde un dispositivo no reconocido. Ingresa el siguiente código de verificación para continuar:
+
+[(${code})]
+
+Este código vence en [(${expiresInMinutes})] minutos y es de un solo uso.
+
+Si no solicitaste esta acción, puedes ignorar este mensaje.
