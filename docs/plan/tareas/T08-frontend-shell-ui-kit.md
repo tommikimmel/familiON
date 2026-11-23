@@ -20,7 +20,7 @@ frontend/src/app/core/state/**
 frontend/src/app/core/api/models/**
 frontend/src/app/shared/**
 frontend/src/styles.css            (solo agregar keyframes/utilidades; no cambiar tokens existentes)
-frontend/package.json, frontend/package-lock.json   (solo para agregar @angular/cdk y lucide-angular)
+frontend/package.json, frontend/package-lock.json   (solo para agregar @angular/cdk y @lucide/angular)
 ```
 
 ## Contrato (lo usan otras tareas — no cambiar nombres)
@@ -88,13 +88,13 @@ export function toNumber(decimal: string | null | undefined): number;      // "3
    - `fo-segmented-toggle<T>` (`options: {value:T,label:string}[]`, `value` model; cápsula deslizante 320ms spring; `role="tablist"`/`aria-selected`).
    - `fo-bottom-sheet` (mobile: desliza desde abajo 360ms; desktop: modal centrado; backdrop `blur(5px)`; `Esc` cierra; focus trap con `@angular/cdk/a11y`; `open` model + `closed` output).
    - `fo-donut-chart` (SVG; input `slices: {id:string; label:string; value:number; color?:string; sublabel?:string}[]`, `centerLabel`, `formatValue: (n)=>string`; colores por defecto `tonalScale(accent, n)`; transición `stroke-dasharray/dashoffset`; al tocar porción o leyenda: pop-out + centro muestra nombre, monto y %; output `selected`).
-   - `fo-currency-chip`, `fo-card`, `fo-button` (`variant: 'primary'|'ghost'|'danger'`, `loading`), `fo-empty-state`, `fo-skeleton`, `fo-icon` (wrapper de `lucide-angular`).
+   - `fo-currency-chip`, `fo-card`, `fo-button` (`variant: 'primary'|'ghost'|'danger'`, `loading`), `fo-empty-state`, `fo-skeleton`, `fo-icon` (wrapper de `@lucide/angular`).
    - `fo-toast` + `ToastService.success(msg)/error(msg)` (píldora superior con checkmark SVG animado, 3s).
    - Directiva `foCountUp` (interpola números 280ms ease-out; respeta reduced-motion).
    - Pipe `money` (`shared/pipes/money.pipe.ts`): `value | money:'ARS'` → `Intl.NumberFormat('es-AR', {style:'currency', currency, maximumFractionDigits: 2})`; acepta string decimal o number; para unidades no ISO (`UVA`, `%`) formatea número + sufijo.
    - Pipe `periodLabel` opcional.
 7. **Animaciones** cortas (140–360ms) y desactivadas con `prefers-reduced-motion`.
-8. Íconos: `lucide-angular` (home, calendar-range, plus, car, user, bell, camera, chevron-left/right, check, x, wallet, chart-pie, arrow-left-right).
+8. Íconos: `@lucide/angular` (home, calendar-range, plus, car, user, bell, camera, chevron-left/right, check, x, wallet, chart-pie, arrow-left-right).
 
 ## Tests
 - `color.spec.ts`: luminancia/contraste (blanco vs negro 21:1), `readableTextOn('#0F766E') === '#FFFFFF'`, `readableTextOn('#FDE047') === '#0A0A0A'`, `tonalScale` devuelve N colores distintos.
