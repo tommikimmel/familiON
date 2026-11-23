@@ -2,6 +2,7 @@ package com.familion.auth.infrastructure.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.familion.auth.application.api.SessionIssuer;
 import com.familion.common.test.IntegrationTestBase;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -18,6 +20,9 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 class MeIT extends IntegrationTestBase {
+
+    @Autowired
+    private SessionIssuer sessionIssuer;
 
     private RestClient patchCapableClient() {
         return RestClient.builder()
@@ -43,14 +48,8 @@ class MeIT extends IntegrationTestBase {
         assertThat(reg.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String userId = reg.getBody().path("userId").asText();
 
-        ResponseEntity<JsonNode> login = client()
-                .post()
-                .uri("/api/v1/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("email", email, "password", "ProfilePass123"))
-                .retrieve()
-                .toEntity(JsonNode.class);
-        String accessToken = login.getBody().path("accessToken").asText();
+        String accessToken =
+                sessionIssuer.issueSession(UUID.fromString(userId), "test-agent").accessToken();
 
         ResponseEntity<JsonNode> meResponse = client()
                 .get()
@@ -87,7 +86,8 @@ class MeIT extends IntegrationTestBase {
     @Test
     void patchPreferencesUpdatesAndValidatesThemeAndAccentColor() {
         String email = "prefs-" + UUID.randomUUID() + "@familion.test";
-        client().post()
+        ResponseEntity<JsonNode> reg = client()
+                .post()
                 .uri("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of(
@@ -97,17 +97,9 @@ class MeIT extends IntegrationTestBase {
                         "familyName", "Familia Lopez"))
                 .retrieve()
                 .toEntity(JsonNode.class);
+        UUID userId = UUID.fromString(reg.getBody().path("userId").asText());
 
-        String accessToken = client()
-                .post()
-                .uri("/api/v1/auth/login")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("email", email, "password", "PrefsPass123"))
-                .retrieve()
-                .toEntity(JsonNode.class)
-                .getBody()
-                .path("accessToken")
-                .asText();
+        String accessToken = sessionIssuer.issueSession(userId, "test-agent").accessToken();
 
         RestClient patchClient = patchCapableClient();
 

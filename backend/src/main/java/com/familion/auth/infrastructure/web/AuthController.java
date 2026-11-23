@@ -5,6 +5,7 @@ import com.familion.auth.application.EmailVerificationService;
 import com.familion.auth.application.LoginCommand;
 import com.familion.auth.application.RegisterCommand;
 import com.familion.auth.application.SessionService;
+import com.familion.auth.application.TwoFactorService;
 import com.familion.auth.application.api.SessionTokens;
 import com.familion.common.security.CurrentUser;
 import com.familion.common.security.CurrentUserProvider;
@@ -31,16 +32,19 @@ public class AuthController {
     private final AuthService authService;
     private final SessionService sessionService;
     private final EmailVerificationService emailVerificationService;
+    private final TwoFactorService twoFactorService;
     private final CurrentUserProvider currentUserProvider;
 
     public AuthController(
             AuthService authService,
             SessionService sessionService,
             EmailVerificationService emailVerificationService,
+            TwoFactorService twoFactorService,
             CurrentUserProvider currentUserProvider) {
         this.authService = authService;
         this.sessionService = sessionService;
         this.emailVerificationService = emailVerificationService;
+        this.twoFactorService = twoFactorService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -73,6 +77,26 @@ public class AuthController {
         return authService.login(
                 new LoginCommand(request.email(), request.password(), request.deviceToken()),
                 userAgent);
+    }
+
+    @PostMapping("/2fa/verify")
+    public SessionTokens verifyTwoFactor(
+            @Valid @RequestBody VerifyTwoFactorRequest request,
+            @RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent) {
+        return twoFactorService.verify(
+                request.challengeToken(),
+                request.code(),
+                request.trustDevice(),
+                request.deviceName(),
+                userAgent);
+    }
+
+    @PostMapping("/2fa/resend")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void resendTwoFactor(
+            @Valid @RequestBody ResendTwoFactorRequest request, HttpServletRequest httpRequest) {
+        twoFactorService.resend(
+                request.challengeToken(), ServletRequestIpProvider.extractClientIp(httpRequest));
     }
 
     @PostMapping("/refresh")

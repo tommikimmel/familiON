@@ -13,6 +13,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -59,6 +60,7 @@ class AuthTwoFactorGateIT extends IntegrationTestBase {
     static class StubSecondFactorGateConfig {
 
         @Bean
+        @Primary
         SecondFactorGate stubSecondFactorGate(AccessTokenIssuer accessTokenIssuer) {
             return (user, deviceToken) ->
                     Optional.of(accessTokenIssuer.issueChallenge(user.id(), Duration.ofMinutes(5)));

@@ -145,6 +145,7 @@ class AuthRegisterAndLoginIT extends IntegrationTestBase {
     void loginReturnsValidTokensAndStoresOnlyHashedRefreshToken() {
         String email = "login-" + UUID.randomUUID() + "@familion.test";
         registerUser(email, "LoginPass123");
+        jdbcTemplate.update("UPDATE users SET two_factor_enabled = false WHERE email = ?", email);
 
         String longUserAgent = "Mozilla/5.0 " + "x".repeat(300);
         ResponseEntity<JsonNode> loginResponse = client()

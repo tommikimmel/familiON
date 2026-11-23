@@ -164,6 +164,7 @@ class AuthRefreshAndLogoutIT extends IntegrationTestBase {
                 .retrieve()
                 .toEntity(JsonNode.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        jdbcTemplate.update("UPDATE users SET two_factor_enabled = false WHERE email = ?", email);
     }
 
     private JsonNode login(String email, String password) {
