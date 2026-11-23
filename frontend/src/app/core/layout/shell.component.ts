@@ -26,6 +26,7 @@ import {
   SegmentedToggleComponent,
 } from '../../shared/ui/segmented-toggle/segmented-toggle.component';
 import { ToastComponent } from '../../shared/ui/toast/toast.component';
+import { QuickAddHostComponent } from '../../features/quick-add/quick-add-host.component';
 import { CurrencyMenuComponent } from './currency-menu.component';
 import { NotificationBadgeService } from './notification-badge.service';
 import { QuickAddLauncher } from './quick-add-launcher.service';
@@ -92,6 +93,7 @@ function isEditableElement(target: EventTarget | null): boolean {
     IconComponent,
     LogoComponent,
     PeriodLabelPipe,
+    QuickAddHostComponent,
     SegmentedToggleComponent,
     ToastComponent,
   ],
@@ -339,8 +341,7 @@ function isEditableElement(target: EventTarget | null): boolean {
       </div>
     }
 
-    <!-- T17 mounts fo-quick-add-host here -->
-    <ng-container #quickAddHost />
+    <fo-quick-add-host />
     <fo-toast />
   `,
   styles: `
