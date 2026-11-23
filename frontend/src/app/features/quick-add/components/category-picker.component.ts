@@ -191,6 +191,7 @@ export class CategoryPickerComponent {
 
   protected onDescriptionEnter(event: Event): void {
     event.preventDefault();
+    event.stopPropagation();
     this.enterSubmit.emit();
   }
 }

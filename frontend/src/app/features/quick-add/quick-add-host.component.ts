@@ -1,5 +1,6 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { BreakpointObserver } from '@angular/cdk/layout';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -16,8 +17,14 @@ import { firstValueFrom, map } from 'rxjs';
 import { AccountsStore } from '../../core/finance/accounts.store';
 import { CategoriesStore } from '../../core/finance/categories.store';
 import { FinanceEvents } from '../../core/finance/finance-events';
+import { Account } from '../../core/finance/finance.models';
 import { TransactionsApi } from '../../core/finance/transactions.api';
-import { TransactionCreate, TransactionType } from '../../core/finance/transactions.models';
+import {
+  InstallmentAmountMode,
+  InstallmentPlanCreate,
+  TransactionCreate,
+  TransactionType,
+} from '../../core/finance/transactions.models';
 import { QuickAddLauncher } from '../../core/layout/quick-add-launcher.service';
 import { SessionStore } from '../../core/state/session.store';
 import {
@@ -38,6 +45,12 @@ import {
 } from './amount-input';
 import { AmountKeypadComponent } from './components/amount-keypad.component';
 import { CategoryPickerComponent } from './components/category-picker.component';
+import { QuickAddAdvancedComponent } from './components/quick-add-advanced.component';
+import {
+  QuickAddFamilyMember,
+  QuickAddMembersApi,
+} from './data-access/quick-add-members.api';
+import { installmentPreview } from './installment-preview';
 import { extractQuickAddProblemMessage } from './utils/problem-message';
 
 const DESKTOP_BREAKPOINT = '(min-width: 1024px)';
@@ -79,6 +92,7 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
     ButtonComponent,
     CategoryPickerComponent,
     IconComponent,
+    QuickAddAdvancedComponent,
     SegmentedToggleComponent,
   ],
   host: {
@@ -91,10 +105,7 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
       (closed)="onSheetClosed()"
     >
       @if (launcher.isOpen()) {
-        <div
-          data-testid="quick-add-sheet"
-          class="space-y-4"
-        >
+        <div data-testid="quick-add-sheet" class="space-y-4">
           <header class="flex items-center justify-between gap-2">
             <div class="max-w-[220px] flex-1">
               <fo-segmented-toggle
@@ -228,6 +239,35 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
             (enterSubmit)="save()"
           />
 
+          <fo-quick-add-advanced
+            [expanded]="advancedExpanded()"
+            [transactionType]="transactionType()"
+            [currencyCode]="currencyCode()"
+            [usableAccounts]="usableAccounts()"
+            [creditCards]="creditCards()"
+            [selectedAccountId]="resolvedAccountId()"
+            [transactionDate]="transactionDate()"
+            [isAdult]="session.isAdult()"
+            [currentUserId]="currentUserId()"
+            [members]="members()"
+            [attributedToUserId]="attributedToUserId()"
+            [installments]="installments()"
+            [amountMode]="amountMode()"
+            [hasInterest]="hasInterest()"
+            [cashPrice]="cashPrice()"
+            [installmentPreviewText]="installmentPreviewText()"
+            [summaryHint]="advancedSummaryHint()"
+            (expandedChange)="advancedExpanded.set($event)"
+            (accountIdChange)="selectedAccountIdOverride.set($event)"
+            (transactionDateChange)="transactionDate.set($event)"
+            (attributedToUserIdChange)="attributedToUserId.set($event)"
+            (installmentsChange)="onInstallmentsChange($event)"
+            (amountModeChange)="amountMode.set($event)"
+            (hasInterestChange)="onHasInterestChange($event)"
+            (cashPriceChange)="cashPrice.set($event)"
+            (navigateToAccounts)="closeSheet()"
+          />
+
           @if (!isDesktop()) {
             <fo-amount-keypad
               [disabled]="saving()"
@@ -293,10 +333,11 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
 })
 export class QuickAddHostComponent {
   private readonly breakpointObserver = inject(BreakpointObserver);
-  private readonly session = inject(SessionStore);
+  protected readonly session = inject(SessionStore);
   private readonly accountsStore = inject(AccountsStore);
   private readonly categoriesStore = inject(CategoriesStore);
   private readonly transactionsApi = inject(TransactionsApi);
+  private readonly membersApi = inject(QuickAddMembersApi);
   private readonly financeEvents = inject(FinanceEvents);
   private readonly toast = inject(ToastService);
 
@@ -323,13 +364,25 @@ export class QuickAddHostComponent {
   protected readonly selectedCategoryId = signal<string | null>(null);
   protected readonly description = signal<string>('');
   protected readonly transactionDate = signal<string>(todayIsoDate());
+  protected readonly advancedExpanded = signal<boolean>(false);
+  protected readonly selectedAccountIdOverride = signal<string | null>(null);
+  protected readonly attributedToUserId = signal<string | null>(null);
+  protected readonly installments = signal<number>(1);
+  protected readonly amountMode = signal<InstallmentAmountMode | null>(null);
+  protected readonly hasInterest = signal<boolean>(false);
+  protected readonly cashPrice = signal<string>('');
+  protected readonly members = signal<QuickAddFamilyMember[]>([]);
   protected readonly saving = signal<boolean>(false);
   protected readonly bumpPhase = signal<'idle' | 'a' | 'b'>('idle');
+
+  private membersLoaded = false;
 
   private readonly expenseFrequent = this.categoriesStore.frequent('EXPENSE', 8);
   private readonly incomeFrequent = this.categoriesStore.frequent('INCOME', 8);
   private readonly expenseAll = this.categoriesStore.byKind('EXPENSE');
   private readonly incomeAll = this.categoriesStore.byKind('INCOME');
+
+  protected readonly currentUserId = computed(() => this.session.me()?.id ?? null);
 
   protected readonly frequentCategories = computed(() =>
     this.transactionType() === 'EXPENSE' ? this.expenseFrequent() : this.incomeFrequent(),
@@ -356,16 +409,90 @@ export class QuickAddHostComponent {
 
   protected readonly parsedAmount = computed(() => toApiDecimal(this.rawAmount()));
 
+  protected readonly isInstallmentMode = computed(
+    () => this.transactionType() === 'EXPENSE' && this.installments() > 1,
+  );
+
   protected readonly usableAccounts = computed(() =>
     this.accountsStore.usableFor(this.currencyCode())(),
   );
 
-  protected readonly resolvedAccountId = computed<string | null>(() => {
+  protected readonly creditCards = this.accountsStore.creditCards;
+
+  protected readonly resolvedAccount = computed<Account | null>(() => {
+    const overrideId = this.selectedAccountIdOverride();
+
+    if (this.isInstallmentMode()) {
+      const cards = this.creditCards();
+      if (cards.length === 0) {
+        return null;
+      }
+      if (overrideId) {
+        const matched = cards.find((card) => card.id === overrideId);
+        if (matched) {
+          return matched;
+        }
+      }
+      const normalizedCurrency = this.currencyCode().trim().toUpperCase();
+      return (
+        cards.find((card) => card.currencyCode.trim().toUpperCase() === normalizedCurrency) ??
+        cards[0]
+      );
+    }
+
+    const usable = this.usableAccounts();
+    if (overrideId) {
+      const matched = usable.find((account) => account.id === overrideId);
+      if (matched) {
+        return matched;
+      }
+    }
     const defaultAccount = this.accountsStore.defaultAccountFor(this.currencyCode());
     if (defaultAccount) {
-      return defaultAccount.id;
+      return defaultAccount;
     }
-    return this.usableAccounts()[0]?.id ?? null;
+    return usable[0] ?? null;
+  });
+
+  protected readonly resolvedAccountId = computed<string | null>(
+    () => this.resolvedAccount()?.id ?? null,
+  );
+
+  protected readonly installmentPreviewText = computed<string | null>(() => {
+    if (!this.isInstallmentMode()) {
+      return null;
+    }
+    const mode = this.amountMode();
+    const amount = this.parsedAmount();
+    if (!mode || !amount) {
+      return null;
+    }
+    const result = installmentPreview({
+      amount,
+      totalInstallments: this.installments(),
+      amountMode: mode,
+      purchaseDate: this.transactionDate(),
+      closingDay: this.resolvedAccount()?.closingDay ?? null,
+      currencyCode: this.currencyCode(),
+    });
+    return result?.summary ?? null;
+  });
+
+  protected readonly advancedSummaryHint = computed<string>(() => {
+    const parts: string[] = [];
+    const accountName = this.resolvedAccount()?.name;
+    if (accountName) {
+      parts.push(accountName);
+    }
+    if (this.transactionDate() === todayIsoDate()) {
+      parts.push('Hoy');
+    } else {
+      parts.push(this.transactionDate());
+    }
+    if (this.isInstallmentMode()) {
+      parts.push(`${this.installments()} cuotas`);
+    }
+    return parts.join(' · ');
   });
 
   protected readonly canSave = computed(() => {
@@ -380,7 +507,13 @@ export class QuickAddHostComponent {
     if (!hasCategoryOrDescription) {
       return false;
     }
-    return this.resolvedAccountId() !== null;
+    if (this.resolvedAccountId() === null) {
+      return false;
+    }
+    if (this.isInstallmentMode() && this.amountMode() === null) {
+      return false;
+    }
+    return true;
   });
 
   private wasOpen = false;
@@ -408,6 +541,13 @@ export class QuickAddHostComponent {
     }
     this.transactionType.set(nextType);
     this.selectedCategoryId.set(null);
+    if (nextType === 'INCOME') {
+      this.installments.set(1);
+      this.amountMode.set(null);
+      this.hasInterest.set(false);
+      this.cashPrice.set('');
+      this.selectedAccountIdOverride.set(null);
+    }
   }
 
   protected toggleCurrencyMenu(): void {
@@ -420,6 +560,7 @@ export class QuickAddHostComponent {
   protected selectCurrency(code: string): void {
     this.currencyCode.set(code);
     this.currencyMenuOpen.set(false);
+    this.selectedAccountIdOverride.set(null);
   }
 
   protected onKeypadPress(key: KeypadKey): void {
@@ -441,6 +582,32 @@ export class QuickAddHostComponent {
       target.value = normalized;
     }
     this.desktopDisplayValue.set(target.value);
+  }
+
+  protected onInstallmentsChange(nextCount: number): void {
+    const clamped = Math.max(1, Math.min(24, Math.trunc(nextCount)));
+    const wasInstallments = this.installments() > 1;
+    const willBeInstallments = clamped > 1;
+    this.installments.set(clamped);
+
+    if (!wasInstallments && willBeInstallments) {
+      this.amountMode.set(null);
+      this.hasInterest.set(false);
+      this.cashPrice.set('');
+      this.selectedAccountIdOverride.set(null);
+    } else if (wasInstallments && !willBeInstallments) {
+      this.amountMode.set(null);
+      this.hasInterest.set(false);
+      this.cashPrice.set('');
+      this.selectedAccountIdOverride.set(null);
+    }
+  }
+
+  protected onHasInterestChange(hasInterest: boolean): void {
+    this.hasInterest.set(hasInterest);
+    if (!hasInterest) {
+      this.cashPrice.set('');
+    }
   }
 
   protected onSheetEnter(event: Event): void {
@@ -473,38 +640,97 @@ export class QuickAddHostComponent {
     }
 
     const type = this.transactionType();
-    const categoryId = this.selectedCategoryId();
+    const selectedCategoryId = this.selectedCategoryId();
     const trimmedDescription = this.description().trim();
-
-    const body: TransactionCreate = {
-      type,
-      amount: decimalAmount,
-      currencyCode: this.currencyCode(),
-      transactionDate: this.transactionDate(),
-      accountId,
-    };
-
-    if (categoryId) {
-      body.categoryId = categoryId;
-    }
-    if (trimmedDescription) {
-      body.description = trimmedDescription;
-    }
+    const currentUserId = this.currentUserId();
+    const attributedId =
+      this.session.isAdult() &&
+      this.attributedToUserId() &&
+      this.attributedToUserId() !== currentUserId
+        ? this.attributedToUserId()
+        : null;
 
     this.saving.set(true);
     try {
+      if (this.isInstallmentMode()) {
+        const mode = this.amountMode();
+        if (!mode) {
+          return;
+        }
+        const selectedCategory = selectedCategoryId
+          ? (this.allCategoriesForKind().find((cat) => cat.id === selectedCategoryId) ?? null)
+          : null;
+        const fallbackCategoryId =
+          this.categoriesStore.bySystemKey('OTHER_EXPENSE')?.id ??
+          this.allCategoriesForKind()[0]?.id ??
+          null;
+        const resolvedCategoryId = selectedCategoryId ?? fallbackCategoryId;
+        if (!resolvedCategoryId) {
+          this.toast.error('Elegí una categoría para guardar la compra en cuotas.');
+          return;
+        }
+
+        const planBody: InstallmentPlanCreate = {
+          description: trimmedDescription || selectedCategory?.name || 'Compra en cuotas',
+          categoryId: resolvedCategoryId,
+          creditCardAccountId: accountId,
+          currencyCode: this.currencyCode(),
+          totalInstallments: this.installments(),
+          amountMode: mode,
+          amount: decimalAmount,
+          hasInterest: this.hasInterest(),
+          purchaseDate: this.transactionDate(),
+        };
+
+        const parsedCashPrice = this.hasInterest() ? toApiDecimal(this.cashPrice()) : null;
+        if (parsedCashPrice) {
+          planBody.cashPrice = parsedCashPrice;
+        }
+        if (attributedId) {
+          planBody.attributedToUserId = attributedId;
+        }
+
+        await firstValueFrom(this.transactionsApi.createInstallmentPlan(planBody));
+        this.toast.success('Gasto guardado');
+        this.categoriesStore.recordUsage(resolvedCategoryId);
+        this.financeEvents.emit('transaction-created');
+        this.resetForm();
+        this.launcher.close();
+        return;
+      }
+
+      const body: TransactionCreate = {
+        type,
+        amount: decimalAmount,
+        currencyCode: this.currencyCode(),
+        transactionDate: this.transactionDate(),
+        accountId,
+      };
+
+      if (selectedCategoryId) {
+        body.categoryId = selectedCategoryId;
+      }
+      if (trimmedDescription) {
+        body.description = trimmedDescription;
+      }
+      if (attributedId) {
+        body.attributedToUserId = attributedId;
+      }
+
       await firstValueFrom(this.transactionsApi.create(body));
       this.toast.success(type === 'INCOME' ? 'Ingreso guardado' : 'Gasto guardado');
-      if (categoryId) {
-        this.categoriesStore.recordUsage(categoryId);
+      if (selectedCategoryId) {
+        this.categoriesStore.recordUsage(selectedCategoryId);
       }
       this.financeEvents.emit('transaction-created');
       this.resetForm();
       this.launcher.close();
     } catch (err) {
-      this.toast.error(
-        extractQuickAddProblemMessage(err, 'No pudimos guardar el movimiento. Intentá de nuevo.'),
-      );
+      const fallback =
+        this.isInstallmentMode() && err instanceof HttpErrorResponse && err.status === 404
+          ? 'La carga en cuotas todavía no está disponible.'
+          : 'No pudimos guardar el movimiento. Intentá de nuevo.';
+      this.toast.error(extractQuickAddProblemMessage(err, fallback));
     } finally {
       this.saving.set(false);
     }
@@ -526,6 +752,13 @@ export class QuickAddHostComponent {
     this.selectedCategoryId.set(null);
     this.description.set('');
     this.transactionDate.set(todayIsoDate());
+    this.advancedExpanded.set(false);
+    this.selectedAccountIdOverride.set(null);
+    this.attributedToUserId.set(null);
+    this.installments.set(1);
+    this.amountMode.set(null);
+    this.hasInterest.set(false);
+    this.cashPrice.set('');
     this.saving.set(false);
     this.bumpPhase.set('idle');
   }
@@ -545,6 +778,16 @@ export class QuickAddHostComponent {
     tasks.push(this.categoriesStore.load(false).catch(() => undefined));
     if (this.accountsStore.accounts().length === 0 && !this.accountsStore.loading()) {
       tasks.push(this.accountsStore.load().catch(() => undefined));
+    }
+    if (this.session.isAdult() && !this.membersLoaded) {
+      this.membersLoaded = true;
+      tasks.push(
+        firstValueFrom(this.membersApi.list())
+          .then((list) => this.members.set(list))
+          .catch(() => {
+            this.membersLoaded = false;
+          }),
+      );
     }
     await Promise.all(tasks);
   }
