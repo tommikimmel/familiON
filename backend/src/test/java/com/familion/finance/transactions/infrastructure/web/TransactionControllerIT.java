@@ -348,6 +348,293 @@ class TransactionControllerIT extends IntegrationTestBase {
         assertThat(crossFamily.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
+    @Test
+    void listViewsRespectAttributionAndVisibilityPolicy() {
+        UUID familyId = fixtures.createFamily("Familia Views " + UUID.randomUUID());
+        UUID adultId = fixtures.createUser(
+                familyId,
+                "adult-v-" + UUID.randomUUID() + "@familion.test",
+                Role.ADULTO,
+                FamilyVisibility.FAMILY_FULL);
+        UUID childOwnOnlyId = fixtures.createUser(
+                familyId,
+                "child-own-" + UUID.randomUUID() + "@familion.test",
+                Role.HIJO,
+                FamilyVisibility.OWN_ONLY);
+        UUID childSummaryId = fixtures.createUser(
+                familyId,
+                "child-sum-" + UUID.randomUUID() + "@familion.test",
+                Role.HIJO,
+                FamilyVisibility.FAMILY_SUMMARY);
+        UUID childFullId = fixtures.createUser(
+                familyId,
+                "child-full-" + UUID.randomUUID() + "@familion.test",
+                Role.HIJO,
+                FamilyVisibility.FAMILY_FULL);
+
+        UUID adultAccount = fixtures.createAccount(familyId, adultId, "BANK", "ARS");
+        String adultBearer =
+                tokens.bearer(adultId, familyId, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+        String childOwnBearer =
+                tokens.bearer(childOwnOnlyId, familyId, Role.HIJO, FamilyVisibility.OWN_ONLY);
+        String childSummaryBearer =
+                tokens.bearer(childSummaryId, familyId, Role.HIJO, FamilyVisibility.FAMILY_SUMMARY);
+        String childFullBearer =
+                tokens.bearer(childFullId, familyId, Role.HIJO, FamilyVisibility.FAMILY_FULL);
+
+        // Adult's own expense
+        UUID adultExpenseId = UUID.fromString(postRaw(
+                        adultBearer,
+                        Map.of(
+                                "type", "EXPENSE",
+                                "amount", new BigDecimal("5000"),
+                                "currencyCode", "ARS",
+                                "transactionDate", "2026-11-10",
+                                "accountId", adultAccount.toString(),
+                                "description", "Adult coffee"))
+                .getBody()
+                .path("id")
+                .asText());
+
+        // Adult attributes expense to childOwnOnlyId
+        UUID attributedExpenseId = UUID.fromString(postRaw(
+                        adultBearer,
+                        Map.of(
+                                "type", "EXPENSE",
+                                "amount", new BigDecimal("7500"),
+                                "currencyCode", "ARS",
+                                "transactionDate", "2026-11-11",
+                                "accountId", adultAccount.toString(),
+                                "description", "Child sneakers",
+                                "attributedToUserId", childOwnOnlyId.toString()))
+                .getBody()
+                .path("id")
+                .asText());
+
+        // Child view=PERSONAL sees the attributed expense, NOT adult's own expense
+        ResponseEntity<JsonNode> childPersonal =
+                getRaw(childOwnBearer, "/api/v1/transactions?view=PERSONAL");
+        assertThat(childPersonal.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(contentIds(childPersonal.getBody()))
+                .containsExactly(attributedExpenseId.toString());
+
+        // Adult view=PERSONAL sees ONLY adult's own expense, NOT the one attributed to child
+        ResponseEntity<JsonNode> adultPersonal =
+                getRaw(adultBearer, "/api/v1/transactions?view=PERSONAL");
+        assertThat(adultPersonal.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(contentIds(adultPersonal.getBody()))
+                .containsExactly(adultExpenseId.toString());
+
+        // Adult view=FAMILY sees both
+        ResponseEntity<JsonNode> adultFamily =
+                getRaw(adultBearer, "/api/v1/transactions?view=FAMILY");
+        assertThat(adultFamily.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(contentIds(adultFamily.getBody()))
+                .containsExactly(attributedExpenseId.toString(), adultExpenseId.toString());
+
+        // HIJO OWN_ONLY and FAMILY_SUMMARY listing view=FAMILY -> 403
+        assertThat(getRaw(childOwnBearer, "/api/v1/transactions?view=FAMILY").getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(getRaw(childSummaryBearer, "/api/v1/transactions?view=FAMILY").getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+
+        // HIJO FAMILY_FULL listing view=FAMILY -> 200 with both
+        ResponseEntity<JsonNode> childFullFamily =
+                getRaw(childFullBearer, "/api/v1/transactions?view=FAMILY");
+        assertThat(childFullFamily.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(contentIds(childFullFamily.getBody())).hasSize(2);
+    }
+
+    @Test
+    void listSupportsFiltersPaginationSizeClampingSortingAndAllFourLenses() {
+        insertIndex("USD_MEP", LocalDate.of(2026, 10, 1), new BigDecimal("1000.000000"));
+        insertIndex("IPC_ACUMULADO", LocalDate.of(2026, 10, 1), new BigDecimal("200.000000"));
+        insertIndex("IPC_ACUMULADO", LocalDate.of(2026, 11, 1), new BigDecimal("250.000000"));
+
+        UUID familyId = fixtures.createFamily("Familia Lenses " + UUID.randomUUID());
+        UUID adultId = fixtures.createUser(
+                familyId,
+                "adult-l-" + UUID.randomUUID() + "@familion.test",
+                Role.ADULTO,
+                FamilyVisibility.FAMILY_FULL);
+        UUID bankArs = fixtures.createAccount(familyId, adultId, "BANK", "ARS");
+        UUID bankUsd = fixtures.createAccount(familyId, adultId, "BANK", "USD");
+        UUID foodCat = insertCategory(familyId, "Alimentos", "EXPENSE");
+        String bearer =
+                tokens.bearer(adultId, familyId, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+
+        // Oct income: 100,000 ARS
+        postRaw(
+                bearer,
+                Map.of(
+                        "type", "INCOME",
+                        "amount", new BigDecimal("100000"),
+                        "currencyCode", "ARS",
+                        "transactionDate", "2026-10-05",
+                        "accountId", bankArs.toString(),
+                        "description", "October Salary"));
+
+        // Oct expense: 20,000 ARS (20% of Oct income, 20 USD ref, 25,000 constant base)
+        UUID octExpenseId = UUID.fromString(postRaw(
+                        bearer,
+                        Map.of(
+                                "type", "EXPENSE",
+                                "amount", new BigDecimal("20000"),
+                                "currencyCode", "ARS",
+                                "transactionDate", "2026-10-15",
+                                "accountId", bankArs.toString(),
+                                "categoryId", foodCat.toString(),
+                                "description", "Supermarket October"))
+                .getBody()
+                .path("id")
+                .asText());
+
+        // Nov expense in USD (no income in Nov -> INCOME_PCT is null)
+        UUID novExpenseId = UUID.fromString(postRaw(
+                        bearer,
+                        Map.of(
+                                "type", "EXPENSE",
+                                "amount", new BigDecimal("50"),
+                                "currencyCode", "USD",
+                                "transactionDate", "2026-11-12",
+                                "accountId", bankUsd.toString(),
+                                "description", "Cloud Hosting"))
+                .getBody()
+                .path("id")
+                .asText());
+
+        // Installment plan row linked to verify installment {planId, number, total} join
+        UUID cardArs = fixtures.createAccount(familyId, adultId, "CREDIT_CARD", "ARS");
+        UUID planId = UUID.randomUUID();
+        jdbcTemplate.update(
+                """
+                INSERT INTO installment_plans (
+                    id, family_id, user_id, credit_card_account_id, category_id, description,
+                    currency_code, total_installments, has_interest, financed_total,
+                    installment_amount, purchase_date, first_billing_date, status
+                )
+                VALUES (?, ?, ?, ?, ?, 'TV 6 cuotas', 'ARS', 6, FALSE, 60000, 10000, '2026-09-01', '2026-09-10', 'ACTIVE')
+                """,
+                planId,
+                familyId,
+                adultId,
+                cardArs,
+                foodCat);
+        UUID installmentTxId = UUID.randomUUID();
+        jdbcTemplate.update(
+                """
+                INSERT INTO transactions (
+                    id, family_id, user_id, attributed_to_user_id, account_id, category_id,
+                    type, scope, status, amount, currency_code, transaction_date, description,
+                    installment_plan_id, installment_number
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 'EXPENSE', 'PERSONAL', 'PROJECTED', 10000, 'ARS', '2026-09-10', 'TV cuota 1', ?, 1)
+                """,
+                installmentTxId,
+                familyId,
+                adultId,
+                adultId,
+                cardArs,
+                foodCat,
+                planId);
+        // Snapshot with NULL ipc_index_value so CONSTANT_BASE triggers lensApproximated = true
+        jdbcTemplate.update(
+                """
+                INSERT INTO economic_snapshots (
+                    transaction_id, reference_currency, reference_rate_source,
+                    reference_exchange_rate, amount_in_reference, base_currency_amount,
+                    ipc_index_value, uva_value, snapshot_date
+                )
+                VALUES (?, 'USD', 'USD_MEP', 1000.000000, 10.0000, 10000.0000, NULL, NULL, '2026-09-10')
+                """,
+                installmentTxId);
+
+        // Filters: q, categoryId, currency, from/to, type
+        ResponseEntity<JsonNode> filtered = getRaw(
+                bearer,
+                "/api/v1/transactions?view=PERSONAL&from=2026-10-01&to=2026-10-31&type=EXPENSE&categoryId="
+                        + foodCat
+                        + "&currency=ars&q=supermarket");
+        assertThat(filtered.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(contentIds(filtered.getBody())).containsExactly(octExpenseId.toString());
+
+        // Pagination size=51 clamped to 50
+        ResponseEntity<JsonNode> clamped =
+                getRaw(bearer, "/api/v1/transactions?view=PERSONAL&page=0&size=51");
+        assertThat(clamped.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(clamped.getBody().path("page").path("size").asInt()).isEqualTo(50);
+        assertThat(clamped.getBody().path("page").path("totalElements").asInt()).isEqualTo(4);
+
+        // Sort by amount asc
+        ResponseEntity<JsonNode> sorted =
+                getRaw(bearer, "/api/v1/transactions?view=PERSONAL&sort=amount,asc");
+        assertThat(sorted.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(sorted.getBody().path("content").get(0).path("id").asText())
+                .isEqualTo(novExpenseId.toString());
+
+        // CONSTANT_BASE lens: Oct expense = 20000 * 250 / 200 = 25000 (not approximated);
+        // Installment tx has null snapshot IPC -> 10000 and lensApproximated = true
+        ResponseEntity<JsonNode> constantResp =
+                getRaw(bearer, "/api/v1/transactions?view=PERSONAL&lens=CONSTANT_BASE");
+        assertThat(constantResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode octConstant = findItemById(constantResp.getBody(), octExpenseId);
+        assertThat(octConstant.path("lens").asText()).isEqualTo("CONSTANT_BASE");
+        assertThat(octConstant.path("lensAmount").asText()).isEqualTo("25000.0000");
+        assertThat(octConstant.path("lensUnit").asText()).isEqualTo("ARS");
+        assertThat(octConstant.path("lensApproximated").asBoolean()).isFalse();
+
+        JsonNode instConstant = findItemById(constantResp.getBody(), installmentTxId);
+        assertThat(instConstant.path("lensAmount").asText()).isEqualTo("10000.0000");
+        assertThat(instConstant.path("lensApproximated").asBoolean()).isTrue();
+        assertThat(instConstant.path("installment").path("planId").asText())
+                .isEqualTo(planId.toString());
+        assertThat(instConstant.path("installment").path("number").asInt()).isEqualTo(1);
+        assertThat(instConstant.path("installment").path("total").asInt()).isEqualTo(6);
+
+        // REFERENCE_CURRENCY lens
+        ResponseEntity<JsonNode> refResp =
+                getRaw(bearer, "/api/v1/transactions?view=PERSONAL&lens=REFERENCE_CURRENCY");
+        JsonNode octRef = findItemById(refResp.getBody(), octExpenseId);
+        assertThat(octRef.path("lensAmount").asText()).isEqualTo("20.0000");
+        assertThat(octRef.path("lensUnit").asText()).isEqualTo("USD");
+
+        // INCOME_PCT lens: Oct expense = 20.0000%, Nov expense (no Nov income) = null
+        ResponseEntity<JsonNode> pctResp =
+                getRaw(bearer, "/api/v1/transactions?view=PERSONAL&lens=INCOME_PCT");
+        JsonNode octPct = findItemById(pctResp.getBody(), octExpenseId);
+        assertThat(octPct.path("lensAmount").asText()).isEqualTo("20.0000");
+        assertThat(octPct.path("lensUnit").asText()).isEqualTo("%");
+
+        JsonNode novPct = findItemById(pctResp.getBody(), novExpenseId);
+        assertThat(novPct.path("lensAmount").isNull()).isTrue();
+        assertThat(novPct.path("lensUnit").asText()).isEqualTo("%");
+    }
+
+    private ResponseEntity<JsonNode> getRaw(String bearer, String uri) {
+        return client()
+                .get()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {})
+                .toEntity(JsonNode.class);
+    }
+
+    private List<String> contentIds(JsonNode pageBody) {
+        List<String> ids = new java.util.ArrayList<>();
+        pageBody.path("content").forEach(node -> ids.add(node.path("id").asText()));
+        return ids;
+    }
+
+    private JsonNode findItemById(JsonNode pageBody, UUID id) {
+        for (JsonNode node : pageBody.path("content")) {
+            if (id.toString().equals(node.path("id").asText())) {
+                return node;
+            }
+        }
+        throw new AssertionError("Transaction not found in page: " + id);
+    }
+
     private ResponseEntity<JsonNode> postRaw(String bearer, Map<String, Object> body) {
         return client()
                 .post()

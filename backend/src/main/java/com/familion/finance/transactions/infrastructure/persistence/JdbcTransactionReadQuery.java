@@ -1,6 +1,8 @@
 package com.familion.finance.transactions.infrastructure.persistence;
 
 import com.familion.common.money.Money;
+import com.familion.finance.transactions.application.InvalidTransactionRequestException;
+import com.familion.finance.transactions.application.TransactionFilter;
 import com.familion.finance.transactions.application.TransactionReadQuery;
 import com.familion.finance.transactions.application.TransactionReadRow;
 import com.familion.finance.transactions.application.api.Scope;
@@ -11,18 +13,32 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JdbcTransactionReadQuery implements TransactionReadQuery {
+
+    private static final Map<String, String> ALLOWED_SORT_COLUMNS = Map.of(
+            "transactionDate", "t.transaction_date",
+            "createdAt", "t.created_at",
+            "amount", "t.amount",
+            "baseCurrencyAmount", "es.base_currency_amount",
+            "description", "t.description");
+
+    private static final List<String> DEFAULT_STATUSES =
+            List.of(TransactionStatus.POSTED.name(), TransactionStatus.PROJECTED.name());
 
     static final String BASE_SELECT_SQL = """
             SELECT
@@ -64,6 +80,13 @@ public class JdbcTransactionReadQuery implements TransactionReadQuery {
               AND t.deleted_at IS NULL
             """;
 
+    private static final String BASE_COUNT_SQL = """
+            SELECT COUNT(*)
+            FROM transactions t
+            WHERE t.family_id = :familyId
+              AND t.deleted_at IS NULL
+            """;
+
     private static final String FIND_BY_ID_SQL = BASE_SELECT_SQL + " AND t.id = :transactionId";
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -80,6 +103,32 @@ public class JdbcTransactionReadQuery implements TransactionReadQuery {
         List<TransactionReadRow> rows =
                 jdbcTemplate.query(FIND_BY_ID_SQL, params, JdbcTransactionReadQuery::mapRow);
         return rows.stream().findFirst();
+    }
+
+    @Override
+    public List<TransactionReadRow> findPage(
+            UUID familyId, UUID viewerUserId, TransactionFilter filter, Pageable pageable) {
+        StringBuilder sql = new StringBuilder(BASE_SELECT_SQL);
+        MapSqlParameterSource params = new MapSqlParameterSource("familyId", familyId);
+
+        appendFilters(sql, params, viewerUserId, filter);
+        sql.append(buildOrderBy(pageable.getSort()));
+        sql.append(" LIMIT :limit OFFSET :offset");
+        params.addValue("limit", pageable.getPageSize());
+        params.addValue("offset", pageable.getOffset());
+
+        return jdbcTemplate.query(sql.toString(), params, JdbcTransactionReadQuery::mapRow);
+    }
+
+    @Override
+    public long count(UUID familyId, UUID viewerUserId, TransactionFilter filter) {
+        StringBuilder sql = new StringBuilder(BASE_COUNT_SQL);
+        MapSqlParameterSource params = new MapSqlParameterSource("familyId", familyId);
+
+        appendFilters(sql, params, viewerUserId, filter);
+
+        Long total = jdbcTemplate.queryForObject(sql.toString(), params, Long.class);
+        return total == null ? 0L : total;
     }
 
     @Override
@@ -125,6 +174,86 @@ public class JdbcTransactionReadQuery implements TransactionReadQuery {
             totals.put(YearMonth.of(year, month), Money.scale(total));
         });
         return totals;
+    }
+
+    private static void appendFilters(
+            StringBuilder sql,
+            MapSqlParameterSource params,
+            UUID viewerUserId,
+            TransactionFilter filter) {
+        if (viewerUserId != null) {
+            sql.append(" AND t.attributed_to_user_id = :viewerUserId");
+            params.addValue("viewerUserId", viewerUserId);
+        }
+
+        List<String> statuses = (filter.statuses() == null || filter.statuses().isEmpty())
+                ? DEFAULT_STATUSES
+                : filter.statuses().stream().map(Enum::name).toList();
+        sql.append(" AND t.status IN (:statuses)");
+        params.addValue("statuses", statuses);
+
+        if (filter.from() != null) {
+            sql.append(" AND t.transaction_date >= :fromDate");
+            params.addValue("fromDate", filter.from());
+        }
+        if (filter.to() != null) {
+            sql.append(" AND t.transaction_date <= :toDate");
+            params.addValue("toDate", filter.to());
+        }
+        if (filter.types() != null && !filter.types().isEmpty()) {
+            sql.append(" AND t.type IN (:types)");
+            params.addValue("types", filter.types().stream().map(Enum::name).toList());
+        }
+        if (filter.categoryId() != null) {
+            sql.append(" AND t.category_id = :categoryId");
+            params.addValue("categoryId", filter.categoryId());
+        }
+        if (filter.accountId() != null) {
+            sql.append(" AND t.account_id = :accountId");
+            params.addValue("accountId", filter.accountId());
+        }
+        if (filter.attributedToUserId() != null) {
+            sql.append(" AND t.attributed_to_user_id = :attributedToUserId");
+            params.addValue("attributedToUserId", filter.attributedToUserId());
+        }
+        if (filter.currency() != null && !filter.currency().isBlank()) {
+            sql.append(" AND t.currency_code = :currency");
+            params.addValue("currency", filter.currency().trim().toUpperCase(Locale.ROOT));
+        }
+        if (filter.q() != null && !filter.q().isBlank()) {
+            String escaped = filter.q()
+                    .trim()
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_");
+            sql.append(" AND t.description ILIKE :qPattern ESCAPE '\\'");
+            params.addValue("qPattern", "%" + escaped + "%");
+        }
+    }
+
+    private static String buildOrderBy(Sort sort) {
+        if (sort == null || sort.isUnsorted()) {
+            return " ORDER BY t.transaction_date DESC, t.created_at DESC, t.id DESC";
+        }
+        List<String> clauses = new ArrayList<>();
+        boolean hasCreatedAt = false;
+        for (Sort.Order order : sort) {
+            String column = ALLOWED_SORT_COLUMNS.get(order.getProperty());
+            if (column == null) {
+                throw new InvalidTransactionRequestException(
+                        "sort", "Unsupported sort field: " + order.getProperty());
+            }
+            if ("createdAt".equals(order.getProperty())) {
+                hasCreatedAt = true;
+            }
+            String direction = order.isAscending() ? "ASC" : "DESC";
+            clauses.add(column + " " + direction);
+        }
+        if (!hasCreatedAt) {
+            clauses.add("t.created_at DESC");
+        }
+        clauses.add("t.id DESC");
+        return " ORDER BY " + String.join(", ", clauses);
     }
 
     static TransactionReadRow mapRow(ResultSet rs, int rowNum) throws SQLException {

@@ -15,10 +15,17 @@ import com.familion.finance.transactions.domain.LensCalculator;
 import com.familion.finance.transactions.domain.LensResult;
 import java.math.BigDecimal;
 import java.time.YearMonth;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransactionQueryService {
 
     static final String IPC_ACUMULADO_INDEX = "IPC_ACUMULADO";
+    static final int MAX_PAGE_SIZE = 50;
+    static final int DEFAULT_PAGE_SIZE = 20;
 
     private final TransactionReadQuery readQuery;
     private final VisibilityPolicy visibilityPolicy;
@@ -44,6 +53,49 @@ public class TransactionQueryService {
         this.familyQueryApi = familyQueryApi;
         this.economicsApi = economicsApi;
         this.lensCalculator = new LensCalculator();
+    }
+
+    public Page<TransactionItemView> list(
+            CurrentUser user, TransactionFilter filter, Pageable pageable) {
+        Objects.requireNonNull(user, "user must not be null");
+        Objects.requireNonNull(filter, "filter must not be null");
+
+        View view = filter.view() != null ? filter.view() : View.PERSONAL;
+        Lens lens = filter.lens() != null ? filter.lens() : Lens.NOMINAL;
+
+        ViewAccess access = visibilityPolicy.resolveForListing(user, view);
+        UUID viewerUserId = access == ViewAccess.OWN ? user.userId() : null;
+
+        Pageable effectivePageable = clampPageable(pageable);
+
+        List<TransactionReadRow> rows =
+                readQuery.findPage(user.familyId(), viewerUserId, filter, effectivePageable);
+        long total = readQuery.count(user.familyId(), viewerUserId, filter);
+
+        if (rows.isEmpty()) {
+            return new PageImpl<>(List.of(), effectivePageable, total);
+        }
+
+        FamilySettings settings = familyQueryApi.getSettings(user.familyId());
+        BigDecimal latestIpc = lens == Lens.CONSTANT_BASE
+                ? economicsApi.latestValue(IPC_ACUMULADO_INDEX).orElse(null)
+                : null;
+
+        Map<YearMonth, BigDecimal> incomeByMonth = Map.of();
+        if (lens == Lens.INCOME_PCT) {
+            Set<YearMonth> months = rows.stream()
+                    .map(row -> YearMonth.from(row.transactionDate()))
+                    .collect(Collectors.toSet());
+            incomeByMonth =
+                    readQuery.sumPostedIncomeByMonth(user.familyId(), viewerUserId, months);
+        }
+
+        Map<YearMonth, BigDecimal> resolvedIncomeByMonth = incomeByMonth;
+        List<TransactionItemView> content = rows.stream()
+                .map(row -> toItemView(row, lens, settings, latestIpc, resolvedIncomeByMonth))
+                .toList();
+
+        return new PageImpl<>(content, effectivePageable, total);
     }
 
     public TransactionItemView getById(
@@ -96,6 +148,16 @@ public class TransactionQueryService {
                 .findById(familyId, transactionId)
                 .orElseThrow(() -> new NotFoundException("Transaction not found"));
         return toItemView(row, lens, settings, null, Map.of());
+    }
+
+    private static Pageable clampPageable(Pageable pageable) {
+        if (pageable == null || pageable.isUnpaged()) {
+            return PageRequest.of(0, DEFAULT_PAGE_SIZE);
+        }
+        int pageNumber = Math.max(pageable.getPageNumber(), 0);
+        int pageSize = Math.min(Math.max(pageable.getPageSize(), 1), MAX_PAGE_SIZE);
+        Sort sort = pageable.getSort() != null ? pageable.getSort() : Sort.unsorted();
+        return PageRequest.of(pageNumber, pageSize, sort);
     }
 
     TransactionItemView toItemView(

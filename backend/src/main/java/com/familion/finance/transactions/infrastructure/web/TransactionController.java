@@ -3,11 +3,19 @@ package com.familion.finance.transactions.infrastructure.web;
 import com.familion.common.security.CurrentUserProvider;
 import com.familion.common.security.View;
 import com.familion.finance.transactions.application.CreateTransactionCommand;
+import com.familion.finance.transactions.application.TransactionFilter;
 import com.familion.finance.transactions.application.TransactionQueryService;
 import com.familion.finance.transactions.application.TransactionService;
+import com.familion.finance.transactions.application.api.TransactionStatus;
+import com.familion.finance.transactions.application.api.TransactionType;
 import com.familion.finance.transactions.domain.Lens;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +41,37 @@ public class TransactionController {
         this.transactionService = transactionService;
         this.transactionQueryService = transactionQueryService;
         this.currentUserProvider = currentUserProvider;
+    }
+
+    @GetMapping
+    public Page<TransactionItemResponse> listTransactions(
+            @RequestParam(defaultValue = "PERSONAL") View view,
+            @RequestParam(defaultValue = "NOMINAL") Lens lens,
+            @RequestParam(required = false) LocalDate from,
+            @RequestParam(required = false) LocalDate to,
+            @RequestParam(required = false) List<TransactionType> type,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) UUID accountId,
+            @RequestParam(required = false) UUID attributedToUserId,
+            @RequestParam(required = false) String currency,
+            @RequestParam(required = false) List<TransactionStatus> status,
+            @RequestParam(required = false) String q,
+            @PageableDefault(size = 20) Pageable pageable) {
+        TransactionFilter filter = new TransactionFilter(
+                view,
+                lens,
+                from,
+                to,
+                type,
+                categoryId,
+                accountId,
+                attributedToUserId,
+                currency,
+                status,
+                q);
+        return transactionQueryService
+                .list(currentUserProvider.get(), filter, pageable)
+                .map(TransactionItemResponse::from);
     }
 
     @GetMapping("/{id}")
