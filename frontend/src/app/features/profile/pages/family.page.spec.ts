@@ -125,6 +125,7 @@ describe('FamilyPage', () => {
     expect(el.querySelector('[data-testid="family-settings-form"]')).toBeTruthy();
     expect(el.querySelector('[data-testid="open-add-currency-btn"]')).toBeTruthy();
     expect(el.querySelectorAll('[data-testid="member-visibility-select"]').length).toBe(1);
+    expect(el.querySelector('[data-testid="invitations-section"]')).toBeTruthy();
 
     const arsSwitch = el.querySelector(
       '[data-testid="currency-toggle-switch"][data-currency="ARS"]',

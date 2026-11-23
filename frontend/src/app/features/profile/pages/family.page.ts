@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FamilyVisibility } from '../../../core/api/models/me.model';
@@ -7,11 +8,15 @@ import { CardComponent } from '../../../shared/ui/card/card.component';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
 import { IconComponent } from '../../../shared/ui/icon/icon.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
+import { ToastService } from '../../../shared/ui/toast/toast.service';
 import { FamilyCurrenciesSectionComponent } from '../components/family-currencies-section.component';
+import { FamilyInvitationsSectionComponent } from '../components/family-invitations-section.component';
 import { FamilyMembersListComponent } from '../components/family-members-list.component';
 import { FamilySettingsFormComponent } from '../components/family-settings-form.component';
 import {
+  CreateInvitationRequest,
   EnableFamilyCurrencyRequest,
+  InvitationCreated,
   UpdateFamilySettingsRequest,
 } from '../data-access/family.models';
 import { FamilyStore } from '../data-access/family.store';
@@ -25,6 +30,7 @@ import { FamilyStore } from '../data-access/family.store';
     CardComponent,
     EmptyStateComponent,
     FamilyCurrenciesSectionComponent,
+    FamilyInvitationsSectionComponent,
     FamilyMembersListComponent,
     FamilySettingsFormComponent,
     IconComponent,
@@ -104,6 +110,21 @@ import { FamilyStore } from '../data-access/family.store';
           [updatingUserId]="store.updatingVisibilityUserId()"
           (visibilityChange)="onVisibilityChange($event)"
         />
+
+        @if (isAdult()) {
+          <fo-family-invitations-section
+            [invitations]="store.invitations()"
+            [lastCreated]="store.lastCreatedInvitation()"
+            [creating]="store.creatingInvitation()"
+            [revokingId]="store.revokingInvitationId()"
+            [canShare]="canShare"
+            (createInvitation)="onCreateInvitation($event)"
+            (revokeInvitation)="onRevokeInvitation($event)"
+            (copyLink)="onCopyInviteLink($event)"
+            (shareLink)="onShareInviteLink($event)"
+            (dismissCreated)="store.clearLastCreatedInvitation()"
+          />
+        }
       }
     </section>
   `,
@@ -111,10 +132,15 @@ import { FamilyStore } from '../data-access/family.store';
 })
 export class FamilyPage implements OnInit {
   private readonly session = inject(SessionStore);
+  private readonly toast = inject(ToastService);
+  private readonly doc = inject(DOCUMENT);
+
   protected readonly store = inject(FamilyStore);
 
   protected readonly isAdult = computed(() => this.session.isAdult());
   protected readonly currentUserId = computed(() => this.session.me()?.id ?? null);
+  protected readonly canShare =
+    typeof this.doc.defaultView?.navigator?.share === 'function';
 
   ngOnInit(): void {
     void this.store.load(this.isAdult());
@@ -141,5 +167,48 @@ export class FamilyPage implements OnInit {
     familyVisibility: FamilyVisibility;
   }): void {
     void this.store.updateMemberVisibility(event.userId, event.familyVisibility);
+  }
+
+  protected onCreateInvitation(payload: CreateInvitationRequest): void {
+    void this.store.createInvitation(payload);
+  }
+
+  protected onRevokeInvitation(id: string): void {
+    void this.store.revokeInvitation(id);
+  }
+
+  protected async onCopyInviteLink(url: string): Promise<void> {
+    const clipboard = this.doc.defaultView?.navigator?.clipboard;
+    if (!clipboard || typeof clipboard.writeText !== 'function') {
+      this.toast.error('No se pudo copiar automáticamente. Copia el enlace manualmente.');
+      return;
+    }
+
+    try {
+      await clipboard.writeText(url);
+      this.toast.success('Enlace copiado al portapapeles.');
+    } catch {
+      this.toast.error('No se pudo copiar el enlace.');
+    }
+  }
+
+  protected async onShareInviteLink(invitation: InvitationCreated): Promise<void> {
+    const nav = this.doc.defaultView?.navigator;
+    if (!nav || typeof nav.share !== 'function') {
+      return;
+    }
+
+    try {
+      await nav.share({
+        title: 'Invitación a FamiliON',
+        text: `Te invitaron a unirte a ${this.store.family()?.name ?? 'tu familia'} en FamiliON.`,
+        url: invitation.inviteUrl,
+      });
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        return;
+      }
+      this.toast.error('No se pudo compartir el enlace.');
+    }
   }
 }
