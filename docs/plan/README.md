@@ -154,4 +154,7 @@ flowchart LR
 | T01 | PR abierta | [#2](https://github.com/tommikimmel/familiON/pull/2) | verify, diff de schema y docker build en verde |
 | T02 | PR abierta | [#4](https://github.com/tommikimmel/familiON/pull/4) | Angular 22.3; lint, 34 tests, build prod y docker build en verde |
 | T03 | PR abierta | [#1](https://github.com/tommikimmel/familiON/pull/1) | compose y `nginx -t` OK; validado con `--env-file .env.example` |
-| T04–T41 | pendiente | — | esperan el merge de la ola anterior |
+| T04 | PR abierta | [#7](https://github.com/tommikimmel/familiON/pull/7) | 8 unit + 21 IT en verde; docker build OK |
+| T05 | PR abierta | [#5](https://github.com/tommikimmel/familiON/pull/5) | actionlint OK; CI corre en GitHub |
+| T06 | PR abierta (apilada sobre #2) | [#6](https://github.com/tommikimmel/familiON/pull/6) | 22 unit + 24 IT en verde; mergear después de #2 |
+| T07–T41 | pendiente | — | esperan el merge de las olas 0.1 y 0.2 |
