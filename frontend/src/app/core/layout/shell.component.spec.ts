@@ -1,4 +1,6 @@
 import { BreakpointObserver, BreakpointState } from '@angular/cdk/layout';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -75,6 +77,8 @@ describe('ShellComponent', () => {
     TestBed.configureTestingModule({
       imports: [ShellComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([{ path: 'home', component: DummyHomeComponent, data: { title: 'Inicio' } }]),
         { provide: BreakpointObserver, useValue: bp.observer },
       ],
@@ -135,7 +139,7 @@ describe('ShellComponent', () => {
     // Hide Personal|Familia toggle when HIJO has OWN_ONLY visibility
     session.setMe(buildMe({ role: 'HIJO', familyVisibility: 'OWN_ONLY' }));
     fixture.detectChanges();
-    expect(host.querySelector('fo-segmented-toggle')).toBeNull();
+    expect(host.querySelector('[data-testid="mobile-header"] fo-segmented-toggle')).toBeNull();
   });
 
   it('renders desktop sidebar and topbar at >=1024px, handles N shortcut, period shift, and badge', () => {
@@ -144,6 +148,8 @@ describe('ShellComponent', () => {
     TestBed.configureTestingModule({
       imports: [ShellComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([{ path: 'home', component: DummyHomeComponent, data: { title: 'Inicio' } }]),
         { provide: BreakpointObserver, useValue: bp.observer },
       ],
