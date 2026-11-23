@@ -1,0 +1,19 @@
+# Development overrides (loaded automatically by `docker compose`).
+# Publishes internal service ports on the host for local development and debugging.
+# Do not use this file in production.
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  backend:
+    ports:
+      - "8081:8081"
+
+  bff:
+    ports:
+      - "8080:8080"
