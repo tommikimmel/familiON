@@ -22,9 +22,11 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,6 +55,9 @@ class EconomicsSyncServiceTest {
     @Mock
     private EconomicIndexBatchRepository batchRepository;
 
+    @Mock
+    private EconomicIndexCache cache;
+
     private EconomicsSyncService service;
 
     @BeforeEach
@@ -62,6 +67,7 @@ class EconomicsSyncServiceTest {
                 argentinaDatosClient,
                 repository,
                 batchRepository,
+                cache,
                 new IpcChainCalculator(),
                 FIXED_CLOCK,
                 new MockEnvironment(),
@@ -128,6 +134,10 @@ class EconomicsSyncServiceTest {
                                 IndexCode.UVA,
                                 LocalDate.of(2026, 11, 23),
                                 new BigDecimal("2206.780000")));
+        verify(cache).invalidate(IndexCode.EUR_OFICIAL, Set.of(YearMonth.of(2026, 11)));
+        verify(cache).invalidate(IndexCode.IPC_MENSUAL, Set.of(YearMonth.of(2026, 10)));
+        verify(cache).invalidate(IndexCode.UVA, Set.of(YearMonth.of(2026, 11)));
+        verify(cache).invalidateAllFor(IndexCode.IPC_ACUMULADO);
     }
 
     @Test

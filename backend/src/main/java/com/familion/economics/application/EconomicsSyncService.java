@@ -13,8 +13,12 @@ import com.familion.economics.infrastructure.persistence.EconomicIndexBatchRepos
 import com.familion.economics.infrastructure.persistence.EconomicIndexRepository;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +54,7 @@ public class EconomicsSyncService {
     private final ArgentinaDatosClient argentinaDatosClient;
     private final EconomicIndexRepository repository;
     private final EconomicIndexBatchRepository batchRepository;
+    private final EconomicIndexCache cache;
     private final IpcChainCalculator ipcChainCalculator;
     private final Clock clock;
     private final Environment environment;
@@ -60,6 +65,7 @@ public class EconomicsSyncService {
             ArgentinaDatosClient argentinaDatosClient,
             EconomicIndexRepository repository,
             EconomicIndexBatchRepository batchRepository,
+            EconomicIndexCache cache,
             IpcChainCalculator ipcChainCalculator,
             Clock clock,
             Environment environment,
@@ -68,6 +74,7 @@ public class EconomicsSyncService {
         this.argentinaDatosClient = argentinaDatosClient;
         this.repository = repository;
         this.batchRepository = batchRepository;
+        this.cache = cache;
         this.ipcChainCalculator = ipcChainCalculator;
         this.clock = clock;
         this.environment = environment;
@@ -176,6 +183,7 @@ public class EconomicsSyncService {
                         IndexCode.IPC_ACUMULADO, item.effectiveDate(), item.value()))
                 .toList();
         batchRepository.batchUpsertFromApi(entries);
+        cache.invalidateAllFor(IndexCode.IPC_ACUMULADO);
     }
 
     private boolean syncPoints(String sourceName, Supplier<List<ExternalIndexPoint>> fetcher) {
@@ -188,6 +196,14 @@ public class EconomicsSyncService {
                     .map(p -> new UpsertEntry(p.indexCode(), p.effectiveDate(), p.value()))
                     .toList();
             batchRepository.batchUpsertFromApi(entries);
+
+            Map<IndexCode, Set<YearMonth>> affectedMonths = new EnumMap<>(IndexCode.class);
+            for (ExternalIndexPoint point : points) {
+                affectedMonths
+                        .computeIfAbsent(point.indexCode(), ignored -> new HashSet<>())
+                        .add(YearMonth.from(point.effectiveDate()));
+            }
+            affectedMonths.forEach(cache::invalidate);
             return true;
         } catch (Exception ex) {
             log.warn("Failed to sync {}: {}", sourceName, ex.getMessage());

@@ -1,6 +1,7 @@
 package com.familion.economics.application;
 
 import com.familion.common.money.Money;
+import com.familion.economics.application.EconomicIndexCache.LatestLookup;
 import com.familion.economics.application.api.EconomicSnapshotData;
 import com.familion.economics.application.api.EconomicsApi;
 import com.familion.economics.application.api.FamilyEconomicContext;
@@ -21,10 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class EconomicsService implements EconomicsApi {
 
     private final EconomicIndexRepository repository;
+    private final EconomicIndexCache cache;
     private final EconomicsCalculator calculator;
 
-    public EconomicsService(EconomicIndexRepository repository) {
+    public EconomicsService(EconomicIndexRepository repository, EconomicIndexCache cache) {
         this.repository = repository;
+        this.cache = cache;
         this.calculator = new EconomicsCalculator();
     }
 
@@ -64,10 +67,14 @@ public class EconomicsService implements EconomicsApi {
     }
 
     private Optional<BigDecimal> latestValue(IndexCode indexCode) {
-        return repository
-                .findTopByIndexCodeOrderByEffectiveDateDesc(indexCode)
-                .map(EconomicIndex::getValue)
-                .map(Money::rate);
+        LatestLookup lookup = cache.getLatest(indexCode);
+        if (lookup instanceof LatestLookup.Hit hit) {
+            return Optional.ofNullable(hit.value()).map(IndexEntry::value).map(Money::rate);
+        }
+        Optional<EconomicIndex> entity =
+                repository.findTopByIndexCodeOrderByEffectiveDateDesc(indexCode);
+        cache.putLatest(indexCode, entity.map(IndexEntry::fromEntity).orElse(null));
+        return entity.map(EconomicIndex::getValue).map(Money::rate);
     }
 
     private IndexLookup indexLookup() {
