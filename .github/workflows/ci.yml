@@ -1,0 +1,224 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      bff: ${{ steps.filter.outputs.bff }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      infra: ${{ steps.filter.outputs.infra }}
+      backend_exists: ${{ steps.exists.outputs.backend }}
+      bff_exists: ${{ steps.exists.outputs.bff }}
+      frontend_exists: ${{ steps.exists.outputs.frontend }}
+      compose_exists: ${{ steps.exists.outputs.compose }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            bff:
+              - 'bff/**'
+            frontend:
+              - 'frontend/**'
+            infra:
+              - 'docker-compose*.yml'
+              - 'edge/**'
+              - '.github/**'
+
+      - name: Check project directories
+        id: exists
+        run: |
+          {
+            echo "backend=$(test -f backend/pom.xml && echo true || echo false)"
+            echo "bff=$(test -f bff/pom.xml && echo true || echo false)"
+            echo "frontend=$(test -f frontend/package.json && echo true || echo false)"
+            echo "compose=$(test -f docker-compose.yml && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+  backend:
+    name: Backend verify
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' && needs.changes.outputs.backend_exists == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Run Maven verify
+        working-directory: backend
+        run: ./mvnw -B verify
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: |
+            backend/target/surefire-reports
+            backend/target/failsafe-reports
+          if-no-files-found: ignore
+
+  bff:
+    name: BFF verify
+    needs: changes
+    if: needs.changes.outputs.bff == 'true' && needs.changes.outputs.bff_exists == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: bff/pom.xml
+
+      - name: Run Maven verify
+        working-directory: bff
+        run: ./mvnw -B verify
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bff-test-reports
+          path: |
+            bff/target/surefire-reports
+            bff/target/failsafe-reports
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend lint, test and build
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' && needs.changes.outputs.frontend_exists == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build -- --configuration production
+
+  docker:
+    name: Docker Compose validation and build
+    needs: [changes, backend, bff, frontend]
+    if: >-
+      always() && !failure() && !cancelled() &&
+      needs.changes.outputs.compose_exists == 'true' &&
+      (needs.changes.outputs.backend == 'true' ||
+       needs.changes.outputs.bff == 'true' ||
+       needs.changes.outputs.frontend == 'true' ||
+       needs.changes.outputs.infra == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Docker Compose configuration
+        run: |
+          cp .env.example .env
+          docker compose config -q
+
+      - name: Build Docker images
+        run: |
+          services=()
+          for svc in backend bff frontend; do
+            if [ -f "${svc}/Dockerfile" ]; then
+              services+=("${svc}")
+            fi
+          done
+          if [ "${#services[@]}" -eq 0 ]; then
+            echo "No service Dockerfiles found; skipping docker compose build."
+          elif [ "${#services[@]}" -eq 3 ]; then
+            docker compose build
+          else
+            echo "Building available services: ${services[*]}"
+            docker compose build "${services[@]}"
+          fi
+
+  notify-failure:
+    name: Notify CI failure
+    needs: [changes, backend, bff, frontend, docker]
+    if: failure()
+    runs-on: ubuntu-latest
+    env:
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      CI_NOTIFY_EMAIL: ${{ secrets.CI_NOTIFY_EMAIL }}
+    steps:
+      - name: Send failure notification email
+        if: env.SMTP_HOST != '' && env.CI_NOTIFY_EMAIL != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port: ${{ secrets.SMTP_PORT || '587' }}
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASS }}
+          subject: "❌ FamiliON CI failed on ${{ github.ref_name }}"
+          to: ${{ secrets.CI_NOTIFY_EMAIL }}
+          from: ${{ secrets.SMTP_USER }}
+          body: |
+            FamiliON CI failed on `${{ github.ref_name }}`.
+
+            Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
