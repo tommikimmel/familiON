@@ -1,0 +1,36 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: familion-bff
+  threads:
+    virtual:
+      enabled: true
+  servlet:
+    multipart:
+      enabled: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 1s
+      timeout: 1s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: false
+
+familion:
+  core-url: ${CORE_API_URL:http://localhost:8081}
+  cookie-secure: ${COOKIE_SECURE:false}
+  rate-limit-per-min: ${BFF_RATE_LIMIT_PER_MIN:120}
