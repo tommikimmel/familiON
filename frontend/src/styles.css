@@ -60,3 +60,102 @@ html.dark {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+@keyframes fo-sheet-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fo-modal-enter {
+  from {
+    transform: scale(0.95) translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fo-backdrop-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fo-toast-enter {
+  from {
+    transform: translate(-50%, -16px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fo-check-draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fo-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.fo-animate-sheet {
+  animation: fo-sheet-slide-up 360ms var(--fo-ease-spring) both;
+}
+
+.fo-animate-modal {
+  animation: fo-modal-enter 220ms var(--fo-ease-spring) both;
+}
+
+.fo-animate-backdrop {
+  animation: fo-backdrop-fade 200ms ease-out both;
+}
+
+.fo-animate-toast {
+  animation: fo-toast-enter 260ms var(--fo-ease-spring) both;
+}
+
+.fo-animate-check {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 0;
+  animation: fo-check-draw 280ms ease-out both;
+}
+
+.fo-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--fo-surface-2) 25%,
+    var(--fo-border) 50%,
+    var(--fo-surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: fo-shimmer 1.4s ease-in-out infinite;
+}
+
+.fo-focus-ring:focus-visible {
+  outline: 2px solid var(--fo-accent);
+  outline-offset: 2px;
+}
