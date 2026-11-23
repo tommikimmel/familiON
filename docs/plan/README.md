@@ -152,6 +152,6 @@ flowchart LR
 | Tarea | Estado | PR | Notas |
 |---|---|---|---|
 | T01 | PR abierta | [#2](https://github.com/tommikimmel/familiON/pull/2) | verify, diff de schema y docker build en verde |
-| T02 | en curso (worker Orca) | — | |
+| T02 | PR abierta | [#4](https://github.com/tommikimmel/familiON/pull/4) | Angular 22.3; lint, 34 tests, build prod y docker build en verde |
 | T03 | PR abierta | [#1](https://github.com/tommikimmel/familiON/pull/1) | compose y `nginx -t` OK; validado con `--env-file .env.example` |
 | T04–T41 | pendiente | — | esperan el merge de la ola anterior |
