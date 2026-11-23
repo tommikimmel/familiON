@@ -1,13 +1,17 @@
 package com.familion.auth.infrastructure.web;
 
 import com.familion.auth.application.AuthService;
+import com.familion.auth.application.EmailVerificationService;
 import com.familion.auth.application.LoginCommand;
+import com.familion.auth.application.PasswordResetService;
 import com.familion.auth.application.RegisterCommand;
 import com.familion.auth.application.SessionService;
+import com.familion.auth.application.TwoFactorService;
 import com.familion.auth.application.api.SessionTokens;
 import com.familion.common.security.CurrentUser;
 import com.familion.common.security.CurrentUserProvider;
 import com.familion.family.application.api.RegisteredUser;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.UUID;
@@ -28,14 +32,23 @@ public class AuthController {
 
     private final AuthService authService;
     private final SessionService sessionService;
+    private final EmailVerificationService emailVerificationService;
+    private final TwoFactorService twoFactorService;
+    private final PasswordResetService passwordResetService;
     private final CurrentUserProvider currentUserProvider;
 
     public AuthController(
             AuthService authService,
             SessionService sessionService,
+            EmailVerificationService emailVerificationService,
+            TwoFactorService twoFactorService,
+            PasswordResetService passwordResetService,
             CurrentUserProvider currentUserProvider) {
         this.authService = authService;
         this.sessionService = sessionService;
+        this.emailVerificationService = emailVerificationService;
+        this.twoFactorService = twoFactorService;
+        this.passwordResetService = passwordResetService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -47,6 +60,20 @@ public class AuthController {
         return new RegisterResponse(registered.userId(), registered.email());
     }
 
+    @PostMapping("/verify-email")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        emailVerificationService.verifyEmail(request.email(), request.code());
+    }
+
+    @PostMapping("/verify-email/resend")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void resendVerification(HttpServletRequest httpRequest) {
+        CurrentUser currentUser = currentUserProvider.get();
+        emailVerificationService.resendVerification(
+                currentUser.userId(), ServletRequestIpProvider.extractClientIp(httpRequest));
+    }
+
     @PostMapping("/login")
     public SessionTokens login(
             @Valid @RequestBody LoginRequest request,
@@ -54,6 +81,40 @@ public class AuthController {
         return authService.login(
                 new LoginCommand(request.email(), request.password(), request.deviceToken()),
                 userAgent);
+    }
+
+    @PostMapping("/2fa/verify")
+    public SessionTokens verifyTwoFactor(
+            @Valid @RequestBody VerifyTwoFactorRequest request,
+            @RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent) {
+        return twoFactorService.verify(
+                request.challengeToken(),
+                request.code(),
+                request.trustDevice(),
+                request.deviceName(),
+                userAgent);
+    }
+
+    @PostMapping("/2fa/resend")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void resendTwoFactor(
+            @Valid @RequestBody ResendTwoFactorRequest request, HttpServletRequest httpRequest) {
+        twoFactorService.resend(
+                request.challengeToken(), ServletRequestIpProvider.extractClientIp(httpRequest));
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request, HttpServletRequest httpRequest) {
+        passwordResetService.requestPasswordReset(
+                request.email(), ServletRequestIpProvider.extractClientIp(httpRequest));
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.token(), request.newPassword());
     }
 
     @PostMapping("/refresh")

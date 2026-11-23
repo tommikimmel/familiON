@@ -1,0 +1,11 @@
+FamiliON
+
+Hola [(${fullName})],
+
+Usa el siguiente código para verificar tu dirección de correo electrónico en FamiliON:
+
+[(${code})]
+
+Este código vence en [(${expiresInHours})] horas.
+
+Si no solicitaste esta acción, puedes ignorar este mensaje.
