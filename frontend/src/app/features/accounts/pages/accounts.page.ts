@@ -9,7 +9,14 @@ import {
 import { firstValueFrom } from 'rxjs';
 import { ACCOUNT_TYPE_LABEL, ACCOUNT_TYPE_ORDER } from '../../../core/finance/account-labels';
 import { AccountsStore } from '../../../core/finance/accounts.store';
-import { Account, AccountCreate, AccountType } from '../../../core/finance/finance.models';
+import { CategoriesStore } from '../../../core/finance/categories.store';
+import {
+  Account,
+  AccountCreate,
+  AccountType,
+  Category,
+  CategoryKind,
+} from '../../../core/finance/finance.models';
 import { SessionStore } from '../../../core/state/session.store';
 import { View, ViewContextStore } from '../../../core/state/view-context.store';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
@@ -27,6 +34,11 @@ import {
 import { toNumber } from '../../../shared/utils/decimal';
 import { AccountCardComponent } from '../components/account-card.component';
 import { AccountFormComponent } from '../components/account-form.component';
+import { CategoryFormComponent, CategoryFormSubmit } from '../components/category-form.component';
+import {
+  CategoryTreeComponent,
+  CreateCategoryIntent,
+} from '../components/category-tree.component';
 import { FamilyMemberOption, FamilyMembersApi } from '../data-access/family-members.api';
 import { extractProblemMessage } from '../utils/problem-message';
 
@@ -58,6 +70,8 @@ const TAB_OPTIONS: readonly SegmentedOption<AccountsTab>[] = [
     BottomSheetComponent,
     ButtonComponent,
     CardComponent,
+    CategoryFormComponent,
+    CategoryTreeComponent,
     EmptyStateComponent,
     IconComponent,
     MoneyPipe,
@@ -68,7 +82,7 @@ const TAB_OPTIONS: readonly SegmentedOption<AccountsTab>[] = [
     <section class="mx-auto max-w-5xl space-y-5">
       <header class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 class="text-xl font-semibold text-text">Cuentas y categorías</h1>
+          <h1 class="text-xl font-semibold text-text">Cuentas</h1>
           <p class="mt-0.5 text-sm text-muted">
             Administrá tus medios de pago y la estructura de categorías.
           </p>
@@ -78,6 +92,14 @@ const TAB_OPTIONS: readonly SegmentedOption<AccountsTab>[] = [
           <fo-button variant="primary" (click)="openCreateAccount()">
             <fo-icon name="plus" [size]="16" />
             <span>Nueva cuenta</span>
+          </fo-button>
+        } @else if (session.isAdult()) {
+          <fo-button
+            variant="primary"
+            (click)="openCreateCategory({ kind: 'EXPENSE', parentCategoryId: null })"
+          >
+            <fo-icon name="plus" [size]="16" />
+            <span>Nueva categoría</span>
           </fo-button>
         }
       </header>
@@ -172,11 +194,36 @@ const TAB_OPTIONS: readonly SegmentedOption<AccountsTab>[] = [
           </div>
         }
       } @else {
-        <fo-empty-state
-          icon="circle-ellipsis"
-          title="Categorías"
-          description="Las categorías estarán disponibles en esta pestaña."
-        />
+        @if (categoriesStore.loading() && categoriesStore.categories().length === 0) {
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-2" aria-label="Cargando categorías">
+            <div class="space-y-2.5">
+              <fo-skeleton height="3.75rem" rounded="lg" />
+              <fo-skeleton height="3.75rem" rounded="lg" />
+              <fo-skeleton height="3.75rem" rounded="lg" />
+            </div>
+            <div class="space-y-2.5">
+              <fo-skeleton height="3.75rem" rounded="lg" />
+              <fo-skeleton height="3.75rem" rounded="lg" />
+            </div>
+          </div>
+        } @else if (categoriesError(); as error) {
+          <fo-empty-state
+            icon="alert-circle"
+            title="No pudimos cargar las categorías"
+            [description]="error"
+          >
+            <fo-button variant="primary" (click)="reloadCategories()">Reintentar</fo-button>
+          </fo-empty-state>
+        } @else {
+          <fo-category-tree
+            [expenseTree]="expenseTree()"
+            [incomeTree]="incomeTree()"
+            [isAdult]="session.isAdult()"
+            (createCategory)="openCreateCategory($event)"
+            (editCategory)="openEditCategory($event)"
+            (deactivateCategory)="openDeactivateCategory($event)"
+          />
+        }
       }
     </section>
 
@@ -235,11 +282,68 @@ const TAB_OPTIONS: readonly SegmentedOption<AccountsTab>[] = [
         </div>
       }
     </fo-bottom-sheet>
+
+    <fo-bottom-sheet
+      [(open)]="categorySheetOpen"
+      [title]="editingCategory() ? 'Editar categoría' : 'Nueva categoría'"
+      (closed)="resetCategorySheet()"
+    >
+      @if (categorySheetOpen()) {
+        <fo-category-form
+          [category]="editingCategory()"
+          [initialKind]="categoryInitialKind()"
+          [initialParentId]="categoryInitialParentId()"
+          [expenseRoots]="expenseTree()"
+          [incomeRoots]="incomeTree()"
+          [saving]="savingCategory()"
+          [errorMessage]="categoryFormError()"
+          (submitted)="saveCategory($event)"
+          (cancelled)="closeCategorySheet()"
+        />
+      }
+    </fo-bottom-sheet>
+
+    <fo-bottom-sheet
+      [(open)]="deactivateCategorySheetOpen"
+      title="Desactivar categoría"
+      (closed)="deactivatingCategory.set(null)"
+    >
+      @if (deactivatingCategory(); as target) {
+        <div class="space-y-4">
+          <p class="text-sm text-text">
+            ¿Querés desactivar <strong class="font-semibold">{{ target.name }}</strong>?
+          </p>
+          <p class="rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-sm text-muted">
+            Dejará de aparecer al cargar nuevos movimientos, pero los movimientos históricos se
+            conservan.
+          </p>
+          <div class="flex items-center justify-end gap-2 pt-1">
+            <fo-button
+              variant="ghost"
+              type="button"
+              [disabled]="deactivatingCategoryInProgress()"
+              (click)="closeDeactivateCategorySheet()"
+            >
+              Cancelar
+            </fo-button>
+            <fo-button
+              variant="danger"
+              type="button"
+              [loading]="deactivatingCategoryInProgress()"
+              (click)="confirmDeactivateCategory()"
+            >
+              Desactivar categoría
+            </fo-button>
+          </div>
+        </div>
+      }
+    </fo-bottom-sheet>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountsPage {
   protected readonly accountsStore = inject(AccountsStore);
+  protected readonly categoriesStore = inject(CategoriesStore);
   protected readonly viewContext = inject(ViewContextStore);
   protected readonly session = inject(SessionStore);
   private readonly membersApi = inject(FamilyMembersApi);
@@ -249,6 +353,7 @@ export class AccountsPage {
   protected readonly activeTab = signal<AccountsTab>('accounts');
 
   protected readonly accountsError = signal<string | null>(null);
+  protected readonly categoriesError = signal<string | null>(null);
   protected readonly members = signal<FamilyMemberOption[]>([]);
   private membersLoaded = false;
 
@@ -260,6 +365,20 @@ export class AccountsPage {
   protected readonly archiveSheetOpen = signal<boolean>(false);
   protected readonly archivingAccount = signal<Account | null>(null);
   protected readonly archivingInProgress = signal<boolean>(false);
+
+  protected readonly categorySheetOpen = signal<boolean>(false);
+  protected readonly editingCategory = signal<Category | null>(null);
+  protected readonly categoryInitialKind = signal<CategoryKind>('EXPENSE');
+  protected readonly categoryInitialParentId = signal<string | null>(null);
+  protected readonly savingCategory = signal<boolean>(false);
+  protected readonly categoryFormError = signal<string | null>(null);
+
+  protected readonly deactivateCategorySheetOpen = signal<boolean>(false);
+  protected readonly deactivatingCategory = signal<Category | null>(null);
+  protected readonly deactivatingCategoryInProgress = signal<boolean>(false);
+
+  protected readonly expenseTree = this.categoriesStore.tree('EXPENSE');
+  protected readonly incomeTree = this.categoriesStore.tree('INCOME');
 
   protected readonly currentUserId = computed(() => this.session.me()?.id ?? null);
 
@@ -345,6 +464,12 @@ export class AccountsPage {
     });
 
     effect(() => {
+      if (this.activeTab() === 'categories') {
+        void this.loadCategories(false);
+      }
+    });
+
+    effect(() => {
       if (this.session.isAdult() && !this.membersLoaded) {
         this.membersLoaded = true;
         void this.loadFamilyMembers();
@@ -354,6 +479,10 @@ export class AccountsPage {
 
   protected reloadAccounts(): void {
     void this.loadAccounts(this.viewContext.view());
+  }
+
+  protected reloadCategories(): void {
+    void this.loadCategories(true);
   }
 
   protected isDefaultAccount(account: Account): boolean {
@@ -460,6 +589,84 @@ export class AccountsPage {
     this.toast.success(`"${account.name}" quedó como cuenta habitual en ${account.currencyCode}.`);
   }
 
+  protected openCreateCategory(intent: CreateCategoryIntent): void {
+    this.editingCategory.set(null);
+    this.categoryInitialKind.set(intent.kind);
+    this.categoryInitialParentId.set(intent.parentCategoryId);
+    this.categoryFormError.set(null);
+    this.categorySheetOpen.set(true);
+  }
+
+  protected openEditCategory(category: Category): void {
+    this.editingCategory.set(category);
+    this.categoryInitialKind.set(category.kind);
+    this.categoryInitialParentId.set(category.parentCategoryId);
+    this.categoryFormError.set(null);
+    this.categorySheetOpen.set(true);
+  }
+
+  protected closeCategorySheet(): void {
+    this.categorySheetOpen.set(false);
+    this.resetCategorySheet();
+  }
+
+  protected resetCategorySheet(): void {
+    this.editingCategory.set(null);
+    this.categoryFormError.set(null);
+  }
+
+  protected async saveCategory(event: CategoryFormSubmit): Promise<void> {
+    this.savingCategory.set(true);
+    this.categoryFormError.set(null);
+
+    try {
+      if (event.mode === 'edit') {
+        await this.categoriesStore.update(event.id, event.payload);
+        this.toast.success('Categoría actualizada.');
+      } else {
+        await this.categoriesStore.create(event.payload);
+        this.toast.success('Categoría creada.');
+      }
+      this.closeCategorySheet();
+    } catch (err) {
+      this.categoryFormError.set(
+        extractProblemMessage(err, 'No pudimos guardar la categoría. Intentá de nuevo.'),
+      );
+    } finally {
+      this.savingCategory.set(false);
+    }
+  }
+
+  protected openDeactivateCategory(category: Category): void {
+    this.deactivatingCategory.set(category);
+    this.deactivateCategorySheetOpen.set(true);
+  }
+
+  protected closeDeactivateCategorySheet(): void {
+    this.deactivateCategorySheetOpen.set(false);
+    this.deactivatingCategory.set(null);
+  }
+
+  protected async confirmDeactivateCategory(): Promise<void> {
+    const target = this.deactivatingCategory();
+    if (!target) {
+      return;
+    }
+
+    this.deactivatingCategoryInProgress.set(true);
+    try {
+      await this.categoriesStore.update(target.id, { isActive: false });
+      this.closeDeactivateCategorySheet();
+      this.toast.success('Categoría desactivada.');
+    } catch (err) {
+      this.toast.error(
+        extractProblemMessage(err, 'No pudimos desactivar la categoría. Intentá de nuevo.'),
+      );
+    } finally {
+      this.deactivatingCategoryInProgress.set(false);
+    }
+  }
+
   private async loadAccounts(view: View): Promise<void> {
     this.accountsError.set(null);
     try {
@@ -467,6 +674,17 @@ export class AccountsPage {
     } catch (err) {
       this.accountsError.set(
         extractProblemMessage(err, 'Ocurrió un error al obtener las cuentas.'),
+      );
+    }
+  }
+
+  private async loadCategories(force: boolean): Promise<void> {
+    this.categoriesError.set(null);
+    try {
+      await this.categoriesStore.load(force);
+    } catch (err) {
+      this.categoriesError.set(
+        extractProblemMessage(err, 'Ocurrió un error al obtener las categorías.'),
       );
     }
   }
