@@ -7,6 +7,8 @@ interface MockMediaQueryList {
   media: string;
   addEventListener: ReturnType<typeof vi.fn>;
   removeEventListener: ReturnType<typeof vi.fn>;
+  addListener: ReturnType<typeof vi.fn>;
+  removeListener: ReturnType<typeof vi.fn>;
   trigger(matches: boolean): void;
 }
 
@@ -21,6 +23,8 @@ function createMockMediaQuery(initialMatches: boolean): MockMediaQueryList {
     removeEventListener: vi.fn(() => {
       listener = null;
     }),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
     trigger(matches: boolean) {
       mock.matches = matches;
       listener?.({ matches, media: mock.media } as MediaQueryListEvent);
@@ -31,7 +35,7 @@ function createMockMediaQuery(initialMatches: boolean): MockMediaQueryList {
 
 describe('ThemeService', () => {
   let doc: Document;
-  let originalMatchMedia: typeof window.matchMedia | undefined;
+  let originalMatchMediaDescriptor: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     TestBed.resetTestingModule();
@@ -41,16 +45,14 @@ describe('ThemeService', () => {
     doc.documentElement.style.removeProperty('--fo-accent-contrast');
     doc.querySelector('meta[name="theme-color"]')?.remove();
     localStorage.clear();
-    originalMatchMedia = window.matchMedia;
+    originalMatchMediaDescriptor = Object.getOwnPropertyDescriptor(window, 'matchMedia');
   });
 
   afterEach(() => {
-    if (originalMatchMedia) {
-      Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        configurable: true,
-        value: originalMatchMedia,
-      });
+    if (originalMatchMediaDescriptor) {
+      Object.defineProperty(window, 'matchMedia', originalMatchMediaDescriptor);
+    } else {
+      Reflect.deleteProperty(window, 'matchMedia');
     }
     localStorage.clear();
   });

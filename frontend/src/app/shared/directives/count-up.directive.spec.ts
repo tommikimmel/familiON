@@ -26,11 +26,18 @@ describe('CountUpDirective', () => {
   });
 
   it('respects prefers-reduced-motion media query', () => {
-    const originalMatchMedia = window.matchMedia;
+    const originalDescriptor = Object.getOwnPropertyDescriptor(window, 'matchMedia');
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       configurable: true,
-      value: vi.fn().mockReturnValue({ matches: true }),
+      value: vi.fn().mockReturnValue({
+        matches: true,
+        media: '(prefers-reduced-motion: reduce)',
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      }),
     });
 
     try {
@@ -42,11 +49,11 @@ describe('CountUpDirective', () => {
       const span = fixture.nativeElement.querySelector('span') as HTMLElement;
       expect(span.textContent?.trim()).toBe('999');
     } finally {
-      Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        configurable: true,
-        value: originalMatchMedia,
-      });
+      if (originalDescriptor) {
+        Object.defineProperty(window, 'matchMedia', originalDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'matchMedia');
+      }
     }
   });
 });
