@@ -151,10 +151,13 @@ flowchart LR
 
 | Tarea | Estado | PR | Notas |
 |---|---|---|---|
-| T01 | PR abierta | [#2](https://github.com/tommikimmel/familiON/pull/2) | verify, diff de schema y docker build en verde |
-| T02 | PR abierta | [#4](https://github.com/tommikimmel/familiON/pull/4) | Angular 22.3; lint, 34 tests, build prod y docker build en verde |
-| T03 | PR abierta | [#1](https://github.com/tommikimmel/familiON/pull/1) | compose y `nginx -t` OK; validado con `--env-file .env.example` |
-| T04 | PR abierta | [#7](https://github.com/tommikimmel/familiON/pull/7) | 8 unit + 21 IT en verde; docker build OK |
-| T05 | PR abierta | [#5](https://github.com/tommikimmel/familiON/pull/5) | actionlint OK; CI corre en GitHub |
-| T06 | PR abierta (apilada sobre #2) | [#6](https://github.com/tommikimmel/familiON/pull/6) | 22 unit + 24 IT en verde; mergear después de #2 |
-| T07–T41 | pendiente | — | esperan el merge de las olas 0.1 y 0.2 |
+| T01 | mergeada | [#2](https://github.com/tommikimmel/familiON/pull/2) | verify, diff de schema y docker build en verde |
+| T02 | mergeada | [#4](https://github.com/tommikimmel/familiON/pull/4) | Angular 22.3; CI verde |
+| T03 | mergeada | [#1](https://github.com/tommikimmel/familiON/pull/1) | compose y `nginx -t` OK |
+| T04 | mergeada | [#7](https://github.com/tommikimmel/familiON/pull/7) | CI verde |
+| T05 | mergeada | [#5](https://github.com/tommikimmel/familiON/pull/5) | CI activo en GitHub |
+| T06 | mergeada | [#8](https://github.com/tommikimmel/familiON/pull/8) | reabierta como #8 (la #6 se cerró al borrar su base) |
+| T07 | mergeada | [#19](https://github.com/tommikimmel/familiON/pull/19) | 36 unit + 38 IT; ajuste aprobado en `SecurityIT` |
+| T08 | mergeada | [#21](https://github.com/tommikimmel/familiON/pull/21) | 82 tests; usa `@lucide/angular` (lucide-angular deprecado) |
+| T09 | mergeada | [#20](https://github.com/tommikimmel/familiON/pull/20) | 48 unit + 32 IT; EUR_BLUE solo manual (DolarApi no lo expone) |
+| T10–T41 | pendiente | — | |
