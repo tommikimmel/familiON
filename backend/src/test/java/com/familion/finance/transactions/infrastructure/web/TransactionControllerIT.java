@@ -610,6 +610,320 @@ class TransactionControllerIT extends IntegrationTestBase {
         assertThat(novPct.path("lensUnit").asText()).isEqualTo("%");
     }
 
+    @Test
+    void editRecalculatesSnapshotPublishesEventEnforcesGuardsAndUpdatesBothTransferLegs() {
+        insertIndex("USD_MEP", LocalDate.of(2026, 10, 1), new BigDecimal("1000.000000"));
+        insertIndex("USD_MEP", LocalDate.of(2026, 11, 1), new BigDecimal("1250.000000"));
+        insertIndex("IPC_ACUMULADO", LocalDate.of(2026, 10, 1), new BigDecimal("200.000000"));
+        insertIndex("IPC_ACUMULADO", LocalDate.of(2026, 11, 1), new BigDecimal("250.000000"));
+
+        UUID familyId = fixtures.createFamily("Familia Edit " + UUID.randomUUID());
+        UUID adultId = fixtures.createUser(
+                familyId,
+                "adult-ed-" + UUID.randomUUID() + "@familion.test",
+                Role.ADULTO,
+                FamilyVisibility.FAMILY_FULL);
+        UUID childId = fixtures.createUser(
+                familyId,
+                "child-ed-" + UUID.randomUUID() + "@familion.test",
+                Role.HIJO,
+                FamilyVisibility.OWN_ONLY);
+        UUID bankArs1 = fixtures.createAccount(familyId, adultId, "BANK", "ARS");
+        UUID bankArs2 = fixtures.createAccount(familyId, adultId, "WALLET", "ARS");
+        UUID childWallet = fixtures.createAccount(familyId, childId, "WALLET", "ARS");
+        UUID cat1 = insertCategory(familyId, "Servicios", "EXPENSE");
+        UUID cat2 = insertCategory(familyId, "Hogar", "EXPENSE");
+
+        String adultBearer =
+                tokens.bearer(adultId, familyId, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+        String childBearer =
+                tokens.bearer(childId, familyId, Role.HIJO, FamilyVisibility.OWN_ONLY);
+
+        // 1. Standard expense: edit amount & date -> snapshot recalculated + TransactionChangedEvent
+        UUID txId = UUID.fromString(postRaw(
+                        adultBearer,
+                        Map.of(
+                                "type", "EXPENSE",
+                                "amount", new BigDecimal("10000"),
+                                "currencyCode", "ARS",
+                                "transactionDate", "2026-10-10",
+                                "accountId", bankArs1.toString(),
+                                "categoryId", cat1.toString(),
+                                "description", "Internet bill"))
+                .getBody()
+                .path("id")
+                .asText());
+
+        capturedEvents.clear();
+        ResponseEntity<JsonNode> patched = patchRaw(
+                adultBearer,
+                "/api/v1/transactions/" + txId,
+                Map.of(
+                        "amount", new BigDecimal("25000"),
+                        "transactionDate", "2026-11-15",
+                        "description", "Internet + Cable"));
+        assertThat(patched.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(patched.getBody().path("amount").asText()).isEqualTo("25000.0000");
+        assertThat(patched.getBody().path("transactionDate").asText()).isEqualTo("2026-11-15");
+        // Omitting categoryId preserves the existing category
+        assertThat(patched.getBody().path("category").path("id").asText())
+                .isEqualTo(cat1.toString());
+
+        // Explicitly passing categoryId: null clears the category while description is present
+        java.util.Map<String, Object> clearCategoryBody = new java.util.HashMap<>();
+        clearCategoryBody.put("categoryId", null);
+        ResponseEntity<JsonNode> clearedCat =
+                patchRaw(adultBearer, "/api/v1/transactions/" + txId, clearCategoryBody);
+        assertThat(clearedCat.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(clearedCat.getBody().path("category").isNull()).isTrue();
+
+        Map<String, Object> snap = jdbcTemplate.queryForMap(
+                "SELECT * FROM economic_snapshots WHERE transaction_id = ?", txId);
+        assertThat((BigDecimal) snap.get("base_currency_amount"))
+                .isEqualByComparingTo("25000.0000");
+        assertThat((BigDecimal) snap.get("amount_in_reference")).isEqualByComparingTo("20.0000");
+        assertThat((BigDecimal) snap.get("ipc_index_value")).isEqualByComparingTo("250.000000");
+        assertThat(capturedEvents.changed)
+                .anyMatch(e -> e.transactionId().equals(txId)
+                        && !e.deleted()
+                        && e.amount().compareTo(new BigDecimal("25000.0000")) == 0
+                        && e.date().equals(LocalDate.of(2026, 11, 15)));
+        assertThat(capturedEvents.financialChanged)
+                .anyMatch(e -> e.familyId().equals(familyId));
+
+        // 2. Non-author child cannot edit adult tx -> 403; child author cannot change attribution -> 403
+        assertThat(patchRaw(childBearer, "/api/v1/transactions/" + txId, Map.of("description", "Hack"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+
+        UUID childTxId = UUID.fromString(postRaw(
+                        childBearer,
+                        Map.of(
+                                "type", "EXPENSE",
+                                "amount", new BigDecimal("1000"),
+                                "currencyCode", "ARS",
+                                "accountId", childWallet.toString(),
+                                "description", "Snacks"))
+                .getBody()
+                .path("id")
+                .asText());
+        assertThat(patchRaw(
+                                childBearer,
+                                "/api/v1/transactions/" + childTxId,
+                                Map.of("attributedToUserId", adultId.toString()))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+
+        // 3. Transfer edit updates BOTH legs & recalculates BOTH snapshots; changing account -> 409
+        UUID outId = UUID.fromString(postRaw(
+                        adultBearer,
+                        Map.of(
+                                "type", "TRANSFER",
+                                "amount", new BigDecimal("5000"),
+                                "currencyCode", "ARS",
+                                "transactionDate", "2026-10-12",
+                                "accountId", bankArs1.toString(),
+                                "targetAccountId", bankArs2.toString(),
+                                "description", "Initial transfer"))
+                .getBody()
+                .path("id")
+                .asText());
+        UUID groupId = jdbcTemplate.queryForObject(
+                "SELECT transfer_group_id FROM transactions WHERE id = ?", UUID.class, outId);
+
+        assertThat(patchRaw(
+                                adultBearer,
+                                "/api/v1/transactions/" + outId,
+                                Map.of("accountId", bankArs2.toString()))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+
+        capturedEvents.clear();
+        ResponseEntity<JsonNode> transferPatched = patchRaw(
+                adultBearer,
+                "/api/v1/transactions/" + outId,
+                Map.of(
+                        "amount", new BigDecimal("12500"),
+                        "transactionDate", "2026-11-18",
+                        "description", "Updated transfer",
+                        "notes", "Adjusted"));
+        assertThat(transferPatched.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        List<Map<String, Object>> legs = jdbcTemplate.queryForList(
+                """
+                SELECT t.id, t.amount, t.transaction_date, t.description, t.notes, es.amount_in_reference
+                FROM transactions t
+                JOIN economic_snapshots es ON es.transaction_id = t.id
+                WHERE t.transfer_group_id = ?
+                """,
+                groupId);
+        assertThat(legs).hasSize(2);
+        assertThat(legs)
+                .allSatisfy(row -> {
+                    assertThat((BigDecimal) row.get("amount")).isEqualByComparingTo("12500.0000");
+                    assertThat(row.get("description")).isEqualTo("Updated transfer");
+                    assertThat(row.get("notes")).isEqualTo("Adjusted");
+                    assertThat((BigDecimal) row.get("amount_in_reference"))
+                            .isEqualByComparingTo("10.0000");
+                });
+        assertThat(capturedEvents.changed).hasSize(2);
+
+        // 4. Exchange transaction: description/notes OK, amount -> 409
+        UUID exchangeTxId = UUID.randomUUID();
+        jdbcTemplate.update(
+                """
+                INSERT INTO transactions (
+                    id, family_id, user_id, attributed_to_user_id, account_id,
+                    type, scope, status, amount, currency_code, transaction_date, description
+                )
+                VALUES (?, ?, ?, ?, ?, 'EXCHANGE_OUT', 'PERSONAL', 'POSTED', 1000, 'ARS', '2026-11-10', 'Buy USD')
+                """,
+                exchangeTxId,
+                familyId,
+                adultId,
+                adultId,
+                bankArs1);
+        jdbcTemplate.update(
+                """
+                INSERT INTO economic_snapshots (
+                    transaction_id, reference_currency, reference_rate_source,
+                    reference_exchange_rate, amount_in_reference, base_currency_amount,
+                    snapshot_date
+                )
+                VALUES (?, 'USD', 'USD_MEP', 1250.000000, 0.8000, 1000.0000, '2026-11-10')
+                """,
+                exchangeTxId);
+
+        assertThat(patchRaw(
+                                adultBearer,
+                                "/api/v1/transactions/" + exchangeTxId,
+                                Map.of("amount", new BigDecimal("2000")))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(patchRaw(
+                                adultBearer,
+                                "/api/v1/transactions/" + exchangeTxId,
+                                Map.of("notes", "MEP operation"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        // 5. Installment transaction: categoryId/description OK, amount -> 409, DELETE -> 409 "Use cancel-remaining"
+        UUID cardArs = fixtures.createAccount(familyId, adultId, "CREDIT_CARD", "ARS");
+        UUID planId = UUID.randomUUID();
+        jdbcTemplate.update(
+                """
+                INSERT INTO installment_plans (
+                    id, family_id, user_id, credit_card_account_id, category_id, description,
+                    currency_code, total_installments, has_interest, financed_total,
+                    installment_amount, purchase_date, first_billing_date, status
+                )
+                VALUES (?, ?, ?, ?, ?, 'Laptop 3 cuotas', 'ARS', 3, FALSE, 30000, 10000, '2026-11-01', '2026-11-10', 'ACTIVE')
+                """,
+                planId,
+                familyId,
+                adultId,
+                cardArs,
+                cat1);
+        UUID instTxId = UUID.randomUUID();
+        jdbcTemplate.update(
+                """
+                INSERT INTO transactions (
+                    id, family_id, user_id, attributed_to_user_id, account_id, category_id,
+                    type, scope, status, amount, currency_code, transaction_date, description,
+                    installment_plan_id, installment_number
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 'EXPENSE', 'PERSONAL', 'POSTED', 10000, 'ARS', '2026-11-10', 'Laptop 1/3', ?, 1)
+                """,
+                instTxId,
+                familyId,
+                adultId,
+                adultId,
+                cardArs,
+                cat1,
+                planId);
+        jdbcTemplate.update(
+                """
+                INSERT INTO economic_snapshots (
+                    transaction_id, reference_currency, reference_rate_source,
+                    reference_exchange_rate, amount_in_reference, base_currency_amount,
+                    snapshot_date
+                )
+                VALUES (?, 'USD', 'USD_MEP', 1250.000000, 8.0000, 10000.0000, '2026-11-10')
+                """,
+                instTxId);
+
+        assertThat(patchRaw(
+                                adultBearer,
+                                "/api/v1/transactions/" + instTxId,
+                                Map.of("amount", new BigDecimal("9000")))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        assertThat(patchRaw(
+                                adultBearer,
+                                "/api/v1/transactions/" + instTxId,
+                                Map.of("categoryId", cat2.toString(), "description", "Laptop work"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.OK);
+
+        ResponseEntity<JsonNode> delInst = deleteRaw(adultBearer, "/api/v1/transactions/" + instTxId);
+        assertThat(delInst.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(delInst.getBody().path("detail").asText()).contains("Use cancel-remaining");
+
+        // 6. Delete transfer soft-deletes BOTH legs & publishes TransactionChangedEvent(deleted=true)
+        capturedEvents.clear();
+        ResponseEntity<JsonNode> delTransfer =
+                deleteRaw(adultBearer, "/api/v1/transactions/" + outId);
+        assertThat(delTransfer.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        Integer remainingLegs = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM transactions WHERE transfer_group_id = ? AND deleted_at IS NULL",
+                Integer.class,
+                groupId);
+        assertThat(remainingLegs).isZero();
+        assertThat(capturedEvents.changed)
+                .hasSize(2)
+                .allMatch(TransactionChangedEvent::deleted);
+
+        // 7. Cross-family PATCH and DELETE -> 404
+        UUID otherFamilyId = fixtures.createFamily("Other Edit " + UUID.randomUUID());
+        UUID otherAdultId = fixtures.createUser(
+                otherFamilyId,
+                "other-ed-" + UUID.randomUUID() + "@familion.test",
+                Role.ADULTO,
+                FamilyVisibility.FAMILY_FULL);
+        String otherBearer =
+                tokens.bearer(otherAdultId, otherFamilyId, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+
+        assertThat(patchRaw(otherBearer, "/api/v1/transactions/" + txId, Map.of("description", "X"))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(deleteRaw(otherBearer, "/api/v1/transactions/" + txId).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    private ResponseEntity<JsonNode> patchRaw(
+            String bearer, String uri, Map<String, Object> body) {
+        return patchClient()
+                .patch()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {})
+                .toEntity(JsonNode.class);
+    }
+
+    private ResponseEntity<JsonNode> deleteRaw(String bearer, String uri) {
+        return client()
+                .delete()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, bearer)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {})
+                .toEntity(JsonNode.class);
+    }
+
     private ResponseEntity<JsonNode> getRaw(String bearer, String uri) {
         return client()
                 .get()

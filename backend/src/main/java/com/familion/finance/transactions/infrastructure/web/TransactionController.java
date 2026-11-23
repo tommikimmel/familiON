@@ -4,6 +4,7 @@ import com.familion.common.security.CurrentUserProvider;
 import com.familion.common.security.View;
 import com.familion.finance.transactions.application.CreateTransactionCommand;
 import com.familion.finance.transactions.application.TransactionFilter;
+import com.familion.finance.transactions.application.TransactionPatchCommand;
 import com.familion.finance.transactions.application.TransactionQueryService;
 import com.familion.finance.transactions.application.TransactionService;
 import com.familion.finance.transactions.application.api.TransactionStatus;
@@ -17,7 +18,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -102,5 +105,31 @@ public class TransactionController {
                         request.scope(),
                         request.attributedToUserId(),
                         request.receiptAttachmentId())));
+    }
+
+    @PatchMapping("/{id}")
+    public TransactionItemResponse updateTransaction(
+            @PathVariable UUID id, @Valid @RequestBody TransactionPatchRequest request) {
+        return TransactionItemResponse.from(transactionService.update(
+                currentUserProvider.get(),
+                id,
+                new TransactionPatchCommand(
+                        request.amount(),
+                        request.transactionDate(),
+                        request.categoryIdPresent(),
+                        request.categoryId(),
+                        request.descriptionPresent(),
+                        request.description(),
+                        request.notesPresent(),
+                        request.notes(),
+                        request.accountId(),
+                        request.attributedToUserId(),
+                        request.scope())));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteTransaction(@PathVariable UUID id) {
+        transactionService.delete(currentUserProvider.get(), id);
     }
 }
