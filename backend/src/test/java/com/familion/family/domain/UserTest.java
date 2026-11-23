@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.familion.common.error.BusinessRuleException;
+import com.familion.common.error.ConflictException;
 import com.familion.common.security.FamilyVisibility;
 import com.familion.common.security.Role;
 import java.time.Instant;
@@ -72,5 +73,30 @@ class UserTest {
 
         assertThat(user.isEmailVerified()).isTrue();
         assertThat(user.getEmailVerifiedAt()).isEqualTo(first);
+    }
+
+    @Test
+    void updatesChildVisibilityAndRejectsAdultVisibilityChange() {
+        User child = User.createMember(
+                UUID.randomUUID(),
+                "child@familion.test",
+                "{bcrypt}hash",
+                "Child",
+                Role.HIJO,
+                FamilyVisibility.OWN_ONLY,
+                null);
+        child.updateFamilyVisibility(FamilyVisibility.FAMILY_SUMMARY);
+        assertThat(child.getFamilyVisibility()).isEqualTo(FamilyVisibility.FAMILY_SUMMARY);
+
+        User adult = User.createMember(
+                UUID.randomUUID(),
+                "adult@familion.test",
+                "{bcrypt}hash",
+                "Adult",
+                Role.ADULTO,
+                FamilyVisibility.FAMILY_FULL,
+                null);
+        assertThatThrownBy(() -> adult.updateFamilyVisibility(FamilyVisibility.FAMILY_FULL))
+                .isInstanceOf(ConflictException.class);
     }
 }

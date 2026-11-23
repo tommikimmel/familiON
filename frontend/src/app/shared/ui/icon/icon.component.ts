@@ -13,6 +13,8 @@ import {
   LucideChevronLeft,
   LucideChevronRight,
   LucideDynamicIcon,
+  LucideEye,
+  LucideEyeOff,
   LucideHome,
   LucideIcon,
   LucideMonitor,
@@ -47,6 +49,8 @@ const ICON_REGISTRY = {
   sun: LucideSun,
   moon: LucideMoon,
   monitor: LucideMonitor,
+  eye: LucideEye,
+  'eye-off': LucideEyeOff,
 } as const satisfies Record<string, LucideIcon>;
 
 export type FoIconName = keyof typeof ICON_REGISTRY;

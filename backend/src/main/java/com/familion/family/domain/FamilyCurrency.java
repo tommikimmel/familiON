@@ -46,6 +46,19 @@ public class FamilyCurrency extends CreatedAtEntity {
         return new FamilyCurrency(familyId, currencyCode, preferredRateSource, true);
     }
 
+    public void update(Boolean active, String preferredRateSource) {
+        if (active != null) {
+            this.active = active;
+        }
+        if (preferredRateSource != null) {
+            this.preferredRateSource = preferredRateSource;
+        }
+    }
+
+    public void activate() {
+        this.active = true;
+    }
+
     public UUID getId() {
         return id;
     }

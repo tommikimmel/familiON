@@ -62,6 +62,7 @@ gh pr create --base develop --head <rama-de-la-tarjeta> --title "<título-de-la-
 - Paginación: `size` máximo 50.
 - Tests: unitarios (JUnit 5 + Mockito + AssertJ) para reglas de negocio y de integración extendiendo `com.familion.common.test.IntegrationTestBase` (Testcontainers PostgreSQL 17) para endpoints y queries. **Test primero** cuando la regla es clara (RED → GREEN → refactor).
 - Migraciones: solo si la tarjeta lo indica, con la versión reservada `V<número de tarea>__descripcion.sql`. Nunca editar migraciones existentes.
+- Tests de integración: no depender de internet; el sync económico al arrancar se desactiva en tests con `familion.economics.sync-on-startup=false`.
 
 ## 5. Convenciones Frontend (Angular última estable ≥19 + Tailwind CSS v4)
 
@@ -71,6 +72,7 @@ gh pr create --base develop --head <rama-de-la-tarjeta> --title "<título-de-la-
 - Toda llamada HTTP va a rutas relativas `/bff/...` (nunca al Core directo).
 - Estilos: utilidades Tailwind + tokens CSS (`--fo-*`) definidos en `src/styles.css`. Montos con `tabular-nums`. Respetar `prefers-reduced-motion`.
 - Accesibilidad: labels en inputs, `aria-*` en toggles, foco visible, contraste AA.
+- Íconos: siempre vía el componente `fo-icon` (wrapper de `@lucide/angular`); nunca importar la librería directamente. Prohibido `--legacy-peer-deps` y `--force`.
 - Tests: el runner que genera el CLI (Vitest en Angular ≥21). Testear stores y componentes con lógica.
 
 ## 6. Definition of Done
