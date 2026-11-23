@@ -1,6 +1,7 @@
 package com.familion.family.domain;
 
 import com.familion.common.error.BusinessRuleException;
+import com.familion.common.error.ConflictException;
 import com.familion.common.persistence.AuditableEntity;
 import com.familion.common.security.FamilyVisibility;
 import com.familion.common.security.Role;
@@ -132,6 +133,14 @@ public class User extends AuditableEntity {
 
     public void setTwoFactorEnabled(boolean twoFactorEnabled) {
         this.twoFactorEnabled = twoFactorEnabled;
+    }
+
+    public void updateFamilyVisibility(FamilyVisibility familyVisibility) {
+        Objects.requireNonNull(familyVisibility, "familyVisibility must not be null");
+        if (this.role == Role.ADULTO) {
+            throw new ConflictException("Adult members always have FAMILY_FULL visibility");
+        }
+        this.familyVisibility = familyVisibility;
     }
 
     public void updatePreferences(ThemePreference themePreference, String accentColor) {

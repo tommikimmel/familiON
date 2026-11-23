@@ -65,6 +65,29 @@ public class Family extends AuditableEntity {
                 DEFAULT_TIMEZONE);
     }
 
+    public void updateSettings(
+            String name,
+            String baseCurrency,
+            String referenceCurrency,
+            String referenceRateSource,
+            String timezone) {
+        if (name != null) {
+            this.name = name.trim();
+        }
+        if (baseCurrency != null) {
+            this.baseCurrency = baseCurrency;
+        }
+        if (referenceCurrency != null) {
+            this.referenceCurrency = referenceCurrency;
+        }
+        if (referenceRateSource != null) {
+            this.referenceRateSource = referenceRateSource;
+        }
+        if (timezone != null) {
+            this.timezone = timezone;
+        }
+    }
+
     public UUID getId() {
         return id;
     }
