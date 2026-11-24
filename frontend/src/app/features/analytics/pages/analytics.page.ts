@@ -7,6 +7,7 @@ import { CardComponent } from '../../../shared/ui/card/card.component';
 import { IconComponent } from '../../../shared/ui/icon/icon.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { AnalyticsBreakdownsComponent } from '../components/analytics-breakdowns.component';
+import { AnalyticsCalendarComponent } from '../components/analytics-calendar.component';
 import { AnalyticsEvolutionChartComponent } from '../components/analytics-evolution-chart.component';
 import { AnalyticsHeaderComponent } from '../components/analytics-header.component';
 import { AnalyticsSummaryComponent } from '../components/analytics-summary.component';
@@ -18,6 +19,7 @@ import { AnalyticsStore } from '../data-access/analytics.store';
   providers: [AnalyticsStore],
   imports: [
     AnalyticsBreakdownsComponent,
+    AnalyticsCalendarComponent,
     AnalyticsEvolutionChartComponent,
     AnalyticsHeaderComponent,
     AnalyticsSummaryComponent,
@@ -110,6 +112,17 @@ import { AnalyticsStore } from '../data-access/analytics.store';
             />
           </div>
         }
+      } @else {
+        <fo-analytics-calendar
+          [yearMonth]="store.calendarMonth()"
+          [calendar]="store.calendar()"
+          [loading]="store.calendarLoading()"
+          [error]="store.calendarError()"
+          [baseCurrency]="baseCurrency()"
+          (shiftMonth)="store.shiftCalendarMonth($event)"
+          (resetToday)="store.resetCalendarMonth()"
+          (retry)="store.reloadCalendar()"
+        />
       }
     </section>
   `,
@@ -120,6 +133,10 @@ export class AnalyticsPage {
   protected readonly viewContext = inject(ViewContextStore);
   private readonly session = inject(SessionStore);
   private readonly periodPipe = new PeriodLabelPipe();
+
+  protected readonly baseCurrency = computed(
+    () => this.session.me()?.family.baseCurrency ?? 'ARS',
+  );
 
   protected readonly referenceCurrency = computed(
     () => this.session.me()?.family.referenceCurrency ?? 'USD',

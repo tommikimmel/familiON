@@ -98,7 +98,7 @@ const GRANULARITY_OPTIONS: readonly SegmentedOption<Granularity>[] = [
 
                 <fo-button
                   data-testid="analytics-period-today"
-                  variant="secondary"
+                  variant="ghost"
                   size="sm"
                   (click)="resetToday.emit()"
                 >
