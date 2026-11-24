@@ -1,7 +1,9 @@
 package com.familion.finance.installments.application;
 
 import com.familion.common.error.BusinessRuleException;
+import com.familion.common.error.ConflictException;
 import com.familion.common.error.ForbiddenException;
+import com.familion.common.error.NotFoundException;
 import com.familion.common.money.Money;
 import com.familion.common.security.CurrentUser;
 import com.familion.economics.application.api.EconomicsApi;
@@ -12,6 +14,7 @@ import com.familion.finance.accounts.application.api.AccountQueryApi;
 import com.familion.finance.accounts.application.api.AccountRef;
 import com.familion.finance.categories.application.api.CategoryQueryApi;
 import com.familion.finance.categories.application.api.CategoryRef;
+import com.familion.finance.installments.domain.CancelRemainingMode;
 import com.familion.finance.installments.domain.InstallmentMetricsCalculator;
 import com.familion.finance.installments.domain.InstallmentPlan;
 import com.familion.finance.installments.domain.InstallmentPlanStatus;
@@ -43,6 +46,7 @@ public class InstallmentPlanService {
     private static final int MAX_CURRENCY_LENGTH = 10;
 
     private final InstallmentPlanRepository planRepository;
+    private final InstallmentPlanReadQuery readQuery;
     private final TransactionCommandApi transactionCommandApi;
     private final AccountQueryApi accountQueryApi;
     private final CategoryQueryApi categoryQueryApi;
@@ -51,9 +55,11 @@ public class InstallmentPlanService {
     private final Clock clock;
     private final InstallmentScheduleCalculator scheduleCalculator;
     private final InstallmentMetricsCalculator metricsCalculator;
+    private final InstallmentPlanViewAssembler viewAssembler;
 
     public InstallmentPlanService(
             InstallmentPlanRepository planRepository,
+            InstallmentPlanReadQuery readQuery,
             TransactionCommandApi transactionCommandApi,
             AccountQueryApi accountQueryApi,
             CategoryQueryApi categoryQueryApi,
@@ -61,6 +67,7 @@ public class InstallmentPlanService {
             EconomicsApi economicsApi,
             Clock clock) {
         this.planRepository = planRepository;
+        this.readQuery = readQuery;
         this.transactionCommandApi = transactionCommandApi;
         this.accountQueryApi = accountQueryApi;
         this.categoryQueryApi = categoryQueryApi;
@@ -69,6 +76,8 @@ public class InstallmentPlanService {
         this.clock = clock;
         this.scheduleCalculator = new InstallmentScheduleCalculator();
         this.metricsCalculator = new InstallmentMetricsCalculator();
+        this.viewAssembler =
+                new InstallmentPlanViewAssembler(this.scheduleCalculator, this.metricsCalculator);
     }
 
     @Transactional
@@ -218,6 +227,67 @@ public class InstallmentPlanService {
                 saved.getStatus(),
                 new InstallmentPlanView.MemberSummary(
                         attributedMember.userId(), attributedMember.fullName()));
+    }
+
+    @Transactional
+    public InstallmentPlanView cancelRemaining(
+            CurrentUser user, UUID planId, CancelRemainingCommand command) {
+        Objects.requireNonNull(user, "user must not be null");
+        Objects.requireNonNull(planId, "planId must not be null");
+        Objects.requireNonNull(command, "command must not be null");
+        if (command.mode() == null) {
+            throw new BusinessRuleException("Cancel mode is required");
+        }
+
+        InstallmentPlan plan = planRepository
+                .findByIdAndFamilyId(planId, user.familyId())
+                .orElseThrow(() -> new NotFoundException("Installment plan not found"));
+
+        if (!user.isAdult() && !user.userId().equals(plan.getUserId())) {
+            throw new ForbiddenException(
+                    "Only the plan author or an adult can cancel or prepay remaining installments");
+        }
+
+        if (!plan.isActive()) {
+            throw new ConflictException("Installment plan is already closed");
+        }
+
+        FamilySettings settings = familyQueryApi.getSettings(user.familyId());
+        LocalDate today = LocalDate.now(clock.withZone(settings.timezone()));
+
+        List<InstallmentTransactionRow> installments =
+                readQuery.findInstallmentsByPlanIds(user.familyId(), List.of(planId));
+        List<InstallmentTransactionRow> projected = installments.stream()
+                .filter(tx -> tx.status() == TransactionStatus.PROJECTED)
+                .toList();
+
+        if (command.mode() == CancelRemainingMode.CANCEL) {
+            for (InstallmentTransactionRow tx : projected) {
+                transactionCommandApi.changeStatus(
+                        user.familyId(), tx.transactionId(), TransactionStatus.CANCELLED);
+            }
+            plan.markCancelled();
+        } else {
+            LocalDate prepayDate = command.prepayDate() != null ? command.prepayDate() : today;
+            for (InstallmentTransactionRow tx : projected) {
+                transactionCommandApi.updateAmountAndDate(
+                        user.familyId(), tx.transactionId(), tx.amount(), prepayDate);
+                transactionCommandApi.changeStatus(
+                        user.familyId(), tx.transactionId(), TransactionStatus.POSTED);
+            }
+            plan.markCompleted();
+        }
+
+        planRepository.saveAndFlush(plan);
+
+        InstallmentPlanReadRow refreshedRow = readQuery
+                .findPlanById(user.familyId(), planId)
+                .orElseThrow(() -> new NotFoundException("Installment plan not found"));
+        List<InstallmentTransactionRow> refreshedInstallments =
+                readQuery.findInstallmentsByPlanIds(user.familyId(), List.of(planId));
+        BigDecimal latestIpc = economicsApi.latestValue(IPC_MENSUAL_INDEX).orElse(null);
+
+        return viewAssembler.toView(refreshedRow, refreshedInstallments, today, latestIpc);
     }
 
     private static BigDecimal resolveCashPrice(boolean hasInterest, BigDecimal cashPrice) {

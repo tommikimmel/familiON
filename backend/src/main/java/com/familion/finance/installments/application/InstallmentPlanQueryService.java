@@ -1,5 +1,6 @@
 package com.familion.finance.installments.application;
 
+import com.familion.common.error.BusinessRuleException;
 import com.familion.common.error.ForbiddenException;
 import com.familion.common.error.NotFoundException;
 import com.familion.common.security.CurrentUser;
@@ -16,6 +17,7 @@ import com.familion.finance.installments.domain.InstallmentScheduleCalculator;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class InstallmentPlanQueryService {
 
     static final String IPC_MENSUAL_INDEX = "IPC_MENSUAL";
+    static final int MAX_COMMITMENT_MONTHS = 24;
 
     private final InstallmentPlanReadQuery readQuery;
     private final VisibilityPolicy visibilityPolicy;
@@ -111,15 +114,29 @@ public class InstallmentPlanQueryService {
         return viewAssembler.toDetailView(row, installments, today, latestIpc);
     }
 
-    InstallmentPlanView loadSummaryById(UUID familyId, UUID planId) {
-        InstallmentPlanReadRow row = readQuery
-                .findPlanById(familyId, planId)
-                .orElseThrow(() -> new NotFoundException("Installment plan not found"));
-        List<InstallmentTransactionRow> installments =
-                readQuery.findInstallmentsByPlanIds(familyId, List.of(planId));
-        FamilySettings settings = familyQueryApi.getSettings(familyId);
+    public List<InstallmentCommitmentView> commitment(
+            CurrentUser user, int requestedMonths, View requestedView) {
+        Objects.requireNonNull(user, "user must not be null");
+        if (requestedMonths < 1) {
+            throw new BusinessRuleException("Months must be at least 1");
+        }
+        int months = Math.min(requestedMonths, MAX_COMMITMENT_MONTHS);
+
+        View view = requestedView != null ? requestedView : View.PERSONAL;
+        ViewAccess access = visibilityPolicy.resolveForTotals(user, view);
+        UUID viewerUserId = access == ViewAccess.OWN ? user.userId() : null;
+
+        FamilySettings settings = familyQueryApi.getSettings(user.familyId());
         LocalDate today = LocalDate.now(clock.withZone(settings.timezone()));
-        BigDecimal latestIpc = economicsApi.latestValue(IPC_MENSUAL_INDEX).orElse(null);
-        return viewAssembler.toView(row, installments, today, latestIpc);
+        YearMonth startMonth = YearMonth.from(today);
+        LocalDate fromDate = startMonth.atDay(1);
+        LocalDate toDate = startMonth.plusMonths(months - 1L).atEndOfMonth();
+
+        return readQuery
+                .findMonthlyCommitment(user.familyId(), viewerUserId, fromDate, toDate)
+                .stream()
+                .map(row -> new InstallmentCommitmentView(
+                        row.month(), row.amount(), row.currencyCode()))
+                .toList();
     }
 }

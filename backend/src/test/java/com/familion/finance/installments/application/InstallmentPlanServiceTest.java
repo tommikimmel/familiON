@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.familion.common.error.BusinessRuleException;
+import com.familion.common.error.ConflictException;
 import com.familion.common.error.ForbiddenException;
 import com.familion.common.security.CurrentUser;
 import com.familion.common.security.FamilyVisibility;
@@ -21,6 +22,7 @@ import com.familion.finance.accounts.application.api.AccountRef;
 import com.familion.finance.categories.application.api.CategoryQueryApi;
 import com.familion.finance.categories.application.api.CategoryRef;
 import com.familion.finance.installments.domain.AmountMode;
+import com.familion.finance.installments.domain.CancelRemainingMode;
 import com.familion.finance.installments.domain.InstallmentPlan;
 import com.familion.finance.installments.domain.InstallmentPlanStatus;
 import com.familion.finance.installments.infrastructure.persistence.InstallmentPlanRepository;
@@ -57,6 +59,9 @@ class InstallmentPlanServiceTest {
     private InstallmentPlanRepository planRepository;
 
     @Mock
+    private InstallmentPlanReadQuery readQuery;
+
+    @Mock
     private TransactionCommandApi transactionCommandApi;
 
     @Mock
@@ -85,6 +90,7 @@ class InstallmentPlanServiceTest {
     void setUp() {
         service = new InstallmentPlanService(
                 planRepository,
+                readQuery,
                 transactionCommandApi,
                 accountQueryApi,
                 categoryQueryApi,
@@ -231,6 +237,62 @@ class InstallmentPlanServiceTest {
                                 null,
                                 LocalDate.of(2026, 5, 1),
                                 adultId)))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void cancelRemainingRejectsClosedPlanWithConflictException() {
+        UUID planId = UUID.randomUUID();
+        InstallmentPlan closedPlan = InstallmentPlan.create(
+                familyId,
+                adultId,
+                cardId,
+                categoryId,
+                "Desk",
+                "ARS",
+                3,
+                false,
+                null,
+                new BigDecimal("30000"),
+                new BigDecimal("10000"),
+                LocalDate.of(2026, 1, 10),
+                LocalDate.of(2026, 2, 5),
+                InstallmentPlanStatus.COMPLETED);
+        ReflectionTestUtils.setField(closedPlan, "id", planId);
+
+        when(planRepository.findByIdAndFamilyId(planId, familyId))
+                .thenReturn(Optional.of(closedPlan));
+
+        assertThatThrownBy(() -> service.cancelRemaining(
+                        adult, planId, new CancelRemainingCommand(CancelRemainingMode.CANCEL, null)))
+                .isInstanceOf(ConflictException.class);
+    }
+
+    @Test
+    void cancelRemainingRejectsNonAuthorChildWithForbiddenException() {
+        UUID planId = UUID.randomUUID();
+        InstallmentPlan adultPlan = InstallmentPlan.create(
+                familyId,
+                adultId,
+                cardId,
+                categoryId,
+                "Desk",
+                "ARS",
+                3,
+                false,
+                null,
+                new BigDecimal("30000"),
+                new BigDecimal("10000"),
+                LocalDate.of(2026, 4, 10),
+                LocalDate.of(2026, 5, 5),
+                InstallmentPlanStatus.ACTIVE);
+        ReflectionTestUtils.setField(adultPlan, "id", planId);
+
+        when(planRepository.findByIdAndFamilyId(planId, familyId))
+                .thenReturn(Optional.of(adultPlan));
+
+        assertThatThrownBy(() -> service.cancelRemaining(
+                        child, planId, new CancelRemainingCommand(CancelRemainingMode.CANCEL, null)))
                 .isInstanceOf(ForbiddenException.class);
     }
 }

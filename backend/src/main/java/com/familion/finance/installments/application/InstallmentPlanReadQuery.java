@@ -1,6 +1,7 @@
 package com.familion.finance.installments.application;
 
 import com.familion.finance.installments.domain.InstallmentPlanStatus;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -15,4 +16,11 @@ public interface InstallmentPlanReadQuery {
 
     List<InstallmentTransactionRow> findInstallmentsByPlanIds(
             UUID familyId, Collection<UUID> planIds);
+
+    List<CommitmentRow> findMonthlyCommitment(
+            UUID familyId, UUID viewerUserId, LocalDate fromDate, LocalDate toDate);
+
+    List<DueInstallmentRow> findDueProjectedInstallments(LocalDate asOfDate);
+
+    List<UUID> findActivePlansWithAllPostedInstallments();
 }

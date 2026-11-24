@@ -157,6 +157,39 @@ class InstallmentPlanQueryServiceTest {
                 .isInstanceOf(ForbiddenException.class);
     }
 
+    @Test
+    void commitmentClampsMonthsToTwentyFourAndQueriesRange() {
+        when(familyQueryApi.getSettings(familyId))
+                .thenReturn(new FamilySettings(
+                        familyId,
+                        "Family",
+                        "ARS",
+                        "USD",
+                        "USD_MEP",
+                        ZoneId.of("America/Argentina/Buenos_Aires"),
+                        List.of("ARS", "USD")));
+        when(readQuery.findMonthlyCommitment(
+                        familyId,
+                        null,
+                        LocalDate.of(2026, 4, 1),
+                        LocalDate.of(2028, 3, 31)))
+                .thenReturn(List.of(
+                        new CommitmentRow("2026-05", new BigDecimal("500.0000"), "ARS")));
+
+        List<InstallmentCommitmentView> result = service.commitment(adult, 36, View.FAMILY);
+
+        assertThat(result)
+                .containsExactly(
+                        new InstallmentCommitmentView(
+                                "2026-05", new BigDecimal("500.0000"), "ARS"));
+        verify(readQuery)
+                .findMonthlyCommitment(
+                        familyId,
+                        null,
+                        LocalDate.of(2026, 4, 1),
+                        LocalDate.of(2028, 3, 31));
+    }
+
     private InstallmentPlanReadRow sampleRow(UUID planId, UUID userId) {
         return new InstallmentPlanReadRow(
                 planId,

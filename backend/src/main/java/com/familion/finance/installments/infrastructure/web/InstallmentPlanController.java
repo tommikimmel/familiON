@@ -2,6 +2,7 @@ package com.familion.finance.installments.infrastructure.web;
 
 import com.familion.common.security.CurrentUserProvider;
 import com.familion.common.security.View;
+import com.familion.finance.installments.application.CancelRemainingCommand;
 import com.familion.finance.installments.application.CreateInstallmentPlanCommand;
 import com.familion.finance.installments.application.InstallmentPlanQueryService;
 import com.familion.finance.installments.application.InstallmentPlanService;
@@ -65,9 +66,27 @@ public class InstallmentPlanController {
                 .toList();
     }
 
+    @GetMapping("/commitment")
+    public List<InstallmentCommitmentResponse> getCommitment(
+            @RequestParam(defaultValue = "12") int months,
+            @RequestParam(defaultValue = "PERSONAL") View view) {
+        return queryService.commitment(currentUserProvider.get(), months, view).stream()
+                .map(InstallmentCommitmentResponse::from)
+                .toList();
+    }
+
     @GetMapping("/{id}")
     public InstallmentPlanDetailResponse getPlan(@PathVariable UUID id) {
         return InstallmentPlanDetailResponse.from(
                 queryService.getById(currentUserProvider.get(), id));
+    }
+
+    @PostMapping("/{id}/cancel-remaining")
+    public InstallmentPlanResponse cancelRemaining(
+            @PathVariable UUID id, @Valid @RequestBody CancelRemainingRequest request) {
+        return InstallmentPlanResponse.from(planService.cancelRemaining(
+                currentUserProvider.get(),
+                id,
+                new CancelRemainingCommand(request.mode(), request.prepayDate())));
     }
 }

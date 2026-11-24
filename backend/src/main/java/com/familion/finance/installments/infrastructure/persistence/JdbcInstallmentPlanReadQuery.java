@@ -1,6 +1,8 @@
 package com.familion.finance.installments.infrastructure.persistence;
 
 import com.familion.common.money.Money;
+import com.familion.finance.installments.application.CommitmentRow;
+import com.familion.finance.installments.application.DueInstallmentRow;
 import com.familion.finance.installments.application.InstallmentPlanReadQuery;
 import com.familion.finance.installments.application.InstallmentPlanReadRow;
 import com.familion.finance.installments.application.InstallmentTransactionRow;
@@ -70,6 +72,60 @@ public class JdbcInstallmentPlanReadQuery implements InstallmentPlanReadQuery {
             ORDER BY t.installment_plan_id ASC, t.installment_number ASC, t.transaction_date ASC, t.id ASC
             """;
 
+    private static final String BASE_COMMITMENT_SQL = """
+            SELECT
+                to_char(t.transaction_date, 'YYYY-MM') AS month_key,
+                t.currency_code,
+                SUM(t.amount) AS total_amount
+            FROM transactions t
+            JOIN installment_plans ip ON ip.id = t.installment_plan_id
+            WHERE t.family_id = :familyId
+              AND t.installment_plan_id IS NOT NULL
+              AND t.deleted_at IS NULL
+              AND t.status = 'PROJECTED'
+              AND ip.status = 'ACTIVE'
+              AND t.transaction_date >= :fromDate
+              AND t.transaction_date <= :toDate
+            """;
+
+    private static final String FIND_DUE_PROJECTED_SQL = """
+            SELECT
+                t.family_id,
+                t.id AS transaction_id,
+                t.installment_plan_id
+            FROM transactions t
+            JOIN installment_plans ip ON ip.id = t.installment_plan_id
+            WHERE t.installment_plan_id IS NOT NULL
+              AND t.deleted_at IS NULL
+              AND t.status = 'PROJECTED'
+              AND ip.status = 'ACTIVE'
+              AND t.transaction_date <= :asOfDate
+            ORDER BY t.transaction_date ASC, t.installment_number ASC, t.id ASC
+            """;
+
+    private static final String FIND_COMPLETABLE_PLANS_SQL = """
+            SELECT ip.id
+            FROM installment_plans ip
+            WHERE ip.status = 'ACTIVE'
+              AND EXISTS (
+                  SELECT 1
+                  FROM transactions t
+                  WHERE t.installment_plan_id = ip.id
+                    AND t.family_id = ip.family_id
+                    AND t.deleted_at IS NULL
+                    AND t.status = 'POSTED'
+              )
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM transactions t
+                  WHERE t.installment_plan_id = ip.id
+                    AND t.family_id = ip.family_id
+                    AND t.deleted_at IS NULL
+                    AND t.status <> 'POSTED'
+              )
+            ORDER BY ip.id ASC
+            """;
+
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     public JdbcInstallmentPlanReadQuery(NamedParameterJdbcTemplate jdbcTemplate) {
@@ -128,6 +184,53 @@ public class JdbcInstallmentPlanReadQuery implements InstallmentPlanReadQuery {
                 FIND_INSTALLMENTS_BY_PLAN_IDS_SQL,
                 params,
                 JdbcInstallmentPlanReadQuery::mapInstallmentRow);
+    }
+
+    @Override
+    public List<CommitmentRow> findMonthlyCommitment(
+            UUID familyId, UUID viewerUserId, LocalDate fromDate, LocalDate toDate) {
+        StringBuilder sql = new StringBuilder(BASE_COMMITMENT_SQL);
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("familyId", familyId)
+                .addValue("fromDate", fromDate)
+                .addValue("toDate", toDate);
+
+        if (viewerUserId != null) {
+            sql.append(" AND t.attributed_to_user_id = :viewerUserId");
+            params.addValue("viewerUserId", viewerUserId);
+        }
+
+        sql.append(" GROUP BY to_char(t.transaction_date, 'YYYY-MM'), t.currency_code");
+        sql.append(" HAVING SUM(t.amount) > 0");
+        sql.append(" ORDER BY month_key ASC, t.currency_code ASC");
+
+        return jdbcTemplate.query(
+                sql.toString(),
+                params,
+                (rs, rowNum) -> new CommitmentRow(
+                        rs.getString("month_key"),
+                        Money.scale(rs.getBigDecimal("total_amount")),
+                        rs.getString("currency_code")));
+    }
+
+    @Override
+    public List<DueInstallmentRow> findDueProjectedInstallments(LocalDate asOfDate) {
+        MapSqlParameterSource params = new MapSqlParameterSource("asOfDate", asOfDate);
+        return jdbcTemplate.query(
+                FIND_DUE_PROJECTED_SQL,
+                params,
+                (rs, rowNum) -> new DueInstallmentRow(
+                        rs.getObject("family_id", UUID.class),
+                        rs.getObject("transaction_id", UUID.class),
+                        rs.getObject("installment_plan_id", UUID.class)));
+    }
+
+    @Override
+    public List<UUID> findActivePlansWithAllPostedInstallments() {
+        return jdbcTemplate.query(
+                FIND_COMPLETABLE_PLANS_SQL,
+                new MapSqlParameterSource(),
+                (rs, rowNum) -> rs.getObject("id", UUID.class));
     }
 
     private static InstallmentPlanReadRow mapPlanRow(ResultSet rs, int rowNum) throws SQLException {
