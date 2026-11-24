@@ -6,7 +6,10 @@ import { ButtonComponent } from '../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../shared/ui/card/card.component';
 import { IconComponent } from '../../../shared/ui/icon/icon.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
+import { AnalyticsBreakdownsComponent } from '../components/analytics-breakdowns.component';
+import { AnalyticsEvolutionChartComponent } from '../components/analytics-evolution-chart.component';
 import { AnalyticsHeaderComponent } from '../components/analytics-header.component';
+import { AnalyticsSummaryComponent } from '../components/analytics-summary.component';
 import { AnalyticsStore } from '../data-access/analytics.store';
 
 @Component({
@@ -14,7 +17,10 @@ import { AnalyticsStore } from '../data-access/analytics.store';
   standalone: true,
   providers: [AnalyticsStore],
   imports: [
+    AnalyticsBreakdownsComponent,
+    AnalyticsEvolutionChartComponent,
     AnalyticsHeaderComponent,
+    AnalyticsSummaryComponent,
     ButtonComponent,
     CardComponent,
     IconComponent,
@@ -37,15 +43,38 @@ import { AnalyticsStore } from '../data-access/analytics.store';
 
       @if (store.activeTab() === 'OVERVIEW') {
         @if (store.loading()) {
-          <div class="space-y-4" aria-busy="true">
+          <div data-testid="analytics-loading-skeleton" class="space-y-5" aria-busy="true">
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+              @for (item of [1, 2, 3, 4]; track item) {
+                <fo-card padding="md">
+                  <fo-skeleton width="45%" height="0.75rem" />
+                  <div class="mt-3">
+                    <fo-skeleton width="70%" height="1.75rem" />
+                  </div>
+                  <div class="mt-3">
+                    <fo-skeleton width="80%" height="0.75rem" />
+                  </div>
+                </fo-card>
+              }
+            </div>
+
             <fo-card padding="md">
-              <fo-skeleton width="40%" height="1rem" />
-              <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                @for (item of [1, 2, 3, 4]; track item) {
-                  <fo-skeleton height="5rem" rounded="lg" />
-                }
+              <fo-skeleton width="35%" height="1rem" />
+              <div class="mt-4">
+                <fo-skeleton height="230px" rounded="lg" />
               </div>
             </fo-card>
+
+            <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              @for (card of [1, 2]; track card) {
+                <fo-card padding="md">
+                  <fo-skeleton width="40%" height="1rem" />
+                  <div class="mt-4 flex justify-center">
+                    <fo-skeleton width="180px" height="180px" rounded="full" />
+                  </div>
+                </fo-card>
+              }
+            </div>
           </div>
         } @else if (store.error(); as errorMessage) {
           <fo-card padding="lg" data-testid="analytics-error-state">
@@ -64,6 +93,22 @@ import { AnalyticsStore } from '../data-access/analytics.store';
               </div>
             </div>
           </fo-card>
+        } @else {
+          <div data-testid="analytics-overview-content" class="space-y-5">
+            <fo-analytics-summary [summary]="store.summary()" [view]="viewContext.view()" />
+
+            <fo-analytics-evolution-chart
+              [series]="store.series()"
+              [granularity]="viewContext.granularity()"
+            />
+
+            <fo-analytics-breakdowns
+              [byCategory]="store.byCategory()"
+              [byPerson]="store.byPerson()"
+              [showPerson]="store.showPersonSection()"
+              [lens]="viewContext.lens()"
+            />
+          </div>
         }
       }
     </section>
