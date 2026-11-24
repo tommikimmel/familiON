@@ -33,8 +33,7 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(
         properties = {
             "familion.economics.sync-on-startup=false",
-            "ECON_SYNC_CRON=-",
-            "familion.installments.posting-cron=-"
+            "ECON_SYNC_CRON=-"
         })
 class InstallmentPlanControllerIT extends IntegrationTestBase {
 
