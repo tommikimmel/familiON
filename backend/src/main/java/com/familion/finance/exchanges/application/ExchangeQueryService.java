@@ -4,10 +4,12 @@ import com.familion.common.security.CurrentUser;
 import com.familion.common.security.View;
 import com.familion.common.security.ViewAccess;
 import com.familion.common.security.VisibilityPolicy;
+import com.familion.economics.application.api.EconomicsApi;
 import com.familion.family.application.api.FamilyQueryApi;
 import com.familion.family.application.api.FamilySettings;
 import com.familion.finance.exchanges.domain.ExchangeOperation;
 import com.familion.finance.exchanges.domain.ExchangeRateCalculator;
+import com.familion.finance.exchanges.domain.PositionCalculator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -29,16 +31,21 @@ public class ExchangeQueryService {
     private final ExchangeReadQuery readQuery;
     private final VisibilityPolicy visibilityPolicy;
     private final FamilyQueryApi familyQueryApi;
+    private final EconomicsApi economicsApi;
     private final ExchangeRateCalculator rateCalculator;
+    private final PositionCalculator positionCalculator;
 
     public ExchangeQueryService(
             ExchangeReadQuery readQuery,
             VisibilityPolicy visibilityPolicy,
-            FamilyQueryApi familyQueryApi) {
+            FamilyQueryApi familyQueryApi,
+            EconomicsApi economicsApi) {
         this.readQuery = readQuery;
         this.visibilityPolicy = visibilityPolicy;
         this.familyQueryApi = familyQueryApi;
+        this.economicsApi = economicsApi;
         this.rateCalculator = new ExchangeRateCalculator();
+        this.positionCalculator = new PositionCalculator();
     }
 
     public Page<ExchangeView> list(CurrentUser user, View requestedView, Pageable pageable) {
@@ -65,6 +72,48 @@ public class ExchangeQueryService {
                 .toList();
 
         return new PageImpl<>(content, effectivePageable, total);
+    }
+
+    public List<CurrencyPositionView> positions(CurrentUser user, View requestedView) {
+        Objects.requireNonNull(user, "user must not be null");
+
+        View view = requestedView != null ? requestedView : View.PERSONAL;
+        ViewAccess access = visibilityPolicy.resolveForListing(user, view);
+        UUID viewerUserId = access == ViewAccess.OWN ? user.userId() : null;
+
+        List<ExchangePositionRow> rows =
+                readQuery.findAllActiveChronological(user.familyId(), viewerUserId);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        FamilySettings settings = familyQueryApi.getSettings(user.familyId());
+        List<PositionCalculator.ExchangeLeg> legs = rows.stream()
+                .map(row -> new PositionCalculator.ExchangeLeg(
+                        row.sourceCurrency(),
+                        row.sourceAmount(),
+                        row.targetCurrency(),
+                        row.targetAmount()))
+                .toList();
+
+        return positionCalculator
+                .calculate(
+                        settings.baseCurrency(),
+                        legs,
+                        currency -> PositionCalculator.resolveRateSource(
+                                        currency, settings.referenceRateSource())
+                                .flatMap(economicsApi::latestValue))
+                .stream()
+                .map(snapshot -> new CurrencyPositionView(
+                        snapshot.currencyCode(),
+                        snapshot.units(),
+                        snapshot.weightedAvgRate(),
+                        snapshot.totalCostBase(),
+                        snapshot.currentRate(),
+                        snapshot.currentValueBase(),
+                        snapshot.unrealizedResultBase(),
+                        snapshot.unrealizedResultPct()))
+                .toList();
     }
 
     private ExchangeView toExchangeView(ExchangeReadRow row, String baseCurrency) {

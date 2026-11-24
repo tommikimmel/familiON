@@ -10,6 +10,8 @@ public interface ExchangeReadQuery {
 
     long count(UUID familyId, UUID viewerUserId);
 
+    List<ExchangePositionRow> findAllActiveChronological(UUID familyId, UUID viewerUserId);
+
     boolean hasActiveExchangeIn(UUID familyId, UUID exchangeId);
 
     List<UUID> findActiveTransactionIds(UUID familyId, UUID exchangeId);

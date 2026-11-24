@@ -6,6 +6,7 @@ import com.familion.finance.exchanges.application.CreateExchangeCommand;
 import com.familion.finance.exchanges.application.ExchangeQueryService;
 import com.familion.finance.exchanges.application.ExchangeService;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -62,6 +63,14 @@ public class CurrencyExchangeController {
         return exchangeQueryService
                 .list(currentUserProvider.get(), view, pageable)
                 .map(ExchangeResponse::from);
+    }
+
+    @GetMapping("/positions")
+    public List<CurrencyPositionResponse> listPositions(
+            @RequestParam(defaultValue = "PERSONAL") View view) {
+        return exchangeQueryService.positions(currentUserProvider.get(), view).stream()
+                .map(CurrencyPositionResponse::from)
+                .toList();
     }
 
     @DeleteMapping("/{id}")

@@ -1,6 +1,7 @@
 package com.familion.finance.exchanges.infrastructure.persistence;
 
 import com.familion.common.money.Money;
+import com.familion.finance.exchanges.application.ExchangePositionRow;
 import com.familion.finance.exchanges.application.ExchangeReadQuery;
 import com.familion.finance.exchanges.application.ExchangeReadRow;
 import java.sql.ResultSet;
@@ -54,6 +55,16 @@ public class JdbcExchangeReadQuery implements ExchangeReadQuery {
 
     private static final String BASE_COUNT_SQL = """
             SELECT COUNT(*)
+            FROM currency_exchanges ce
+            WHERE ce.family_id = :familyId
+              AND """ + " " + ACTIVE_EXCHANGE_IN_EXISTS;
+
+    private static final String BASE_POSITION_SQL = """
+            SELECT
+                ce.source_currency,
+                ce.source_amount,
+                ce.target_currency,
+                ce.target_amount
             FROM currency_exchanges ce
             WHERE ce.family_id = :familyId
               AND """ + " " + ACTIVE_EXCHANGE_IN_EXISTS;
@@ -117,6 +128,21 @@ public class JdbcExchangeReadQuery implements ExchangeReadQuery {
     }
 
     @Override
+    public List<ExchangePositionRow> findAllActiveChronological(UUID familyId, UUID viewerUserId) {
+        StringBuilder sql = new StringBuilder(BASE_POSITION_SQL);
+        MapSqlParameterSource params = new MapSqlParameterSource("familyId", familyId);
+
+        if (viewerUserId != null) {
+            sql.append(" AND ce.user_id = :viewerUserId");
+            params.addValue("viewerUserId", viewerUserId);
+        }
+
+        sql.append(" ORDER BY ce.exchange_date ASC, ce.created_at ASC, ce.id ASC");
+
+        return jdbcTemplate.query(sql.toString(), params, JdbcExchangeReadQuery::mapPositionRow);
+    }
+
+    @Override
     public boolean hasActiveExchangeIn(UUID familyId, UUID exchangeId) {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("familyId", familyId)
@@ -152,5 +178,13 @@ public class JdbcExchangeReadQuery implements ExchangeReadQuery {
                 rs.getString("notes"),
                 rs.getObject("created_by_id", UUID.class),
                 rs.getString("created_by_full_name"));
+    }
+
+    private static ExchangePositionRow mapPositionRow(ResultSet rs, int rowNum) throws SQLException {
+        return new ExchangePositionRow(
+                rs.getString("source_currency"),
+                Money.scale(rs.getBigDecimal("source_amount")),
+                rs.getString("target_currency"),
+                Money.scale(rs.getBigDecimal("target_amount")));
     }
 }

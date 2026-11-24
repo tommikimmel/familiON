@@ -369,6 +369,162 @@ class CurrencyExchangeControllerIT extends IntegrationTestBase {
         assertThat(secondDelete.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
+    @Test
+    void positionsComputeWeightedAverageCostAfterBuyAndSellAndExcludeDeletedExchanges() {
+        insertIndex("USD_MEP", LocalDate.of(2026, 11, 20), new BigDecimal("1250.000000"));
+        insertIndex("EUR_OFICIAL", LocalDate.of(2026, 11, 20), new BigDecimal("1400.000000"));
+
+        UUID familyId = fixtures.createFamily("Familia Positions " + UUID.randomUUID());
+        UUID adultId = fixtures.createUser(
+                familyId,
+                "adult-pos-" + UUID.randomUUID() + "@familion.test",
+                Role.ADULTO,
+                FamilyVisibility.FAMILY_FULL);
+        UUID childId = fixtures.createUser(
+                familyId,
+                "child-pos-" + UUID.randomUUID() + "@familion.test",
+                Role.HIJO,
+                FamilyVisibility.OWN_ONLY);
+
+        UUID arsAccountId = fixtures.createAccount(familyId, adultId, "BANK", "ARS");
+        UUID usdAccountId = fixtures.createAccount(familyId, adultId, "BANK", "USD");
+        UUID eurAccountId = fixtures.createAccount(familyId, adultId, "BANK", "EUR");
+
+        String adultBearer =
+                tokens.bearer(adultId, familyId, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+        String childBearer =
+                tokens.bearer(childId, familyId, Role.HIJO, FamilyVisibility.OWN_ONLY);
+
+        // 1. Buy 1000 USD for 1,185,000 ARS -> rate 1185.000000
+        ResponseEntity<JsonNode> buyResp = client()
+                .post()
+                .uri("/api/v1/currency-exchanges")
+                .header(HttpHeaders.AUTHORIZATION, adultBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of(
+                        "sourceAccountId", arsAccountId.toString(),
+                        "targetAccountId", usdAccountId.toString(),
+                        "sourceAmount", new BigDecimal("1185000"),
+                        "targetAmount", new BigDecimal("1000"),
+                        "exchangeDate", "2026-11-10"))
+                .retrieve()
+                .toEntity(JsonNode.class);
+        assertThat(buyResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        // 2. Sell 200 USD for 250,000 ARS -> remaining 800 USD, PPP 1185, cost 948,000
+        ResponseEntity<JsonNode> sellResp = client()
+                .post()
+                .uri("/api/v1/currency-exchanges")
+                .header(HttpHeaders.AUTHORIZATION, adultBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of(
+                        "sourceAccountId", usdAccountId.toString(),
+                        "targetAccountId", arsAccountId.toString(),
+                        "sourceAmount", new BigDecimal("200"),
+                        "targetAmount", new BigDecimal("250000"),
+                        "exchangeDate", "2026-11-12"))
+                .retrieve()
+                .toEntity(JsonNode.class);
+        assertThat(sellResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        UUID sellId = UUID.fromString(sellResp.getBody().path("id").asText());
+
+        // Check positions after BUY + SELL
+        ResponseEntity<JsonNode> posResp = client()
+                .get()
+                .uri("/api/v1/currency-exchanges/positions?view=PERSONAL")
+                .header(HttpHeaders.AUTHORIZATION, adultBearer)
+                .retrieve()
+                .toEntity(JsonNode.class);
+        assertThat(posResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        JsonNode positions = posResp.getBody();
+        assertThat(positions).isNotNull();
+        assertThat(positions).hasSize(1);
+
+        JsonNode usdPos = positions.get(0);
+        assertThat(usdPos.path("currencyCode").asText()).isEqualTo("USD");
+        assertThat(usdPos.path("units").asText()).isEqualTo("800.0000");
+        assertThat(usdPos.path("weightedAvgRate").asText()).isEqualTo("1185.000000");
+        assertThat(usdPos.path("totalCostBase").asText()).isEqualTo("948000.0000");
+        assertThat(usdPos.path("currentRate").asText()).isEqualTo("1250.000000");
+        assertThat(usdPos.path("currentValueBase").asText()).isEqualTo("1000000.0000");
+        assertThat(usdPos.path("unrealizedResultBase").asText()).isEqualTo("52000.0000");
+        assertThat(usdPos.path("unrealizedResultPct").asText()).isEqualTo("5.4852");
+
+        // 3. Swap 100 USD -> 90 EUR (transfers 100 * 1185 = 118,500 ARS cost to EUR)
+        ResponseEntity<JsonNode> swapResp = client()
+                .post()
+                .uri("/api/v1/currency-exchanges")
+                .header(HttpHeaders.AUTHORIZATION, adultBearer)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of(
+                        "sourceAccountId", usdAccountId.toString(),
+                        "targetAccountId", eurAccountId.toString(),
+                        "sourceAmount", new BigDecimal("100"),
+                        "targetAmount", new BigDecimal("90"),
+                        "exchangeDate", "2026-11-15"))
+                .retrieve()
+                .toEntity(JsonNode.class);
+        assertThat(swapResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(swapResp.getBody().path("operation").asText()).isEqualTo("SWAP");
+        UUID swapId = UUID.fromString(swapResp.getBody().path("id").asText());
+
+        ResponseEntity<JsonNode> afterSwapResp = client()
+                .get()
+                .uri("/api/v1/currency-exchanges/positions?view=FAMILY")
+                .header(HttpHeaders.AUTHORIZATION, adultBearer)
+                .retrieve()
+                .toEntity(JsonNode.class);
+        assertThat(afterSwapResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(afterSwapResp.getBody()).hasSize(2);
+        JsonNode eurPos = afterSwapResp.getBody().get(0);
+        JsonNode usdAfterSwap = afterSwapResp.getBody().get(1);
+        assertThat(eurPos.path("currencyCode").asText()).isEqualTo("EUR");
+        assertThat(eurPos.path("units").asText()).isEqualTo("90.0000");
+        assertThat(eurPos.path("totalCostBase").asText()).isEqualTo("118500.0000");
+        assertThat(eurPos.path("currentRate").asText()).isEqualTo("1400.000000");
+        assertThat(eurPos.path("currentValueBase").asText()).isEqualTo("126000.0000");
+        assertThat(eurPos.path("unrealizedResultBase").asText()).isEqualTo("7500.0000");
+
+        assertThat(usdAfterSwap.path("currencyCode").asText()).isEqualTo("USD");
+        assertThat(usdAfterSwap.path("units").asText()).isEqualTo("700.0000");
+        assertThat(usdAfterSwap.path("totalCostBase").asText()).isEqualTo("829500.0000");
+
+        // 4. Delete swap and sell -> only the initial 1000 USD buy remains in positions
+        client().delete()
+                .uri("/api/v1/currency-exchanges/" + swapId)
+                .header(HttpHeaders.AUTHORIZATION, adultBearer)
+                .retrieve()
+                .toBodilessEntity();
+        client().delete()
+                .uri("/api/v1/currency-exchanges/" + sellId)
+                .header(HttpHeaders.AUTHORIZATION, adultBearer)
+                .retrieve()
+                .toBodilessEntity();
+
+        ResponseEntity<JsonNode> afterDeletePos = client()
+                .get()
+                .uri("/api/v1/currency-exchanges/positions?view=FAMILY")
+                .header(HttpHeaders.AUTHORIZATION, adultBearer)
+                .retrieve()
+                .toEntity(JsonNode.class);
+        assertThat(afterDeletePos.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(afterDeletePos.getBody()).hasSize(1);
+        assertThat(afterDeletePos.getBody().get(0).path("currencyCode").asText()).isEqualTo("USD");
+        assertThat(afterDeletePos.getBody().get(0).path("units").asText()).isEqualTo("1000.0000");
+        assertThat(afterDeletePos.getBody().get(0).path("totalCostBase").asText())
+                .isEqualTo("1185000.0000");
+
+        // 5. HIJO OWN_ONLY with view=FAMILY -> 403
+        ResponseEntity<JsonNode> childFamilyPositions = client()
+                .get()
+                .uri("/api/v1/currency-exchanges/positions?view=FAMILY")
+                .header(HttpHeaders.AUTHORIZATION, childBearer)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (req, res) -> {})
+                .toEntity(JsonNode.class);
+        assertThat(childFamilyPositions.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
     private void insertIndex(String indexCode, LocalDate effectiveDate, BigDecimal value) {
         jdbcTemplate.update(
                 """
