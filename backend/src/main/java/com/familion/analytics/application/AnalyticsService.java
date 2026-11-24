@@ -6,6 +6,7 @@ import com.familion.analytics.domain.AnalyticsLensCalculator;
 import com.familion.analytics.domain.AnalyticsPeriod;
 import com.familion.analytics.domain.InvalidAnalyticsRequestException;
 import com.familion.analytics.domain.PeriodResolver;
+import com.familion.common.error.ForbiddenException;
 import com.familion.common.money.Money;
 import com.familion.common.security.CurrentUser;
 import com.familion.common.security.View;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AnalyticsService {
 
     static final String IPC_ACUMULADO_INDEX = "IPC_ACUMULADO";
+    static final String UNCATEGORIZED_LABEL = "Sin categoría";
     static final int MIN_SERIES_PERIODS = 1;
     static final int MAX_SERIES_PERIODS = 24;
     private static final int REAL_VARIATION_HISTORY_PERIODS = 3;
@@ -202,6 +204,155 @@ public class AnalyticsService {
                 lens, settings.baseCurrency(), settings.referenceCurrency());
 
         return new AnalyticsSeries(lens, unit, granularity, List.copyOf(points));
+    }
+
+    public CategoryBreakdown getByCategory(
+            CurrentUser user,
+            View requestedView,
+            AnalyticsLens requestedLens,
+            AnalyticsGranularity requestedGranularity,
+            LocalDate requestedDate) {
+        Objects.requireNonNull(user, "user must not be null");
+        View view = requestedView != null ? requestedView : View.PERSONAL;
+        AnalyticsLens lens = requestedLens != null ? requestedLens : AnalyticsLens.NOMINAL;
+        AnalyticsGranularity granularity =
+                requestedGranularity != null ? requestedGranularity : AnalyticsGranularity.MONTH;
+
+        ViewAccess access = visibilityPolicy.resolveForTotals(user, view);
+        UUID viewerUserId = access == ViewAccess.OWN ? user.userId() : null;
+        boolean includeAllowanceIn = access == ViewAccess.OWN;
+
+        FamilySettings settings = familyQueryApi.getSettings(user.familyId());
+        LocalDate effectiveDate = resolveDate(requestedDate, settings);
+        AnalyticsPeriod period = periodResolver.resolve(granularity, effectiveDate);
+        AnalyticsPeriod previousPeriod = periodResolver.previous(period);
+
+        BigDecimal latestIpc = economicsApi.latestValue(IPC_ACUMULADO_INDEX).orElse(null);
+
+        List<CategoryAggregateRow> rows = analyticsQuery.aggregateByCategory(
+                user.familyId(), viewerUserId, lens, latestIpc, period.from(), period.to());
+        Map<UUID, BigDecimal> previousConstantBase = analyticsQuery.aggregateCategoryConstantBase(
+                user.familyId(),
+                viewerUserId,
+                latestIpc,
+                previousPeriod.from(),
+                previousPeriod.to());
+
+        BigDecimal nominalIncome = lens == AnalyticsLens.INCOME_PCT
+                ? analyticsQuery.sumNominalIncome(
+                        user.familyId(),
+                        viewerUserId,
+                        includeAllowanceIn,
+                        period.from(),
+                        period.to())
+                : null;
+
+        BigDecimal baseTotal = rows.stream()
+                .map(r -> lens == AnalyticsLens.INCOME_PCT ? r.nominalAmount() : r.lensAmount())
+                .reduce(AnalyticsLensCalculator.ZERO, BigDecimal::add);
+        baseTotal = Money.scale(baseTotal);
+
+        BigDecimal total = lens == AnalyticsLens.INCOME_PCT
+                ? lensCalculator.incomePctAmount(baseTotal, nominalIncome)
+                : baseTotal;
+
+        List<CategoryBreakdown.CategorySlice> slices = new ArrayList<>(rows.size());
+        for (CategoryAggregateRow row : rows) {
+            BigDecimal sliceBase =
+                    lens == AnalyticsLens.INCOME_PCT ? row.nominalAmount() : row.lensAmount();
+            BigDecimal amount = lens == AnalyticsLens.INCOME_PCT
+                    ? lensCalculator.incomePctAmount(row.nominalAmount(), nominalIncome)
+                    : Money.scale(row.lensAmount());
+            BigDecimal pct = lensCalculator.percentage(sliceBase, baseTotal);
+            if (pct == null) {
+                pct = AnalyticsLensCalculator.ZERO;
+            }
+            BigDecimal prevConst = previousConstantBase.get(row.categoryId());
+            BigDecimal variationPct =
+                    lensCalculator.variationPct(row.constantBaseAmount(), prevConst);
+
+            String name = row.categoryId() == null ? UNCATEGORIZED_LABEL : row.name();
+            slices.add(new CategoryBreakdown.CategorySlice(
+                    row.categoryId(),
+                    name,
+                    row.colorHex(),
+                    row.icon(),
+                    amount,
+                    pct,
+                    variationPct));
+        }
+
+        String unit = lensCalculator.unit(
+                lens, settings.baseCurrency(), settings.referenceCurrency());
+
+        return new CategoryBreakdown(period, lens, unit, total, List.copyOf(slices));
+    }
+
+    public PersonBreakdown getByPerson(
+            CurrentUser user,
+            View requestedView,
+            AnalyticsLens requestedLens,
+            AnalyticsGranularity requestedGranularity,
+            LocalDate requestedDate) {
+        Objects.requireNonNull(user, "user must not be null");
+        View view = requestedView != null ? requestedView : View.FAMILY;
+        if (view != View.FAMILY) {
+            throw new InvalidAnalyticsRequestException(
+                    "view", "by-person breakdown is only available for FAMILY view");
+        }
+        AnalyticsLens lens = requestedLens != null ? requestedLens : AnalyticsLens.NOMINAL;
+        AnalyticsGranularity granularity =
+                requestedGranularity != null ? requestedGranularity : AnalyticsGranularity.MONTH;
+
+        ViewAccess access = visibilityPolicy.resolveForTotals(user, View.FAMILY);
+        if (access != ViewAccess.FAMILY_FULL) {
+            throw new ForbiddenException("User is not allowed to view person breakdown");
+        }
+
+        FamilySettings settings = familyQueryApi.getSettings(user.familyId());
+        LocalDate effectiveDate = resolveDate(requestedDate, settings);
+        AnalyticsPeriod period = periodResolver.resolve(granularity, effectiveDate);
+
+        BigDecimal latestIpc = lens == AnalyticsLens.CONSTANT_BASE
+                ? economicsApi.latestValue(IPC_ACUMULADO_INDEX).orElse(null)
+                : null;
+
+        List<PersonAggregateRow> rows = analyticsQuery.aggregateByPerson(
+                user.familyId(), lens, latestIpc, period.from(), period.to());
+
+        BigDecimal nominalIncome = lens == AnalyticsLens.INCOME_PCT
+                ? analyticsQuery.sumNominalIncome(
+                        user.familyId(), null, false, period.from(), period.to())
+                : null;
+
+        BigDecimal baseTotal = rows.stream()
+                .map(r -> lens == AnalyticsLens.INCOME_PCT ? r.nominalAmount() : r.lensAmount())
+                .reduce(AnalyticsLensCalculator.ZERO, BigDecimal::add);
+        baseTotal = Money.scale(baseTotal);
+
+        BigDecimal total = lens == AnalyticsLens.INCOME_PCT
+                ? lensCalculator.incomePctAmount(baseTotal, nominalIncome)
+                : baseTotal;
+
+        List<PersonBreakdown.PersonSlice> slices = new ArrayList<>(rows.size());
+        for (PersonAggregateRow row : rows) {
+            BigDecimal sliceBase =
+                    lens == AnalyticsLens.INCOME_PCT ? row.nominalAmount() : row.lensAmount();
+            BigDecimal amount = lens == AnalyticsLens.INCOME_PCT
+                    ? lensCalculator.incomePctAmount(row.nominalAmount(), nominalIncome)
+                    : Money.scale(row.lensAmount());
+            BigDecimal pct = lensCalculator.percentage(sliceBase, baseTotal);
+            if (pct == null) {
+                pct = AnalyticsLensCalculator.ZERO;
+            }
+            slices.add(new PersonBreakdown.PersonSlice(
+                    row.userId(), row.fullName(), row.accentColor(), amount, pct));
+        }
+
+        String unit = lensCalculator.unit(
+                lens, settings.baseCurrency(), settings.referenceCurrency());
+
+        return new PersonBreakdown(period, lens, unit, total, List.copyOf(slices));
     }
 
     private LocalDate resolveDate(LocalDate requestedDate, FamilySettings settings) {

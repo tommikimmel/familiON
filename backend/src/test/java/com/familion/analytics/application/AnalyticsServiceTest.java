@@ -26,7 +26,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -285,5 +287,125 @@ class AnalyticsServiceTest {
         assertThat(series.points().get(1).income()).isEqualByComparingTo("100.0000");
         assertThat(series.points().get(1).expense()).isEqualByComparingTo("25.0000");
         assertThat(series.points().get(1).balance()).isEqualByComparingTo("75.0000");
+    }
+
+    @Test
+    void byCategoryMapsUncategorizedAndComputesVariationInConstantBase() {
+        CurrentUser adult = new CurrentUser(ADULT_ID, FAMILY_ID, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+        UUID foodId = UUID.randomUUID();
+        when(familyQueryApi.getSettings(FAMILY_ID)).thenReturn(SETTINGS);
+        when(economicsApi.latestValue("IPC_ACUMULADO")).thenReturn(Optional.of(new BigDecimal("120.000000")));
+        when(analyticsQuery.aggregateByCategory(
+                        FAMILY_ID,
+                        ADULT_ID,
+                        AnalyticsLens.NOMINAL,
+                        new BigDecimal("120.000000"),
+                        LocalDate.of(2026, 11, 1),
+                        LocalDate.of(2026, 11, 30)))
+                .thenReturn(List.of(
+                        new CategoryAggregateRow(
+                                foodId,
+                                "Alimentación",
+                                "#10B981",
+                                "utensils",
+                                new BigDecimal("75000.0000"),
+                                new BigDecimal("75000.0000"),
+                                new BigDecimal("75000.0000")),
+                        new CategoryAggregateRow(
+                                null,
+                                null,
+                                null,
+                                null,
+                                new BigDecimal("25000.0000"),
+                                new BigDecimal("25000.0000"),
+                                new BigDecimal("25000.0000"))));
+
+        Map<UUID, BigDecimal> prevMap = new HashMap<>();
+        prevMap.put(foodId, new BigDecimal("50000.0000"));
+        when(analyticsQuery.aggregateCategoryConstantBase(
+                        FAMILY_ID,
+                        ADULT_ID,
+                        new BigDecimal("120.000000"),
+                        LocalDate.of(2026, 10, 1),
+                        LocalDate.of(2026, 10, 31)))
+                .thenReturn(prevMap);
+
+        CategoryBreakdown breakdown = service.getByCategory(
+                adult,
+                View.PERSONAL,
+                AnalyticsLens.NOMINAL,
+                AnalyticsGranularity.MONTH,
+                LocalDate.of(2026, 11, 23));
+
+        assertThat(breakdown.total()).isEqualByComparingTo("100000.0000");
+        assertThat(breakdown.slices()).hasSize(2);
+        assertThat(breakdown.slices().get(0).categoryId()).isEqualTo(foodId);
+        assertThat(breakdown.slices().get(0).pct()).isEqualByComparingTo("75.0000");
+        assertThat(breakdown.slices().get(0).variationPct()).isEqualByComparingTo("50.0000");
+        assertThat(breakdown.slices().get(1).categoryId()).isNull();
+        assertThat(breakdown.slices().get(1).name()).isEqualTo("Sin categoría");
+        assertThat(breakdown.slices().get(1).pct()).isEqualByComparingTo("25.0000");
+        assertThat(breakdown.slices().get(1).variationPct()).isNull();
+    }
+
+    @Test
+    void byPersonRejectsPersonalViewAndFamilySummaryVisibility() {
+        CurrentUser adult = new CurrentUser(ADULT_ID, FAMILY_ID, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+        CurrentUser childSummary =
+                new CurrentUser(CHILD_ID, FAMILY_ID, Role.HIJO, FamilyVisibility.FAMILY_SUMMARY);
+        CurrentUser childOwn = new CurrentUser(CHILD_ID, FAMILY_ID, Role.HIJO, FamilyVisibility.OWN_ONLY);
+
+        assertThatThrownBy(() -> service.getByPerson(
+                        adult,
+                        View.PERSONAL,
+                        AnalyticsLens.NOMINAL,
+                        AnalyticsGranularity.MONTH,
+                        LocalDate.of(2026, 11, 23)))
+                .isInstanceOf(InvalidAnalyticsRequestException.class);
+
+        assertThatThrownBy(() -> service.getByPerson(
+                        childSummary,
+                        View.FAMILY,
+                        AnalyticsLens.NOMINAL,
+                        AnalyticsGranularity.MONTH,
+                        LocalDate.of(2026, 11, 23)))
+                .isInstanceOf(ForbiddenException.class);
+
+        assertThatThrownBy(() -> service.getByPerson(
+                        childOwn,
+                        View.FAMILY,
+                        AnalyticsLens.NOMINAL,
+                        AnalyticsGranularity.MONTH,
+                        LocalDate.of(2026, 11, 23)))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    void byPersonComputesSlicesAndPercentagesForFamilyFull() {
+        CurrentUser adult = new CurrentUser(ADULT_ID, FAMILY_ID, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+        when(familyQueryApi.getSettings(FAMILY_ID)).thenReturn(SETTINGS);
+        when(analyticsQuery.aggregateByPerson(
+                        FAMILY_ID,
+                        AnalyticsLens.NOMINAL,
+                        null,
+                        LocalDate.of(2026, 11, 1),
+                        LocalDate.of(2026, 11, 30)))
+                .thenReturn(List.of(
+                        new PersonAggregateRow(
+                                ADULT_ID, "Ana Adulto", "#0F766E", new BigDecimal("60000.0000"), new BigDecimal("60000.0000")),
+                        new PersonAggregateRow(
+                                CHILD_ID, "Lauti Hijo", "#2563EB", new BigDecimal("40000.0000"), new BigDecimal("40000.0000"))));
+
+        PersonBreakdown breakdown = service.getByPerson(
+                adult,
+                View.FAMILY,
+                AnalyticsLens.NOMINAL,
+                AnalyticsGranularity.MONTH,
+                LocalDate.of(2026, 11, 23));
+
+        assertThat(breakdown.total()).isEqualByComparingTo("100000.0000");
+        assertThat(breakdown.slices()).hasSize(2);
+        assertThat(breakdown.slices().get(0).pct()).isEqualByComparingTo("60.0000");
+        assertThat(breakdown.slices().get(1).pct()).isEqualByComparingTo("40.0000");
     }
 }
