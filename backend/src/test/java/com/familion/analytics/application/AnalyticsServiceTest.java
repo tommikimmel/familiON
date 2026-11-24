@@ -4,12 +4,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.familion.analytics.domain.AnalyticsGranularity;
 import com.familion.analytics.domain.AnalyticsLens;
+import com.familion.analytics.domain.AnalyticsPeriod;
+import com.familion.analytics.domain.CalendarItemKind;
 import com.familion.analytics.domain.InvalidAnalyticsRequestException;
 import com.familion.common.error.ForbiddenException;
 import com.familion.common.security.CurrentUser;
@@ -24,12 +30,14 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,6 +69,9 @@ class AnalyticsServiceTest {
     private AnalyticsQuery analyticsQuery;
 
     @Mock
+    private AnalyticsCache analyticsCache;
+
+    @Mock
     private FamilyQueryApi familyQueryApi;
 
     @Mock
@@ -70,8 +81,10 @@ class AnalyticsServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(analyticsCache.get(any(), anyString(), any())).thenReturn(Optional.empty());
         service = new AnalyticsService(
                 analyticsQuery,
+                analyticsCache,
                 new DefaultVisibilityPolicy(),
                 familyQueryApi,
                 economicsApi,
@@ -137,9 +150,44 @@ class AnalyticsServiceTest {
         assertThat(summary.installmentCommitmentPct()).isEqualByComparingTo("15.0000");
         assertThat(summary.previous().income()).isEqualByComparingTo("120000.0000");
         assertThat(summary.previous().expense()).isEqualByComparingTo("50000.0000");
-        // Avg of prev constant_base expenses (48000, 52000) = 50000; current = 60000 -> +20%
         assertThat(summary.realVariationPct()).isEqualByComparingTo("20.0000");
         assertThat(summary.lensApproximated()).isFalse();
+        verify(analyticsCache).put(eq(FAMILY_ID), anyString(), eq(summary));
+    }
+
+    @Test
+    void summaryReturnsCachedResultWithoutQueryingDatabase() {
+        CurrentUser adult = new CurrentUser(ADULT_ID, FAMILY_ID, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+        AnalyticsSummary cached = new AnalyticsSummary(
+                new AnalyticsPeriod(
+                        AnalyticsGranularity.MONTH,
+                        LocalDate.of(2026, 11, 1),
+                        LocalDate.of(2026, 11, 30),
+                        "Noviembre 2026"),
+                View.PERSONAL,
+                AnalyticsLens.NOMINAL,
+                "ARS",
+                BigDecimal.TEN,
+                BigDecimal.ONE,
+                new BigDecimal("9"),
+                new BigDecimal("90"),
+                BigDecimal.ZERO,
+                new AnalyticsSummary.PreviousPeriodTotals(BigDecimal.ZERO, BigDecimal.ZERO),
+                null,
+                false);
+        when(analyticsCache.get(eq(FAMILY_ID), anyString(), eq(AnalyticsSummary.class)))
+                .thenReturn(Optional.of(cached));
+
+        AnalyticsSummary result = service.getSummary(
+                adult,
+                View.PERSONAL,
+                AnalyticsLens.NOMINAL,
+                AnalyticsGranularity.MONTH,
+                LocalDate.of(2026, 11, 23));
+
+        assertThat(result).isSameAs(cached);
+        verify(analyticsQuery, never())
+                .aggregateByPeriod(any(), any(), anyBoolean(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -392,9 +440,17 @@ class AnalyticsServiceTest {
                         LocalDate.of(2026, 11, 30)))
                 .thenReturn(List.of(
                         new PersonAggregateRow(
-                                ADULT_ID, "Ana Adulto", "#0F766E", new BigDecimal("60000.0000"), new BigDecimal("60000.0000")),
+                                ADULT_ID,
+                                "Ana Adulto",
+                                "#0F766E",
+                                new BigDecimal("60000.0000"),
+                                new BigDecimal("60000.0000")),
                         new PersonAggregateRow(
-                                CHILD_ID, "Lauti Hijo", "#2563EB", new BigDecimal("40000.0000"), new BigDecimal("40000.0000"))));
+                                CHILD_ID,
+                                "Lauti Hijo",
+                                "#2563EB",
+                                new BigDecimal("40000.0000"),
+                                new BigDecimal("40000.0000"))));
 
         PersonBreakdown breakdown = service.getByPerson(
                 adult,
@@ -407,5 +463,104 @@ class AnalyticsServiceTest {
         assertThat(breakdown.slices()).hasSize(2);
         assertThat(breakdown.slices().get(0).pct()).isEqualByComparingTo("60.0000");
         assertThat(breakdown.slices().get(1).pct()).isEqualByComparingTo("40.0000");
+    }
+
+    @Test
+    void calendarValidatesRangeAndClampsRecurringDueToMonthEndWhileOmittingPaid() {
+        CurrentUser adult = new CurrentUser(ADULT_ID, FAMILY_ID, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+
+        // 63 inclusive days -> rejected
+        assertThatThrownBy(() -> service.getCalendar(
+                        adult,
+                        View.FAMILY,
+                        LocalDate.of(2026, 1, 1),
+                        LocalDate.of(2026, 3, 4)))
+                .isInstanceOf(InvalidAnalyticsRequestException.class);
+
+        // to < from -> rejected
+        assertThatThrownBy(() -> service.getCalendar(
+                        adult,
+                        View.FAMILY,
+                        LocalDate.of(2026, 2, 10),
+                        LocalDate.of(2026, 2, 1)))
+                .isInstanceOf(InvalidAnalyticsRequestException.class);
+
+        UUID unpaidRecId = UUID.randomUUID();
+        UUID paidRecId = UUID.randomUUID();
+        UUID allowanceId = UUID.randomUUID();
+
+        LocalDate from = LocalDate.of(2026, 2, 25);
+        LocalDate to = LocalDate.of(2026, 2, 28);
+
+        when(analyticsQuery.findCalendarDailyTotals(FAMILY_ID, null, false, from, to))
+                .thenReturn(List.of());
+        when(analyticsQuery.findCalendarTransactionItems(FAMILY_ID, null, from, to))
+                .thenReturn(List.of());
+        when(analyticsQuery.findActiveRecurringExpenses(FAMILY_ID, null, from, to))
+                .thenReturn(List.of(
+                        new CalendarRows.RecurringExpenseRow(
+                                unpaidRecId,
+                                "Alquiler",
+                                new BigDecimal("250000.0000"),
+                                "ARS",
+                                31,
+                                LocalDate.of(2026, 1, 1),
+                                null),
+                        new CalendarRows.RecurringExpenseRow(
+                                paidRecId,
+                                "Internet",
+                                new BigDecimal("25000.0000"),
+                                "ARS",
+                                28,
+                                LocalDate.of(2026, 1, 1),
+                                null)));
+        when(analyticsQuery.findPaidRecurringKeys(
+                        FAMILY_ID, LocalDate.of(2026, 2, 1), LocalDate.of(2026, 2, 28)))
+                .thenReturn(Set.of(new CalendarRows.PaidRecurringKey(paidRecId, YearMonth.of(2026, 2))));
+        when(analyticsQuery.findVehicleDues(FAMILY_ID, from, to)).thenReturn(List.of());
+        when(analyticsQuery.findActiveAllowances(FAMILY_ID, null))
+                .thenReturn(List.of(new CalendarRows.AllowanceRow(
+                        allowanceId,
+                        "Lauti",
+                        new BigDecimal("15000.0000"),
+                        "ARS",
+                        "WEEKLY",
+                        5))); // Friday 2026-02-27
+
+        CalendarView calendar = service.getCalendar(adult, View.FAMILY, from, to);
+
+        assertThat(calendar.days()).hasSize(4);
+        // 2026-02-27 is Friday -> weekly allowance
+        CalendarView.CalendarDay feb27 = calendar.days().get(2);
+        assertThat(feb27.date()).isEqualTo(LocalDate.of(2026, 2, 27));
+        assertThat(feb27.items())
+                .extracting(CalendarView.CalendarItem::kind, CalendarView.CalendarItem::refId)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(CalendarItemKind.ALLOWANCE, allowanceId));
+
+        // 2026-02-28 -> unpaid recurring (due_day=31 clamped to 28); paid recurring omitted
+        CalendarView.CalendarDay feb28 = calendar.days().get(3);
+        assertThat(feb28.date()).isEqualTo(LocalDate.of(2026, 2, 28));
+        assertThat(feb28.items())
+                .extracting(CalendarView.CalendarItem::kind, CalendarView.CalendarItem::refId)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(CalendarItemKind.RECURRING_DUE, unpaidRecId));
+    }
+
+    @Test
+    void calendarPersonalViewSkipsVehicleDues() {
+        CurrentUser adult = new CurrentUser(ADULT_ID, FAMILY_ID, Role.ADULTO, FamilyVisibility.FAMILY_FULL);
+        LocalDate date = LocalDate.of(2026, 11, 23);
+
+        when(analyticsQuery.findCalendarDailyTotals(FAMILY_ID, ADULT_ID, true, date, date))
+                .thenReturn(List.of());
+        when(analyticsQuery.findCalendarTransactionItems(FAMILY_ID, ADULT_ID, date, date))
+                .thenReturn(List.of());
+        when(analyticsQuery.findActiveRecurringExpenses(FAMILY_ID, ADULT_ID, date, date))
+                .thenReturn(List.of());
+        when(analyticsQuery.findActiveAllowances(FAMILY_ID, ADULT_ID)).thenReturn(List.of());
+
+        CalendarView view = service.getCalendar(adult, View.PERSONAL, date, date);
+
+        assertThat(view.days()).hasSize(1);
+        verify(analyticsQuery, never()).findVehicleDues(any(), any(), any());
     }
 }

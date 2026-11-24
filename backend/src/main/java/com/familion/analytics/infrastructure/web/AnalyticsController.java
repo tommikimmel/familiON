@@ -3,6 +3,7 @@ package com.familion.analytics.infrastructure.web;
 import com.familion.analytics.application.AnalyticsSeries;
 import com.familion.analytics.application.AnalyticsService;
 import com.familion.analytics.application.AnalyticsSummary;
+import com.familion.analytics.application.CalendarView;
 import com.familion.analytics.application.CategoryBreakdown;
 import com.familion.analytics.application.PersonBreakdown;
 import com.familion.analytics.domain.AnalyticsGranularity;
@@ -67,5 +68,13 @@ public class AnalyticsController {
             @RequestParam(required = false) LocalDate date) {
         return analyticsService.getByPerson(
                 currentUserProvider.get(), view, lens, granularity, date);
+    }
+
+    @GetMapping("/calendar")
+    public CalendarView getCalendar(
+            @RequestParam LocalDate from,
+            @RequestParam LocalDate to,
+            @RequestParam(defaultValue = "PERSONAL") View view) {
+        return analyticsService.getCalendar(currentUserProvider.get(), view, from, to);
     }
 }
