@@ -1,7 +1,18 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { AccountsStore } from '../../../core/finance/accounts.store';
 import { CategoriesStore } from '../../../core/finance/categories.store';
-import { TransactionItem } from '../../../core/finance/transactions.models';
+import { FinanceEvents } from '../../../core/finance/finance-events';
+import {
+  TransactionItem,
+  TransactionPatch,
+} from '../../../core/finance/transactions.models';
 import { QuickAddLauncher } from '../../../core/layout/quick-add-launcher.service';
 import { SessionStore } from '../../../core/state/session.store';
 import { ViewContextStore } from '../../../core/state/view-context.store';
@@ -11,10 +22,13 @@ import {
   EmptyStateComponent,
   IconComponent,
   SkeletonComponent,
+  ToastService,
 } from '../../../shared/ui';
+import { TransactionDetailSheetComponent } from '../components/transaction-detail-sheet.component';
 import { TransactionsDayListComponent } from '../components/transactions-day-list.component';
 import { TransactionsFilterBarComponent } from '../components/transactions-filter-bar.component';
 import { TransactionsTableComponent } from '../components/transactions-table.component';
+import { extractTransactionProblemMessage } from '../data-access/transactions-problem';
 import { TransactionsStore } from '../data-access/transactions.store';
 
 @Component({
@@ -27,6 +41,7 @@ import { TransactionsStore } from '../data-access/transactions.store';
     EmptyStateComponent,
     IconComponent,
     SkeletonComponent,
+    TransactionDetailSheetComponent,
     TransactionsDayListComponent,
     TransactionsFilterBarComponent,
     TransactionsTableComponent,
@@ -149,6 +164,25 @@ import { TransactionsStore } from '../data-access/transactions.store';
         />
       }
     </section>
+
+    <fo-transaction-detail-sheet
+      [transaction]="selectedTransaction()"
+      [lens]="viewContext.lens()"
+      [referenceSnapshot]="referenceSnapshot()"
+      [snapshotLoading]="snapshotLoading()"
+      [isAdult]="session.isAdult()"
+      [currentUserId]="currentUserId()"
+      [categories]="categoriesStore.categories()"
+      [accounts]="accountsStore.accounts()"
+      [members]="store.members()"
+      [saving]="detailSaving()"
+      [deleting]="detailDeleting()"
+      [errorMessage]="detailError()"
+      (closed)="onCloseDetail()"
+      (savePatch)="onSavePatch($event)"
+      (confirmDelete)="onConfirmDelete($event)"
+      (clearError)="detailError.set(null)"
+    />
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -158,9 +192,21 @@ export class TransactionsPage {
   protected readonly categoriesStore = inject(CategoriesStore);
   protected readonly viewContext = inject(ViewContextStore);
   protected readonly quickAdd = inject(QuickAddLauncher);
-  private readonly session = inject(SessionStore);
+  protected readonly session = inject(SessionStore);
+  private readonly financeEvents = inject(FinanceEvents);
+  private readonly toast = inject(ToastService);
+
+  protected readonly selectedTransaction = signal<TransactionItem | null>(null);
+  protected readonly referenceSnapshot = signal<TransactionItem | null>(null);
+  protected readonly snapshotLoading = signal<boolean>(false);
+  protected readonly detailSaving = signal<boolean>(false);
+  protected readonly detailDeleting = signal<boolean>(false);
+  protected readonly detailError = signal<string | null>(null);
+
+  private snapshotSeq = 0;
 
   protected readonly isFamilyView = computed(() => this.viewContext.view() === 'FAMILY');
+  protected readonly currentUserId = computed(() => this.session.me()?.id ?? null);
 
   protected readonly availableCurrencies = computed<readonly string[]>(() => {
     const set = new Set<string>();
@@ -199,8 +245,78 @@ export class TransactionsPage {
     });
   }
 
-  protected onSelectTransaction(_tx: TransactionItem): void {
-    // Wired to TransactionDetailSheetComponent in the next step.
-    void _tx;
+  protected onSelectTransaction(tx: TransactionItem): void {
+    this.selectedTransaction.set(tx);
+    this.referenceSnapshot.set(null);
+    this.detailError.set(null);
+
+    if (this.session.isAdult()) {
+      void this.store.loadMembers();
+    }
+
+    const requestId = ++this.snapshotSeq;
+    this.snapshotLoading.set(true);
+    void this.store
+      .getReferenceSnapshot(tx.id)
+      .then((snapshot) => {
+        if (requestId === this.snapshotSeq) {
+          this.referenceSnapshot.set(snapshot);
+          this.snapshotLoading.set(false);
+        }
+      })
+      .catch(() => {
+        if (requestId === this.snapshotSeq) {
+          this.referenceSnapshot.set(null);
+          this.snapshotLoading.set(false);
+        }
+      });
+  }
+
+  protected onCloseDetail(): void {
+    this.snapshotSeq += 1;
+    this.selectedTransaction.set(null);
+    this.referenceSnapshot.set(null);
+    this.snapshotLoading.set(false);
+    this.detailError.set(null);
+  }
+
+  protected async onSavePatch(event: { id: string; patch: TransactionPatch }): Promise<void> {
+    if (this.detailSaving()) {
+      return;
+    }
+    this.detailSaving.set(true);
+    this.detailError.set(null);
+    try {
+      await this.store.updateTransaction(event.id, event.patch);
+      this.financeEvents.emit('transaction-updated');
+      this.toast.success('Movimiento actualizado');
+      this.onCloseDetail();
+    } catch (err: unknown) {
+      this.detailError.set(
+        extractTransactionProblemMessage(err, 'No pudimos actualizar el movimiento.'),
+      );
+    } finally {
+      this.detailSaving.set(false);
+    }
+  }
+
+  protected async onConfirmDelete(id: string): Promise<void> {
+    if (this.detailDeleting()) {
+      return;
+    }
+    this.detailDeleting.set(true);
+    this.detailError.set(null);
+    try {
+      await this.store.deleteTransaction(id);
+      this.financeEvents.emit('transaction-deleted');
+      this.toast.success('Movimiento eliminado');
+      this.onCloseDetail();
+    } catch (err: unknown) {
+      this.detailError.set(
+        extractTransactionProblemMessage(err, 'No pudimos eliminar el movimiento.'),
+      );
+    } finally {
+      this.detailDeleting.set(false);
+    }
   }
 }
