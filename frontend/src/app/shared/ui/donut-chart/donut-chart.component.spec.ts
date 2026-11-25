@@ -1,6 +1,5 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ThemeService } from '../../../core/theme/theme.service';
 import { DonutChartComponent, DonutSlice } from './donut-chart.component';
 
 @Component({
@@ -67,10 +66,12 @@ describe('DonutChartComponent', () => {
     const centerText = host.textContent ?? '';
     expect(centerText).toContain('Supermercado');
     expect(centerText).toContain('$750');
-    expect(centerText).toContain('75.0%');
+    expect(centerText).toContain('75%');
 
-    const firstGroup = host.querySelector('g.fo-donut-slice-group');
-    expect(firstGroup?.getAttribute('transform')).not.toBe('translate(0, 0)');
+    const arcs = host.querySelectorAll('circle.fo-donut-arc');
+    expect(arcs[0].classList.contains('is-focused')).toBe(true);
+    expect(arcs[0].getAttribute('stroke-width')).toBe('19');
+    expect(arcs[1].classList.contains('is-dim')).toBe(true);
 
     // Clicking the same item again deselects it
     legendButtons[0].click();
@@ -78,21 +79,16 @@ describe('DonutChartComponent', () => {
     expect(fixture.componentInstance.lastSelected()).toBeNull();
   });
 
-  it('recolors slices reactively when ThemeService accent changes at runtime', () => {
-    const theme = TestBed.inject(ThemeService);
-    theme.apply({ themePreference: 'LIGHT', accentColor: '#0F766E' });
-
+  it('colors slices with the mock palette tokens so they follow the active accent', () => {
     const fixture = TestBed.createComponent(DonutHostComponent);
     fixture.detectChanges();
 
     const donutCmp = fixture.debugElement.children[0].componentInstance as DonutChartComponent;
-    expect(donutCmp.segments()[0].color).toBe('#0F766E');
-
-    theme.apply({ themePreference: 'LIGHT', accentColor: '#2563EB' });
-    fixture.detectChanges();
-
-    expect(donutCmp.segments()[0].color).toBe('#2563EB');
+    expect(donutCmp.segments().map((segment) => segment.color)).toEqual([
+      'var(--fo-accent)',
+      'var(--fo-accent-mid)',
+    ]);
     const firstArc = (fixture.nativeElement as HTMLElement).querySelector('circle.fo-donut-arc');
-    expect(firstArc?.getAttribute('stroke')).toBe('#2563EB');
+    expect(firstArc?.getAttribute('stroke')).toBe('var(--fo-accent)');
   });
 });

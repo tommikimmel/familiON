@@ -139,7 +139,7 @@ describe('ShellComponent', () => {
     // Hide Personal|Familia toggle when HIJO has OWN_ONLY visibility
     session.setMe(buildMe({ role: 'HIJO', familyVisibility: 'OWN_ONLY' }));
     fixture.detectChanges();
-    expect(host.querySelector('[data-testid="mobile-header"] fo-segmented-toggle')).toBeNull();
+    expect(host.querySelector('[data-testid="mobile-scope-bar"]')).toBeNull();
   });
 
   it('renders desktop sidebar and topbar at >=1024px, handles N shortcut, period shift, and badge', () => {

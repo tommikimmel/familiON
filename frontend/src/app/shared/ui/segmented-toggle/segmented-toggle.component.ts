@@ -11,6 +11,16 @@ export interface SegmentedOption<T = string> {
   label: string;
 }
 
+/**
+ * Visual variants, each mirroring a control of the mocks:
+ * - `segmented`: `.mini-seg` + `.mini-seg-slider` (default).
+ * - `scope`: `.scope-bar` + `.scope-slider` (Personal | Familia); the slider turns accent
+ *   when any option other than the first is active.
+ * - `tabs`: mobile `.gran-tabs` (plain, active pill in accent-soft).
+ * - `tabs-boxed`: desktop `.gran-tabs` (boxed, active pill raised on card).
+ */
+export type SegmentedVariant = 'segmented' | 'scope' | 'tabs' | 'tabs-boxed';
+
 @Component({
   selector: 'fo-segmented-toggle',
   standalone: true,
@@ -18,14 +28,20 @@ export interface SegmentedOption<T = string> {
     <div
       role="tablist"
       [attr.aria-label]="ariaLabel()"
-      class="relative inline-grid w-full items-center rounded-full border border-border bg-surface-2 p-1"
-      [style.grid-template-columns]="'repeat(' + options().length + ', minmax(0, 1fr))'"
+      class="fo-seg"
+      [class.fo-seg--segmented]="variant() === 'segmented'"
+      [class.fo-seg--md]="variant() === 'segmented' && size() === 'md'"
+      [class.fo-seg--scope]="variant() === 'scope'"
+      [class.fo-seg--tabs]="isTabs()"
+      [class.fo-seg--boxed]="variant() === 'tabs-boxed'"
+      [class.is-accent]="variant() === 'scope' && activeIndex() > 0"
+      [style.grid-template-columns]="isTabs() ? null : 'repeat(' + options().length + ', minmax(0, 1fr))'"
     >
-      @if (activeIndex() >= 0 && options().length > 0) {
+      @if (!isTabs() && activeIndex() >= 0 && options().length > 0) {
         <div
           aria-hidden="true"
-          class="fo-segmented-pill pointer-events-none absolute top-1 bottom-1 left-1 rounded-full bg-surface shadow-xs"
-          [style.width]="'calc((100% - 0.5rem) / ' + options().length + ')'"
+          class="fo-seg-slider"
+          [style.width]="'calc((100% - 2 * var(--fo-seg-pad)) / ' + options().length + ')'"
           [style.transform]="'translateX(' + activeIndex() * 100 + '%)'"
         ></div>
       }
@@ -39,15 +55,8 @@ export interface SegmentedOption<T = string> {
           [attr.tabindex]="isSelected ? 0 : -1"
           (click)="select(option.value)"
           (keydown)="onKeydown($event, i)"
-          class="fo-focus-ring relative z-10 cursor-pointer truncate rounded-full font-medium transition-colors duration-150"
-          [class.px-3]="size() === 'sm'"
-          [class.py-1]="size() === 'sm'"
-          [class.text-xs]="size() === 'sm'"
-          [class.px-4]="size() === 'md'"
-          [class.py-1.5]="size() === 'md'"
-          [class.text-sm]="size() === 'md'"
-          [class.text-text]="isSelected"
-          [class.text-muted]="!isSelected"
+          class="fo-seg-btn fo-focus-ring"
+          [class.is-active]="isSelected"
         >
           {{ option.label }}
         </button>
@@ -59,8 +68,168 @@ export interface SegmentedOption<T = string> {
       display: block;
     }
 
-    .fo-segmented-pill {
-      transition: transform 320ms var(--fo-ease-spring, cubic-bezier(0.34, 1.35, 0.64, 1));
+    :host(.inline) {
+      display: inline-block;
+    }
+
+    .fo-seg {
+      --fo-seg-pad: 2px;
+      position: relative;
+      display: grid;
+      width: 100%;
+      align-items: center;
+    }
+
+    .fo-seg-slider {
+      position: absolute;
+      top: var(--fo-seg-pad);
+      bottom: var(--fo-seg-pad);
+      left: var(--fo-seg-pad);
+      pointer-events: none;
+      background: var(--fo-surface);
+      transition:
+        transform 0.28s var(--fo-ease-spring),
+        background 0.25s ease;
+    }
+
+    .fo-seg-btn {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      border: none;
+      background: transparent;
+      color: var(--fo-text-muted);
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.18s ease;
+    }
+
+    .fo-seg-btn.is-active {
+      color: var(--fo-text);
+    }
+
+    /* mini-seg */
+    .fo-seg--segmented {
+      background: var(--fo-surface-2);
+      border-radius: 8px;
+      padding: var(--fo-seg-pad);
+    }
+
+    .fo-seg--segmented .fo-seg-slider {
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .fo-seg--segmented .fo-seg-btn {
+      font-size: 10.5px;
+      padding: 3px 9px;
+      border-radius: 6px;
+    }
+
+    .fo-seg--segmented.fo-seg--md {
+      --fo-seg-pad: 3px;
+      border-radius: 10px;
+    }
+
+    .fo-seg--segmented.fo-seg--md .fo-seg-slider {
+      border-radius: 8px;
+    }
+
+    .fo-seg--segmented.fo-seg--md .fo-seg-btn {
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+
+    /* scope-bar */
+    .fo-seg--scope {
+      --fo-seg-pad: 3px;
+      background: var(--fo-surface-2);
+      border: 1px solid var(--fo-border);
+      border-radius: 12px;
+      padding: var(--fo-seg-pad);
+    }
+
+    .fo-seg--scope .fo-seg-slider {
+      border-radius: 9px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      transition:
+        transform 0.32s var(--fo-ease-spring),
+        background 0.25s ease;
+    }
+
+    .fo-seg--scope .fo-seg-btn {
+      font-size: 11.5px;
+      padding: 6px;
+      border-radius: 9px;
+      transition: color 0.2s ease;
+    }
+
+    .fo-seg--scope.is-accent .fo-seg-slider {
+      background: var(--fo-accent);
+    }
+
+    .fo-seg--scope.is-accent .fo-seg-btn.is-active {
+      color: var(--fo-accent-contrast);
+    }
+
+    @media (min-width: 1024px) {
+      .fo-seg--scope {
+        border-radius: 10px;
+      }
+
+      .fo-seg--scope .fo-seg-slider {
+        border-radius: 7px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        transition:
+          transform 0.3s var(--fo-ease-spring),
+          background 0.25s ease;
+      }
+
+      .fo-seg--scope .fo-seg-btn {
+        padding: 5px 4px;
+        border-radius: 0;
+      }
+    }
+
+    /* gran-tabs */
+    .fo-seg--tabs {
+      display: inline-flex;
+      width: auto;
+      gap: 2px;
+    }
+
+    .fo-seg--tabs .fo-seg-btn {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 7px;
+      transition: all 0.18s ease;
+    }
+
+    .fo-seg--tabs .fo-seg-btn.is-active {
+      background: var(--fo-accent-soft);
+      color: var(--fo-accent);
+    }
+
+    .fo-seg--tabs.fo-seg--boxed {
+      background: var(--fo-surface-2);
+      border: 1px solid var(--fo-border);
+      border-radius: 9px;
+      padding: 2px;
+    }
+
+    .fo-seg--tabs.fo-seg--boxed .fo-seg-btn {
+      padding: 4px 9px;
+      transition: all 0.15s ease;
+    }
+
+    .fo-seg--tabs.fo-seg--boxed .fo-seg-btn.is-active {
+      background: var(--fo-surface);
+      color: var(--fo-text);
+      box-shadow: var(--fo-shadow);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -70,9 +239,14 @@ export class SegmentedToggleComponent<T = string> {
   readonly value = model.required<T>();
   readonly ariaLabel = input<string>('Selector de opciones');
   readonly size = input<'sm' | 'md'>('md');
+  readonly variant = input<SegmentedVariant>('segmented');
 
   protected readonly activeIndex = computed(() =>
     this.options().findIndex((option) => option.value === this.value()),
+  );
+
+  protected readonly isTabs = computed(
+    () => this.variant() === 'tabs' || this.variant() === 'tabs-boxed',
   );
 
   protected select(nextValue: T): void {

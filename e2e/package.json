@@ -7,7 +7,10 @@
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "install-browsers": "playwright install chromium",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "visual:seed": "playwright test -c visual/playwright.config.ts --project=seed",
+    "visual:capture": "playwright test -c visual/playwright.config.ts --project=capture",
+    "visual:typecheck": "tsc --noEmit -p visual/tsconfig.json"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
