@@ -8,7 +8,7 @@ RUN chmod +x mvnw
 COPY src src
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -DskipTests package
 
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:25-jre-alpine AS runtime
 WORKDIR /app
 
 RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-spa
