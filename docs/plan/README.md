@@ -147,6 +147,16 @@ flowchart LR
 
 ---
 
+## 6. Pendientes post-plan
+
+- Optimizar bundle inicial (~715 kB vs presupuesto 500 kB).
+- Campana de notificaciones en el header mobile.
+- Alta directa de operaciones SWAP (divisa → divisa) en la UI.
+- Unificar el menú de exportación en `shared/ui`.
+- Agregar `receiptAttachmentId` a `TransactionCreate` en `core/finance`.
+- Revisar PRs de Dependabot (#9–#18): varias son majors incompatibles.
+- Releases `develop → main` por fase (tags SemVer).
+
 ## 5. Seguimiento
 
 | Tarea | Estado | PR | Notas |
@@ -166,5 +176,4 @@ flowchart LR
 | T13 | mergeada | [#28](https://github.com/tommikimmel/familiON/pull/28) | 31 categorías de sistema (la tarjeta decía 32 por error) |
 | T14 | mergeada | [#26](https://github.com/tommikimmel/familiON/pull/26) | 134 tests |
 | T15 | mergeada | [#27](https://github.com/tommikimmel/familiON/pull/27) | amplió `fo-icon` con íconos de cuentas/categorías (aprobado) |
-| T16–T18 | en curso | — | Ola 2.2 |
-| T19–T41 | pendiente | — | |
+| T16–T41 | mergeadas | #30–#65 | ver historial de PRs en GitHub; T36 y T41 terminadas por workers Claude (cuota semanal de Antigravity agotada) |
