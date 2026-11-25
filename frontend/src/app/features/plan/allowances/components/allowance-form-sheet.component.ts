@@ -45,7 +45,7 @@ export type AllowanceFormSubmitPayload =
             name="childUserId"
             required
             [(ngModel)]="childUserId"
-            class="fo-focus-ring mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+            class="fo-focus-ring mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           >
             <option value="" disabled>Seleccioná un hijo</option>
             @for (c of children(); track c.id) {
@@ -65,7 +65,7 @@ export type AllowanceFormSubmitPayload =
           name="targetAccountId"
           required
           [(ngModel)]="targetAccountId"
-          class="fo-focus-ring mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+          class="fo-focus-ring mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
         >
           <option value="" disabled>Seleccioná la cuenta</option>
           @for (acc of accounts(); track acc.id) {
@@ -83,7 +83,7 @@ export type AllowanceFormSubmitPayload =
           id="allowance-source-account"
           name="sourceAccountId"
           [(ngModel)]="sourceAccountId"
-          class="fo-focus-ring mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+          class="fo-focus-ring mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
         >
           <option [value]="null">Sin cuenta origen automática</option>
           @for (acc of accounts(); track acc.id) {
@@ -138,7 +138,7 @@ export type AllowanceFormSubmitPayload =
             id="allowance-frequency"
             name="frequency"
             [(ngModel)]="frequency"
-            class="fo-focus-ring mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+            class="fo-focus-ring mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           >
             <option value="MONTHLY">Mensual</option>
             <option value="WEEKLY">Semanal</option>
@@ -157,7 +157,7 @@ export type AllowanceFormSubmitPayload =
             [max]="frequency() === 'MONTHLY' ? 31 : 7"
             required
             [(ngModel)]="dayOfPeriod"
-            class="fo-focus-ring mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+            class="fo-focus-ring mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           />
         </div>
       </div>
@@ -171,7 +171,7 @@ export type AllowanceFormSubmitPayload =
           id="allowance-rule"
           name="adjustmentRule"
           [(ngModel)]="adjustmentRule"
-          class="fo-focus-ring mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+          class="fo-focus-ring mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
         >
           <option value="MANUAL">Manual / Monto fijo</option>
           <option value="IPC">Ajuste por inflación (IPC)</option>

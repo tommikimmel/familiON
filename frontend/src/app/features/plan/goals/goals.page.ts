@@ -53,12 +53,12 @@ const STATUS_FILTER_OPTIONS: readonly SegmentedOption<GoalStatus | 'ALL'>[] = [
     SkeletonComponent,
   ],
   template: `
-    <section class="space-y-5 p-4 lg:p-6 max-w-7xl mx-auto">
+    <section class="w-full space-y-3 lg:space-y-4">
       <!-- Header -->
       <header class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 class="text-xl font-semibold text-text">Metas</h1>
-          <p class="text-xs text-muted mt-0.5">
+          <h1 class="fo-page-title text-text lg:sr-only">Metas</h1>
+          <p class="mt-0.5 text-[11px] text-muted">
             Ahorrá en unidades estables con seguimiento de progreso real y aportes rápidos.
           </p>
         </div>

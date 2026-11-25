@@ -3,7 +3,7 @@ import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { CardComponent, IconComponent } from '../../../../shared/ui';
 import { toNumber } from '../../../../shared/utils/decimal';
 import { InstallmentPlan } from '../data-access/installments.models';
-import { formatIsoDate, formatSurchargePct } from '../utils/installments-format';
+import { formatIsoDate, formatSurchargePct, formatYearMonthShort } from '../utils/installments-format';
 
 @Component({
   selector: 'fo-installment-plan-card',
@@ -15,25 +15,25 @@ import { formatIsoDate, formatSurchargePct } from '../utils/installments-format'
         type="button"
         data-testid="installment-plan-card"
         (click)="selected.emit(plan())"
-        class="fo-focus-ring block w-full cursor-pointer rounded-[var(--fo-radius)] p-4 text-left"
+        class="fo-focus-ring block w-full cursor-pointer rounded-[var(--fo-radius)] p-3.5 text-left lg:px-4"
       >
         <div class="flex items-start justify-between gap-3">
           <div class="flex min-w-0 items-center gap-3">
             <div
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]"
               [style.background-color]="categoryTint()"
               [style.color]="plan().category.colorHex || 'var(--fo-accent)'"
             >
-              <fo-icon [name]="plan().category.icon || 'credit-card'" [size]="18" />
+              <fo-icon [name]="plan().category.icon || 'credit-card'" [size]="15" />
             </div>
 
             <div class="min-w-0">
-              <h3 class="truncate text-sm font-semibold text-text">
+              <h3 class="fo-tx-title truncate">
                 {{ plan().description }}
               </h3>
-              <p class="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+              <p class="fo-tx-meta mt-px flex flex-wrap items-center gap-x-2">
                 <span class="inline-flex items-center gap-1">
-                  <fo-icon name="credit-card" [size]="13" />
+                  <fo-icon name="credit-card" [size]="11" />
                   <span>{{ plan().creditCardAccount.name }}</span>
                 </span>
                 @if (showAttributedTo()) {
@@ -45,18 +45,22 @@ import { formatIsoDate, formatSurchargePct } from '../utils/installments-format'
 
           <span
             data-testid="plan-surcharge-chip"
-            class="shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums"
-            [class.bg-accent-soft]="!plan().hasInterest"
-            [class.text-accent]="!plan().hasInterest"
-            [class.bg-warning/15]="plan().hasInterest"
-            [class.text-warning]="plan().hasInterest"
+            class="fo-pill-tag fo-num shrink-0"
+            [class.fo-pill-accent]="plan().hasInterest"
           >
             {{ surchargeChipLabel() }}
           </span>
         </div>
 
-        <div class="mt-4 space-y-1.5">
-          <div class="flex items-center justify-between text-xs">
+        <p data-testid="plan-summary-line" class="fo-tx-meta fo-num mt-2.5">
+          {{ plan().totalInstallments }} cuotas de {{ plan().installmentAmount | money: plan().currencyCode }}/mes ·
+          Total
+          {{ plan().financedTotal | money: plan().currencyCode }}
+          ({{ billingRange() }})
+        </p>
+
+        <div class="mt-2.5 space-y-1.5">
+          <div class="flex items-center justify-between text-[11px]">
             <span data-testid="plan-progress-label" class="font-medium text-text tabular-nums">
               Cuota {{ plan().paidInstallments }} de {{ plan().totalInstallments }}
             </span>
@@ -69,53 +73,43 @@ import { formatIsoDate, formatSurchargePct } from '../utils/installments-format'
             aria-valuemin="0"
             [attr.aria-valuemax]="plan().totalInstallments"
             [attr.aria-label]="'Progreso de cuotas de ' + plan().description"
-            class="h-2 w-full overflow-hidden rounded-full bg-surface-2"
+            class="fo-progress-track"
           >
             <div
-              class="h-full rounded-full transition-all duration-300"
+              class="fo-progress-fill"
               [style.width.%]="progressPct()"
-              [class.bg-accent]="plan().status === 'ACTIVE'"
               [class.bg-success]="plan().status === 'COMPLETED'"
               [class.bg-muted]="plan().status === 'CANCELLED'"
             ></div>
           </div>
         </div>
 
-        <div class="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3">
+        <div class="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-2.5">
           @if (plan().nextInstallment; as next) {
             <div>
-              <p class="text-xs text-muted">Próxima cuota</p>
-              <p
-                data-testid="plan-next-installment"
-                class="mt-0.5 text-sm font-semibold text-text tabular-nums"
-              >
+              <p class="text-[10.5px] text-muted">Próxima cuota</p>
+              <p data-testid="plan-next-installment" class="fo-tx-amt mt-px">
                 {{ next.amount | money: plan().currencyCode }}
               </p>
-              <p class="text-xs text-muted">{{ formatDate(next.date) }}</p>
+              <p class="text-[10.5px] text-muted">{{ formatDate(next.date) }}</p>
             </div>
           } @else {
             <div>
-              <p class="text-xs text-muted">Total financiado</p>
-              <p class="mt-0.5 text-sm font-semibold text-text tabular-nums">
+              <p class="text-[10.5px] text-muted">Total financiado</p>
+              <p class="fo-tx-amt mt-px">
                 {{ plan().financedTotal | money: plan().currencyCode }}
               </p>
-              <p class="text-xs text-muted">{{ statusSubtitle() }}</p>
+              <p class="text-[10.5px] text-muted">{{ statusSubtitle() }}</p>
             </div>
           }
 
           <div class="text-right">
-            <p class="text-xs text-muted">Restante</p>
-            <p
-              data-testid="plan-remaining-amount"
-              class="mt-0.5 text-sm font-semibold text-text tabular-nums"
-            >
+            <p class="text-[10.5px] text-muted">Restante</p>
+            <p data-testid="plan-remaining-amount" class="fo-tx-amt mt-px">
               {{ plan().remainingAmount | money: plan().currencyCode }}
             </p>
             @if (showRealRemaining()) {
-              <p
-                data-testid="plan-real-remaining"
-                class="mt-0.5 text-xs font-medium text-accent tabular-nums"
-              >
+              <p data-testid="plan-real-remaining" class="mt-0.5 text-xs font-medium text-accent tabular-nums">
                 ≈ {{ plan().realRemainingAmount | money: plan().currencyCode }} en plata de hoy
               </p>
             }
@@ -125,7 +119,7 @@ import { formatIsoDate, formatSurchargePct } from '../utils/installments-format'
         @if (showRealRemaining()) {
           <p
             data-testid="plan-liquation-note"
-            class="mt-2.5 flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1.5 text-[11px] text-muted"
+            class="mt-2.5 flex items-center gap-1.5 rounded-[9px] bg-accent-soft px-2.5 py-1.5 text-[10.5px] text-text-2"
           >
             <fo-icon name="trending-up" [size]="13" class="text-accent" />
             <span>Las cuotas fijas se licúan con la inflación</span>
@@ -151,6 +145,13 @@ export class InstallmentPlanCardComponent {
     return Math.max(0, Math.min(100, raw));
   });
 
+  protected readonly billingRange = computed<string>(() => {
+    const current = this.plan();
+    const from = formatYearMonthShort(current.firstBillingDate.slice(0, 7));
+    const to = formatYearMonthShort(current.lastBillingDate.slice(0, 7));
+    return `${from} → ${to}`;
+  });
+
   protected readonly surchargeChipLabel = computed<string>(() => {
     const current = this.plan();
     if (!current.hasInterest) {
@@ -164,11 +165,7 @@ export class InstallmentPlanCardComponent {
 
   protected readonly showRealRemaining = computed<boolean>(() => {
     const current = this.plan();
-    return (
-      current.status === 'ACTIVE' &&
-      current.realRemainingAmount !== null &&
-      toNumber(current.remainingAmount) > 0
-    );
+    return current.status === 'ACTIVE' && current.realRemainingAmount !== null && toNumber(current.remainingAmount) > 0;
   });
 
   protected readonly categoryTint = computed<string>(() => {

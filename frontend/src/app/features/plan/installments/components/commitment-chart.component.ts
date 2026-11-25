@@ -19,7 +19,7 @@ import {
       <div class="space-y-4">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p class="text-xs font-medium tracking-wide text-muted uppercase">Total pendiente</p>
+            <p class="fo-kpi-label">Total pendiente</p>
             @if (pendingTotals().length > 0) {
               <div class="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
                 @for (total of pendingTotals(); track total.currencyCode; let isFirst = $first) {
@@ -40,7 +40,7 @@ import {
             } @else {
               <p
                 data-testid="installments-total-pending"
-                class="mt-1 text-2xl font-semibold text-text tabular-nums"
+                class="fo-kpi-val mt-1 text-text"
               >
                 {{ 0 | money: baseCurrency() }}
               </p>
@@ -48,7 +48,7 @@ import {
           </div>
 
           <div class="flex flex-col items-end gap-2">
-            <h2 class="text-sm font-semibold text-text">Lo que ya está comprometido</h2>
+            <h2 class="text-[12.5px] font-bold text-text">Lo que ya está comprometido</h2>
             @if (currencies().length > 1) {
               <div class="flex items-center gap-1" role="group" aria-label="Divisa del gráfico">
                 @for (code of currencies(); track code) {
@@ -89,11 +89,11 @@ import {
                   class="fo-focus-ring group flex h-full cursor-pointer flex-col items-center justify-end gap-1.5 rounded-lg p-0.5"
                 >
                   <div
-                    class="flex h-full w-full items-end justify-center rounded-md bg-surface-2/70"
+                    class="flex h-full w-full items-end justify-center rounded-[7px_7px_3px_3px] bg-surface-2/70"
                   >
                     @if (bucket.amount > 0) {
                       <div
-                        class="w-full rounded-t-md transition-all duration-200"
+                        class="w-full rounded-[7px_7px_3px_3px] transition-all duration-200"
                         [style.height.%]="bucket.heightPct"
                         [class.bg-accent]="isSelected || !selectedMonth()"
                         [class.bg-accent/55]="selectedMonth() && !isSelected"
@@ -104,7 +104,7 @@ import {
                     }
                   </div>
                   <span
-                    class="text-[11px] leading-none capitalize"
+                    class="text-[10.5px] font-semibold leading-none capitalize"
                     [class.font-semibold]="isSelected"
                     [class.text-text]="isSelected"
                     [class.text-muted]="!isSelected"

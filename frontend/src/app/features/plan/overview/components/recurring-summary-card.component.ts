@@ -3,12 +3,11 @@ import { RouterLink } from '@angular/router';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { IconComponent } from '../../../../shared/ui';
 import { PlanRecurringItem } from '../data-access/plan-overview.models';
-import {
-  formatCurrencyTotals,
-  formatShortDate,
-  groupAmountsByCurrency,
-} from '../utils/plan-overview.formatters';
+import { formatCurrencyTotals, formatShortDate, groupAmountsByCurrency } from '../utils/plan-overview.formatters';
 import { PlanSectionCardComponent } from './plan-section-card.component';
+
+/** Maximum rows shown in the overview list (mock shows a short month checklist). */
+const MAX_ROWS = 4;
 
 @Component({
   selector: 'fo-recurring-summary-card',
@@ -16,10 +15,10 @@ import { PlanSectionCardComponent } from './plan-section-card.component';
   imports: [IconComponent, MoneyPipe, PlanSectionCardComponent, RouterLink],
   template: `
     <fo-plan-section-card
-      title="Este mes"
-      icon="repeat"
+      title="Gastos fijos del mes"
       linkRoute="/plan/recurring"
       testId="plan-recurring-card"
+      [flatOnMobile]="true"
       [degraded]="items() === null"
       [retrying]="retrying()"
       [badgeText]="overdueBadge()"
@@ -28,80 +27,51 @@ import { PlanSectionCardComponent } from './plan-section-card.component';
     >
       @if (items(); as list) {
         @if (list.length === 0) {
-          <div
-            data-testid="recurring-empty-state"
-            class="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface-2/40 px-4 py-6 text-center"
-          >
-            <p class="text-sm font-medium text-text">Sin gastos fijos todavía</p>
-            <p class="mt-1 text-xs text-muted">
-              Cargá alquiler, servicios o suscripciones para seguir los vencimientos del mes.
-            </p>
+          <div data-testid="recurring-empty-state" class="pl-empty">
+            <p class="fo-tx-title">Sin gastos fijos todavía</p>
+            <p class="pl-sub">Cargá alquiler, servicios o suscripciones para seguir los vencimientos del mes.</p>
             <a
               routerLink="/plan/recurring"
               data-testid="recurring-empty-cta"
-              class="fo-focus-ring mt-3 inline-flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-xs font-semibold text-accent-contrast transition-opacity duration-150 hover:opacity-92"
+              class="fo-btn-primary fo-focus-ring mt-2 inline-flex items-center gap-1.5"
             >
               <fo-icon name="plus" [size]="14" />
               <span>Agregar gasto fijo</span>
             </a>
           </div>
         } @else {
-          <div class="flex flex-1 flex-col justify-between gap-3">
-            <div class="space-y-3">
-              @if (unpaidCount() > 0) {
-                <p
-                  data-testid="recurring-headline"
-                  class="text-lg font-bold tracking-tight text-text tabular-nums"
-                >
-                  {{ unpaidCount() }}
-                  {{ unpaidCount() === 1 ? 'pendiente' : 'pendientes' }}
-                  · {{ unpaidTotalsLabel() }}
-                </p>
-              } @else if (paidCount() > 0) {
-                <p
-                  data-testid="recurring-headline"
-                  class="flex items-center gap-1.5 text-base font-semibold text-success"
-                >
-                  <fo-icon name="check-circle" [size]="17" />
-                  <span>
-                    Todo al día · {{ paidCount() }}
-                    {{ paidCount() === 1 ? 'pagado' : 'pagados' }}
-                  </span>
-                </p>
-              } @else {
-                <p data-testid="recurring-headline" class="text-sm font-medium text-muted">
-                  Sin vencimientos programados este mes.
-                </p>
-              }
+          <div class="flex flex-1 flex-col gap-2">
+            @if (unpaidCount() > 0) {
+              <p data-testid="recurring-headline" class="pl-sub fo-num">
+                {{ unpaidCount() }}
+                {{ unpaidCount() === 1 ? 'pendiente' : 'pendientes' }}
+                · {{ unpaidTotalsLabel() }}
+              </p>
+            } @else if (paidCount() > 0) {
+              <p data-testid="recurring-headline" class="pl-sub">
+                Todo al día · {{ paidCount() }} {{ paidCount() === 1 ? 'pagado' : 'pagados' }}
+              </p>
+            } @else {
+              <p data-testid="recurring-headline" class="pl-sub">Sin vencimientos programados este mes.</p>
+            }
 
+            <div class="pl-tx-list">
               @if (overdueItems().length > 0) {
-                <div
-                  data-testid="recurring-overdue-list"
-                  class="space-y-1.5 rounded-xl border border-danger/30 bg-danger/8 p-2.5"
-                >
-                  <p class="flex items-center gap-1.5 text-xs font-semibold text-danger">
-                    <fo-icon name="alert-circle" [size]="14" />
-                    <span>
-                      {{ overdueItems().length === 1 ? 'Vencido' : 'Vencidos' }}
-                    </span>
-                  </p>
-                  <ul class="space-y-1">
-                    @for (item of visibleOverdue(); track item.id) {
-                      <li class="flex items-center justify-between gap-2 text-xs">
-                        <span class="min-w-0 truncate font-medium text-danger">
-                          {{ item.name }}
-                          <span class="font-normal opacity-85">
-                            · {{ formatDate(item.month.dueDate) }}
-                          </span>
-                        </span>
-                        <span class="shrink-0 font-semibold text-danger tabular-nums">
-                          {{ item.month.estimatedAmount | money: item.currencyCode }}
-                        </span>
-                      </li>
-                    }
-                  </ul>
+                <div data-testid="recurring-overdue-list" class="pl-tx-list">
+                  @for (item of visibleOverdue(); track item.id) {
+                    <div class="pl-tx-row">
+                      <span class="pl-check is-late" aria-hidden="true"></span>
+                      <div class="pl-tx-body">
+                        <p class="fo-tx-title">{{ item.name }}</p>
+                        <p class="fo-tx-meta pl-danger">Vencido · {{ formatDate(item.month.dueDate) }}</p>
+                      </div>
+                      <span class="fo-tx-amt">
+                        {{ item.month.estimatedAmount | money: item.currencyCode }}
+                      </span>
+                    </div>
+                  }
                   @if (extraOverdueCount() > 0) {
-                    <p class="text-[11px] font-medium text-danger/90">
+                    <p class="pl-sub pl-danger">
                       +{{ extraOverdueCount() }}
                       {{ extraOverdueCount() === 1 ? 'vencido más' : 'vencidos más' }}
                     </p>
@@ -109,31 +79,37 @@ import { PlanSectionCardComponent } from './plan-section-card.component';
                 </div>
               }
 
-              @if (nextPending(); as next) {
-                <div
-                  data-testid="recurring-next-due"
-                  class="rounded-xl border border-border bg-surface-2/60 p-3"
-                >
-                  <p class="text-[11px] font-semibold tracking-wide text-muted uppercase">
-                    Próximo vencimiento
-                  </p>
-                  <div class="mt-1 flex items-baseline justify-between gap-2">
-                    <span class="min-w-0 truncate text-sm font-semibold text-text">
-                      {{ next.name }}
-                    </span>
-                    <span class="shrink-0 text-sm font-bold text-text tabular-nums">
-                      {{ next.month.estimatedAmount | money: next.currencyCode }}
-                    </span>
+              @for (item of visiblePending(); track item.id; let first = $first) {
+                <div class="pl-tx-row" [attr.data-testid]="first ? 'recurring-next-due' : null">
+                  <span class="pl-check" aria-hidden="true"></span>
+                  <div class="pl-tx-body">
+                    <p class="fo-tx-title">{{ item.name }}</p>
+                    <p class="fo-tx-meta">Vence el {{ formatDate(item.month.dueDate) }}</p>
                   </div>
-                  <p class="mt-0.5 text-xs text-muted">
-                    Vence el {{ formatDate(next.month.dueDate) }}
-                  </p>
+                  <span class="fo-tx-amt">
+                    {{ item.month.estimatedAmount | money: item.currencyCode }}
+                  </span>
+                </div>
+              }
+
+              @for (item of visiblePaid(); track item.id) {
+                <div class="pl-tx-row">
+                  <span class="pl-check is-done" aria-hidden="true">
+                    <fo-icon name="check" [size]="12" [strokeWidth]="3" />
+                  </span>
+                  <div class="pl-tx-body">
+                    <p class="fo-tx-title line-through opacity-60">{{ item.name }}</p>
+                    <p class="fo-tx-meta">Pagado</p>
+                  </div>
+                  <span class="fo-tx-amt">
+                    {{ item.month.estimatedAmount | money: item.currencyCode }}
+                  </span>
                 </div>
               }
             </div>
 
             @if (applicableCount() > 0) {
-              <p class="text-xs text-muted tabular-nums">
+              <p class="pl-sub fo-num mt-auto">
                 {{ paidCount() }} de {{ applicableCount() }} gastos fijos pagados este mes
               </p>
             }
@@ -142,12 +118,7 @@ import { PlanSectionCardComponent } from './plan-section-card.component';
       }
     </fo-plan-section-card>
   `,
-  styles: `
-    :host {
-      display: block;
-      height: 100%;
-    }
-  `,
+  styleUrl: '../../plan-ui.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RecurringSummaryCardComponent {
@@ -208,9 +179,16 @@ export class RecurringSummaryCardComponent {
     return formatCurrencyTotals(totals);
   });
 
-  protected readonly nextPending = computed<PlanRecurringItem | null>(
-    () => this.pendingItems()[0] ?? null,
+  protected readonly visiblePending = computed(() =>
+    this.pendingItems().slice(0, Math.max(1, MAX_ROWS - this.visibleOverdue().length)),
   );
+
+  protected readonly visiblePaid = computed(() => {
+    const used = this.visibleOverdue().length + this.visiblePending().length;
+    return this.applicable()
+      .filter((item) => item.month.status === 'PAID')
+      .slice(0, Math.max(0, MAX_ROWS - used));
+  });
 
   protected formatDate(isoDate: string): string {
     return formatShortDate(isoDate);

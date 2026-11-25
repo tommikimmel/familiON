@@ -4,7 +4,7 @@ const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./overview/plan-overview.page').then((m) => m.PlanOverviewPage),
-    data: { title: 'Planificación' },
+    data: { title: 'Planificación · Cuotas, Fijos, Divisas y Metas' },
   },
   {
     path: 'installments',

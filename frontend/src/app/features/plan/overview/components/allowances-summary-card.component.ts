@@ -2,11 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { readableTextOn } from '../../../../shared/utils/color';
 import { PlanAllowanceItem } from '../data-access/plan-overview.models';
-import {
-  formatShortDate,
-  getChildInitials,
-  sanitizeAccentHex,
-} from '../utils/plan-overview.formatters';
+import { formatShortDate, getChildInitials, sanitizeAccentHex } from '../utils/plan-overview.formatters';
 import { PlanSectionCardComponent } from './plan-section-card.component';
 
 interface AllowanceRowViewModel {
@@ -27,7 +23,6 @@ interface AllowanceRowViewModel {
   template: `
     <fo-plan-section-card
       title="Mensualidades"
-      icon="baby"
       linkRoute="/plan/allowances"
       testId="plan-allowances-card"
       [degraded]="allowances() === null"
@@ -35,42 +30,29 @@ interface AllowanceRowViewModel {
       (retry)="retry.emit()"
     >
       @if (rows().length > 0) {
-        <ul class="space-y-2.5" aria-label="Mensualidades por hijo">
+        <ul class="pl-tx-list" aria-label="Mensualidades por hijo">
           @for (row of rows(); track row.id) {
-            <li
-              data-testid="allowance-item"
-              class="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2/50 px-3 py-2.5"
-            >
-              <div class="flex min-w-0 items-center gap-2.5">
-                <span
-                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                  [style.backgroundColor]="row.avatarBg"
-                  [style.color]="row.avatarText"
-                  aria-hidden="true"
-                >
-                  {{ row.initials }}
-                </span>
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-semibold text-text">{{ row.fullName }}</p>
-                  <p class="text-xs text-muted">Próxima: {{ row.nextDateLabel }}</p>
-                </div>
-              </div>
-
-              <span class="shrink-0 text-sm font-bold text-text tabular-nums">
-                {{ row.currentAmount | money: row.currencyCode }}
+            <li data-testid="allowance-item" class="pl-tx-row">
+              <span
+                class="fo-avatar"
+                [style.backgroundColor]="row.avatarBg"
+                [style.color]="row.avatarText"
+                aria-hidden="true"
+              >
+                {{ row.initials }}
               </span>
+              <div class="pl-tx-body">
+                <p class="fo-tx-title">{{ row.fullName }}</p>
+                <p class="fo-tx-meta">Próxima: {{ row.nextDateLabel }}</p>
+              </div>
+              <span class="fo-tx-amt">{{ row.currentAmount | money: row.currencyCode }}</span>
             </li>
           }
         </ul>
       }
     </fo-plan-section-card>
   `,
-  styles: `
-    :host {
-      display: block;
-      height: 100%;
-    }
-  `,
+  styleUrl: '../../plan-ui.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AllowancesSummaryCardComponent {
