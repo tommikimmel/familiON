@@ -26,16 +26,19 @@ public class ReceiptService {
     private final ReceiptAttachmentRepository repository;
     private final ReceiptStorage storage;
     private final TransactionTemplate transactionTemplate;
+    private final ReceiptOcrAsyncProcessor ocrAsyncProcessor;
 
     public ReceiptService(
             CurrentUserProvider currentUserProvider,
             ReceiptAttachmentRepository repository,
             ReceiptStorage storage,
-            TransactionTemplate transactionTemplate) {
+            TransactionTemplate transactionTemplate,
+            ReceiptOcrAsyncProcessor ocrAsyncProcessor) {
         this.currentUserProvider = currentUserProvider;
         this.repository = repository;
         this.storage = storage;
         this.transactionTemplate = transactionTemplate;
+        this.ocrAsyncProcessor = ocrAsyncProcessor;
     }
 
     public ReceiptAttachment upload(byte[] content) {
@@ -46,8 +49,9 @@ public class ReceiptService {
 
         CurrentUser currentUser = currentUserProvider.get();
         String storageKey = storage.save(currentUser.familyId(), mediaType.extension(), content);
+        ReceiptAttachment saved;
         try {
-            ReceiptAttachment saved = transactionTemplate.execute(status -> {
+            saved = transactionTemplate.execute(status -> {
                 ReceiptAttachment attachment = new ReceiptAttachment(
                         currentUser.familyId(),
                         currentUser.userId(),
@@ -56,11 +60,13 @@ public class ReceiptService {
                         content.length);
                 return repository.saveAndFlush(attachment);
             });
-            return Objects.requireNonNull(saved, "Saved receipt attachment must not be null");
+            saved = Objects.requireNonNull(saved, "Saved receipt attachment must not be null");
         } catch (RuntimeException ex) {
             storage.deleteQuietly(storageKey);
             throw ex;
         }
+        ocrAsyncProcessor.processAsync(saved.getId());
+        return saved;
     }
 
     @Transactional(readOnly = true)

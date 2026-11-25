@@ -38,6 +38,7 @@ class ReceiptServiceTest {
     private ReceiptAttachmentRepository repository;
     private ReceiptStorage storage;
     private TransactionTemplate transactionTemplate;
+    private ReceiptOcrAsyncProcessor ocrAsyncProcessor;
     private ReceiptService service;
 
     private UUID familyId;
@@ -51,7 +52,9 @@ class ReceiptServiceTest {
         repository = mock(ReceiptAttachmentRepository.class);
         storage = mock(ReceiptStorage.class);
         transactionTemplate = new ImmediateTransactionTemplate();
-        service = new ReceiptService(currentUserProvider, repository, storage, transactionTemplate);
+        ocrAsyncProcessor = mock(ReceiptOcrAsyncProcessor.class);
+        service = new ReceiptService(
+                currentUserProvider, repository, storage, transactionTemplate, ocrAsyncProcessor);
 
         familyId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
@@ -101,6 +104,7 @@ class ReceiptServiceTest {
         assertThat(result.getMimeType()).isEqualTo("image/png");
         assertThat(result.getFileSizeBytes()).isEqualTo(PNG_BYTES.length);
         assertThat(result.getOcrStatus()).isEqualTo(ReceiptOcrStatus.UPLOADED);
+        verify(ocrAsyncProcessor).processAsync(result.getId());
     }
 
     @Test
@@ -115,6 +119,7 @@ class ReceiptServiceTest {
         assertThatThrownBy(() -> service.upload(PNG_BYTES))
                 .isInstanceOf(IllegalStateException.class);
         verify(storage).deleteQuietly(key);
+        verify(ocrAsyncProcessor, never()).processAsync(any());
     }
 
     @Test
