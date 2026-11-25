@@ -1,6 +1,7 @@
 package com.familion.vehicles.infrastructure.persistence;
 
 import com.familion.vehicles.domain.MaintenanceLog;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +27,9 @@ public interface MaintenanceLogRepository extends JpaRepository<MaintenanceLog, 
             ORDER BY m.maintenanceDate DESC, m.createdAt DESC
             """)
     List<MaintenanceLog> findLogsWithDuesByVehicleId(@Param("vehicleId") UUID vehicleId);
+
+    List<MaintenanceLog> findAllByVehicleIdAndMaintenanceDateBetweenOrderByMaintenanceDateAscCreatedAtAsc(
+            UUID vehicleId, LocalDate from, LocalDate to);
 
     @Query("""
             SELECT m FROM MaintenanceLog m

@@ -2,6 +2,7 @@ package com.familion.vehicles.infrastructure.web;
 
 import com.familion.common.security.CurrentUserProvider;
 import com.familion.vehicles.application.VehicleService;
+import com.familion.vehicles.application.VehicleSummaryService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,10 +24,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class VehicleController {
 
     private final VehicleService vehicleService;
+    private final VehicleSummaryService vehicleSummaryService;
     private final CurrentUserProvider currentUserProvider;
 
-    public VehicleController(VehicleService vehicleService, CurrentUserProvider currentUserProvider) {
+    public VehicleController(
+            VehicleService vehicleService,
+            VehicleSummaryService vehicleSummaryService,
+            CurrentUserProvider currentUserProvider) {
         this.vehicleService = vehicleService;
+        this.vehicleSummaryService = vehicleSummaryService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -37,6 +44,15 @@ public class VehicleController {
     @GetMapping("/{id}")
     public VehicleResponse getVehicle(@PathVariable UUID id) {
         return vehicleService.getVehicle(currentUserProvider.get(), id);
+    }
+
+    @GetMapping("/{id}/summary")
+    public VehicleSummaryResponse getSummary(
+            @PathVariable UUID id,
+            @RequestParam(required = false, defaultValue = "NOMINAL") com.familion.vehicles.domain.VehicleLens lens,
+            @RequestParam(required = false) java.time.LocalDate from,
+            @RequestParam(required = false) java.time.LocalDate to) {
+        return vehicleSummaryService.getSummary(currentUserProvider.get(), id, lens, from, to);
     }
 
     @PostMapping
