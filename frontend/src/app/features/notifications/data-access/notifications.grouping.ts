@@ -43,6 +43,11 @@ const CATEGORY_META: Record<NotificationCategory, NotificationCategoryMeta> = {
     label: 'Sistema',
     toneClass: 'bg-surface-2 text-muted',
   },
+  ACTIVITY: {
+    icon: 'pencil',
+    label: 'Actividad',
+    toneClass: 'bg-surface-2 text-text',
+  },
 };
 
 const GROUP_LABELS: Record<NotificationGroupKey, string> = {

@@ -6,5 +6,6 @@ public enum NotificationCategory {
     ALLOWANCE,
     FIXED_EXPENSE_DUE,
     VEHICLE_ALERT,
-    SYSTEM
+    SYSTEM,
+    ACTIVITY
 }

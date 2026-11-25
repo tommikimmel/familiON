@@ -255,15 +255,6 @@
   color: var(--fo-text);
 }
 
-.fo-notif-dot {
-  position: absolute;
-  top: 6px;
-  right: 7px;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--fo-accent);
-}
 
 .fo-content-body {
   display: flex;
