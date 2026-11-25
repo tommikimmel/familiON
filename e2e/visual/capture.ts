@@ -9,6 +9,7 @@ import { OUT_DIR, readSession, VisualSession } from './session';
 /**
  * Captures every (mock ↔ app) pair from pairs.ts in 390×844 and 1440×900, light and dark,
  * and writes `out/<pair>-<viewport>-<theme>.png` with the mock (left) and the app (right).
+ * Public pairs without a mock for a viewport are written as app-only screenshots.
  * Raw screenshots are kept under `out/raw/`.
  */
 
@@ -124,7 +125,12 @@ async function captureApp(
   viewport: ViewportId,
   theme: ThemeId,
 ): Promise<Buffer> {
-  const context = await newViewportContext(browser, viewport, theme, session.storageState);
+  const context = await newViewportContext(
+    browser,
+    viewport,
+    theme,
+    pair.public ? undefined : session.storageState,
+  );
   try {
     await context.addInitScript((t) => {
       try {
@@ -134,11 +140,17 @@ async function captureApp(
       }
     }, theme);
     const page = await context.newPage();
-    await ensureLoggedIn(page, session, pair.route);
-    await page
-      .locator('[data-testid="mobile-header"], [data-testid="desktop-sidebar"]')
-      .first()
-      .waitFor({ state: 'visible' });
+    if (pair.public) {
+      await page.goto(`${APP_BASE_URL}${pair.route}`);
+      await page.waitForLoadState('networkidle');
+      await page.locator('main').first().waitFor({ state: 'visible' });
+    } else {
+      await ensureLoggedIn(page, session, pair.route);
+      await page
+        .locator('[data-testid="mobile-header"], [data-testid="desktop-sidebar"]')
+        .first()
+        .waitFor({ state: 'visible' });
+    }
     await page.mouse.move(0, 0);
     await page.waitForTimeout(SETTLE_MS);
     return await page.screenshot();
@@ -195,12 +207,19 @@ test('capture mock vs app side by side', async ({ browser }) => {
     }
     for (const viewport of Object.keys(VIEWPORTS) as ViewportId[]) {
       const mockTarget = pair.mocks[viewport];
-      if (!mockTarget) {
+      if (!mockTarget && !pair.public) {
         continue;
       }
       for (const theme of THEMES) {
         const name = `${pair.id}-${viewport}-${theme}`;
         await test.step(name, async () => {
+          if (!mockTarget) {
+            const appOnly = await captureApp(browser, session, pair, viewport, theme);
+            const file = path.join(OUT_DIR, `${name}.png`);
+            fs.writeFileSync(file, appOnly);
+            written.push(path.relative(process.cwd(), file));
+            return;
+          }
           const mock = await captureMock(browser, mockTarget, viewport, theme);
           const app = await captureApp(browser, session, pair, viewport, theme);
           fs.writeFileSync(path.join(RAW_DIR, `${name}-mock.png`), mock);
