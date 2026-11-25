@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-export type ButtonVariant = 'primary' | 'ghost' | 'danger';
+/** `primary` = mock `.btn-primary`, `soft` = mock `.btn-soft`. */
+export type ButtonVariant = 'primary' | 'soft' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 @Component({
@@ -12,27 +13,14 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
       [disabled]="isDisabled()"
       [attr.aria-busy]="loading() || null"
       [attr.aria-label]="ariaLabel()"
-      class="fo-focus-ring inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-55"
+      class="fo-btn fo-focus-ring"
       [class.w-full]="fullWidth()"
-      [class.cursor-pointer]="!isDisabled()"
-      [class.px-3]="size() === 'sm'"
-      [class.py-1.5]="size() === 'sm'"
-      [class.text-xs]="size() === 'sm'"
-      [class.px-4]="size() === 'md'"
-      [class.py-2.5]="size() === 'md'"
-      [class.text-sm]="size() === 'md'"
-      [class.px-5]="size() === 'lg'"
-      [class.py-3]="size() === 'lg'"
-      [class.text-base]="size() === 'lg'"
-      [class.bg-accent]="variant() === 'primary'"
-      [class.text-accent-contrast]="variant() === 'primary'"
-      [class.hover:opacity-92]="variant() === 'primary'"
-      [class.bg-transparent]="variant() === 'ghost'"
-      [class.text-text]="variant() === 'ghost'"
-      [class.hover:bg-surface-2]="variant() === 'ghost'"
-      [class.bg-danger]="variant() === 'danger'"
-      [class.text-white]="variant() === 'danger'"
-      [class.hover:opacity-92]="variant() === 'danger'"
+      [class.fo-btn--sm]="size() === 'sm'"
+      [class.fo-btn--lg]="size() === 'lg'"
+      [class.fo-btn--primary]="variant() === 'primary'"
+      [class.fo-btn--soft]="variant() === 'soft'"
+      [class.fo-btn--ghost]="variant() === 'ghost'"
+      [class.fo-btn--danger]="variant() === 'danger'"
     >
       @if (loading()) {
         <svg
@@ -68,6 +56,89 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
     :host([fullWidth='true']),
     :host(.w-full) {
       display: block;
+    }
+
+    .fo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition:
+        transform 0.14s var(--fo-ease-spring),
+        filter 0.15s ease,
+        border-color 0.15s ease,
+        background 0.15s ease;
+    }
+
+    .fo-btn:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    .fo-btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .fo-btn[aria-busy='true'] {
+      opacity: 0.75;
+    }
+
+    .fo-btn--sm {
+      font-size: 11px;
+      padding: 6px 10px;
+      border-radius: 9px;
+    }
+
+    .fo-btn--lg {
+      font-size: 13.5px;
+      font-weight: 700;
+      padding: 12px;
+      border-radius: 13px;
+    }
+
+    .fo-btn--primary {
+      background: var(--fo-accent);
+      color: var(--fo-accent-contrast);
+    }
+
+    .fo-btn--primary:hover {
+      filter: brightness(1.05);
+    }
+
+    .fo-btn--soft {
+      background: var(--fo-surface);
+      border-color: var(--fo-border);
+      color: var(--fo-text);
+    }
+
+    .fo-btn--soft:hover {
+      border-color: var(--fo-accent);
+    }
+
+    .fo-btn--ghost {
+      background: transparent;
+      color: var(--fo-text);
+    }
+
+    .fo-btn--ghost:hover {
+      background: var(--fo-surface-2);
+    }
+
+    .fo-btn--danger {
+      background: var(--fo-danger);
+      color: #ffffff;
+    }
+
+    .fo-btn--danger:hover {
+      filter: brightness(1.05);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -2,12 +2,10 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  inject,
   input,
   output,
   signal,
 } from '@angular/core';
-import { ThemeService } from '../../../core/theme/theme.service';
 import { tonalScale } from '../../utils/color';
 
 export interface DonutSlice {
@@ -33,22 +31,34 @@ export interface ComputedDonutSegment {
 const DEFAULT_FORMATTER = (value: number): string =>
   new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(value);
 
-const SVG_SIZE = 220;
+/** Mock `buildDonut` geometry: 124px viewBox, r=46, stroke 15 (19 when focused), 2.5 gap. */
+const SVG_SIZE = 124;
 const CENTER = SVG_SIZE / 2;
-const RADIUS = 76;
-const STROKE_WIDTH = 24;
+const RADIUS = 46;
+const STROKE_WIDTH = 15;
+const FOCUSED_STROKE_WIDTH = 19;
+const SLICE_GAP = 2.5;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const POP_OUT_DISTANCE = 7;
+const POP_OUT_DISTANCE = 2;
+
+/** Mock slice palette: accent, accent-mid, accent-light, slice-4, slice-5. */
+export const DONUT_PALETTE: readonly string[] = [
+  'var(--fo-accent)',
+  'var(--fo-accent-mid)',
+  'var(--fo-accent-light)',
+  'var(--fo-slice-4)',
+  'var(--fo-slice-5)',
+];
 
 @Component({
   selector: 'fo-donut-chart',
   standalone: true,
   template: `
-    <div class="flex flex-col items-center gap-4">
-      <div class="relative flex items-center justify-center">
+    <div class="fo-donut-body">
+      <div class="fo-donut-wrap">
         <svg
           [attr.viewBox]="'0 0 ' + svgSize + ' ' + svgSize"
-          class="h-52 w-52 overflow-visible"
+          class="fo-donut-svg"
           role="img"
           [attr.aria-label]="centerLabel() || 'Gráfico de distribución'"
         >
@@ -63,32 +73,25 @@ const POP_OUT_DISTANCE = 7;
 
           @for (segment of segments(); track segment.slice.id) {
             @let isSelected = selectedId() === segment.slice.id;
-            <g
-              class="fo-donut-slice-group"
-              [attr.transform]="
-                isSelected
-                  ? 'translate(' + segment.popOffsetX + ', ' + segment.popOffsetY + ')'
-                  : 'translate(0, 0)'
-              "
-            >
+            <g class="fo-donut-slice-group" [class.is-focused]="isSelected">
               <circle
                 [attr.cx]="center"
                 [attr.cy]="center"
                 [attr.r]="radius"
                 fill="none"
                 [attr.stroke]="segment.color"
-                [attr.stroke-width]="isSelected ? strokeWidth + 3 : strokeWidth"
+                [attr.stroke-width]="isSelected ? focusedStrokeWidth : strokeWidth"
                 [attr.stroke-dasharray]="segment.dashArray"
                 [attr.stroke-dashoffset]="segment.dashOffset"
-                [attr.transform]="'rotate(-90 ' + center + ' ' + center + ')'"
                 [attr.aria-label]="
                   segment.slice.label + ': ' + formatValue()(segment.value) + ' (' + formatPercent(segment.percentage) + ')'
                 "
                 [attr.aria-pressed]="isSelected"
                 role="button"
                 tabindex="0"
-                class="fo-donut-arc fo-focus-ring cursor-pointer"
-                [class.opacity-45]="selectedId() !== null && !isSelected"
+                class="fo-donut-arc fo-focus-ring"
+                [class.is-dim]="selectedId() !== null && !isSelected"
+                [class.is-focused]="isSelected"
                 (click)="toggleSelect(segment.slice)"
                 (keydown.enter)="toggleSelect(segment.slice)"
                 (keydown.space)="$event.preventDefault(); toggleSelect(segment.slice)"
@@ -97,70 +100,47 @@ const POP_OUT_DISTANCE = 7;
           }
         </svg>
 
-        <div
-          class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-8 text-center"
-        >
+        <div class="fo-donut-center">
           @if (activeSegment(); as current) {
-            <span class="max-w-full truncate text-xs font-medium text-muted">
-              {{ current.slice.label }}
-            </span>
-            <span class="tabular-nums text-base font-semibold text-text">
-              {{ formatValue()(current.value) }}
-            </span>
-            <span class="tabular-nums text-xs font-medium text-accent">
-              {{ formatPercent(current.percentage) }}
-            </span>
+            <div class="fo-donut-center-k">{{ current.slice.label }}</div>
+            <div class="fo-donut-center-v">{{ formatValue()(current.value) }}</div>
+            <div class="fo-donut-center-p">{{ formatPercent(current.percentage) }}</div>
           } @else {
             @if (centerLabel()) {
-              <span class="max-w-full truncate text-xs font-medium text-muted">
-                {{ centerLabel() }}
-              </span>
+              <div class="fo-donut-center-k">{{ centerLabel() }}</div>
             }
-            <span class="tabular-nums text-lg font-semibold text-text">
-              {{ formatValue()(total()) }}
-            </span>
+            <div class="fo-donut-center-v">{{ formatValue()(total()) }}</div>
+            @if (segments().length > 0) {
+              <div class="fo-donut-center-p">100%</div>
+            }
           }
         </div>
       </div>
 
       @if (segments().length > 0) {
-        <ul class="grid w-full grid-cols-1 gap-1.5 sm:grid-cols-2" aria-label="Leyenda del gráfico">
+        <ul class="fo-donut-legend" aria-label="Leyenda del gráfico">
           @for (segment of segments(); track segment.slice.id) {
             @let isSelected = selectedId() === segment.slice.id;
             <li>
               <button
                 type="button"
                 [attr.aria-pressed]="isSelected"
+                [attr.aria-label]="segment.slice.label + ': ' + formatValue()(segment.value) + ' (' + formatPercent(segment.percentage) + ')'"
                 (click)="toggleSelect(segment.slice)"
-                class="fo-focus-ring flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left transition-colors duration-150"
-                [class.bg-surface-2]="isSelected"
-                [class.hover:bg-surface-2]="!isSelected"
+                class="fo-legend-row fo-focus-ring"
+                [class.is-active]="isSelected"
               >
-                <span class="flex min-w-0 items-center gap-2">
-                  <span
-                    class="h-2.5 w-2.5 shrink-0 rounded-full"
-                    [style.background-color]="segment.color"
-                    aria-hidden="true"
-                  ></span>
-                  <span class="flex min-w-0 flex-col">
-                    <span class="truncate text-sm font-medium text-text">
-                      {{ segment.slice.label }}
-                    </span>
+                <span class="fo-legend-left">
+                  <span class="fo-legend-dot" [style.background]="segment.color" aria-hidden="true"></span>
+                  <span class="fo-legend-text">
+                    <span class="fo-legend-name">{{ segment.slice.label }}</span>
                     @if (segment.slice.sublabel) {
-                      <span class="truncate text-xs text-muted">
-                        {{ segment.slice.sublabel }}
-                      </span>
+                      <span class="fo-legend-sub">{{ segment.slice.sublabel }}</span>
                     }
                   </span>
                 </span>
-
-                <span class="shrink-0 text-right">
-                  <span class="block tabular-nums text-sm font-medium text-text">
-                    {{ formatValue()(segment.value) }}
-                  </span>
-                  <span class="block tabular-nums text-xs text-muted">
-                    {{ formatPercent(segment.percentage) }}
-                  </span>
+                <span class="fo-legend-val">
+                  {{ legendValue() === 'amount' ? formatValue()(segment.value) : formatPercent(segment.percentage) }}
                 </span>
               </button>
             </li>
@@ -174,33 +154,196 @@ const POP_OUT_DISTANCE = 7;
       display: block;
     }
 
-    .fo-donut-slice-group {
-      transition: transform 240ms var(--fo-ease-spring, cubic-bezier(0.34, 1.35, 0.64, 1));
+    .fo-donut-body {
+      display: grid;
+      grid-template-columns: 124px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+    }
+
+    .fo-donut-wrap {
+      position: relative;
+      width: 124px;
+      height: 124px;
+      display: grid;
+      place-items: center;
+    }
+
+    .fo-donut-svg {
+      width: 124px;
+      height: 124px;
+      transform: rotate(-90deg);
+      overflow: visible;
     }
 
     .fo-donut-arc {
+      cursor: pointer;
       transition:
-        stroke-dasharray 320ms ease-out,
-        stroke-dashoffset 320ms ease-out,
-        stroke-width 200ms ease-out,
-        opacity 180ms ease-out;
+        stroke-dasharray 0.52s var(--fo-ease-smooth),
+        stroke-dashoffset 0.52s var(--fo-ease-smooth),
+        opacity 0.2s ease,
+        stroke-width 0.24s var(--fo-ease-spring),
+        filter 0.24s ease;
+    }
+
+    .fo-donut-arc.is-dim {
+      opacity: 0.28;
+    }
+
+    .fo-donut-arc.is-focused {
+      filter: drop-shadow(0 0 6px var(--fo-accent-glow));
+    }
+
+    .fo-donut-center {
+      position: absolute;
+      padding: 0 6px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .fo-donut-center-k {
+      max-width: 78px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 9.5px;
+      font-weight: 600;
+      color: var(--fo-text-muted);
+    }
+
+    .fo-donut-center-v {
+      margin-top: 1px;
+      font-size: 13px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fo-donut-center-p {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--fo-accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .fo-donut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .fo-legend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      width: 100%;
+      padding: 4px 6px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: inherit;
+      font-family: inherit;
+      font-size: 11px;
+      text-align: left;
+      cursor: pointer;
+      transition:
+        background 0.15s ease,
+        transform 0.15s var(--fo-ease-spring);
+    }
+
+    .fo-legend-row:hover {
+      background: var(--fo-surface-2);
+    }
+
+    .fo-legend-row.is-active {
+      background: var(--fo-accent-soft);
+      transform: translateX(3px);
+    }
+
+    .fo-legend-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .fo-legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .fo-legend-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .fo-legend-name,
+    .fo-legend-sub {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .fo-legend-name {
+      color: var(--fo-text-2);
+      font-weight: 500;
+    }
+
+    .fo-legend-sub {
+      font-size: 10px;
+      color: var(--fo-text-muted);
+    }
+
+    .fo-legend-val {
+      flex-shrink: 0;
+      font-weight: 700;
+      color: var(--fo-text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (min-width: 1024px) {
+      .fo-donut-body {
+        grid-template-columns: 126px minmax(0, 1fr);
+        gap: 14px;
+      }
+
+      .fo-donut-wrap,
+      .fo-donut-svg {
+        width: 126px;
+        height: 126px;
+      }
+
+      .fo-donut-center-v {
+        font-size: 13.5px;
+      }
+
+      .fo-legend-row {
+        padding: 4px 7px;
+        font-size: 11.5px;
+      }
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DonutChartComponent {
-  private readonly themeService = inject(ThemeService, { optional: true });
-
   readonly slices = input.required<readonly DonutSlice[]>();
   readonly centerLabel = input<string>('Total');
   readonly formatValue = input<(value: number) => string>(DEFAULT_FORMATTER);
+  /** Optional explicit accent; when set, slices use a tonal scale of it instead of the mock palette. */
   readonly accent = input<string | null>(null);
+  /** What the legend shows on the right: percentage (mock) or formatted amount. */
+  readonly legendValue = input<'percent' | 'amount'>('percent');
   readonly selected = output<DonutSlice | null>();
 
   protected readonly svgSize = SVG_SIZE;
   protected readonly center = CENTER;
   protected readonly radius = RADIUS;
   protected readonly strokeWidth = STROKE_WIDTH;
+  protected readonly focusedStrokeWidth = FOCUSED_STROKE_WIDTH;
 
   protected readonly selectedId = signal<string | null>(null);
 
@@ -214,15 +357,17 @@ export class DonutChartComponent {
       return [];
     }
 
-    const effectiveAccent = this.accent() ?? this.themeService?.accent() ?? '#0F766E';
-    const palette = tonalScale(effectiveAccent, items.length);
+    const explicitAccent = this.accent();
+    const palette = explicitAccent ? tonalScale(explicitAccent, items.length) : DONUT_PALETTE;
     const totalValue = this.total();
+    const gap = items.length > 1 ? SLICE_GAP : 0;
     let accumulatedLength = 0;
 
     return items.map((slice, index) => {
       const value = Math.max(0, slice.value);
       const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
       const arcLength = totalValue > 0 ? (value / totalValue) * CIRCUMFERENCE : 0;
+      const visibleLength = Math.max(0, arcLength - gap);
       const dashOffset = accumulatedLength === 0 ? 0 : -accumulatedLength;
 
       const midLength = accumulatedLength + arcLength / 2;
@@ -234,11 +379,11 @@ export class DonutChartComponent {
 
       return {
         slice,
-        color: slice.color ?? palette[index],
+        color: slice.color ?? palette[index % palette.length],
         value,
         percentage,
         arcLength,
-        dashArray: `${arcLength} ${CIRCUMFERENCE}`,
+        dashArray: `${visibleLength.toFixed(2)} ${(CIRCUMFERENCE - visibleLength).toFixed(2)}`,
         dashOffset,
         popOffsetX,
         popOffsetY,
@@ -261,6 +406,6 @@ export class DonutChartComponent {
   }
 
   protected formatPercent(percentage: number): string {
-    return `${percentage.toFixed(1)}%`;
+    return `${Math.round(percentage)}%`;
   }
 }

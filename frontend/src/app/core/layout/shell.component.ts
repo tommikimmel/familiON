@@ -19,6 +19,7 @@ import { SessionStore } from '../state/session.store';
 import { Granularity, View, ViewContextStore } from '../state/view-context.store';
 import { ThemeService } from '../theme/theme.service';
 import { PeriodLabelPipe } from '../../shared/pipes/period-label.pipe';
+import { AvatarComponent } from '../../shared/ui/avatar/avatar.component';
 import { FoIconName, IconComponent } from '../../shared/ui/icon/icon.component';
 import { LogoComponent } from '../../shared/ui/logo/logo.component';
 import {
@@ -73,16 +74,6 @@ const DESKTOP_NAV: readonly NavItem[] = [
   { label: 'Familia y Perfil', route: '/profile', icon: 'users' },
 ];
 
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter((part) => part.length > 0);
-  if (parts.length === 0) {
-    return '?';
-  }
-  const first = parts[0].charAt(0);
-  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
-  return `${first}${last}`.toUpperCase();
-}
-
 function isEditableElement(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
     return false;
@@ -101,6 +92,7 @@ function isEditableElement(target: EventTarget | null): boolean {
     RouterLink,
     RouterLinkActive,
     RouterOutlet,
+    AvatarComponent,
     CurrencyMenuComponent,
     IconComponent,
     LogoComponent,
@@ -162,7 +154,7 @@ function isEditableElement(target: EventTarget | null): boolean {
 
           <footer class="fo-sidebar-footer">
             <div class="fo-user-chip">
-              <span class="fo-avatar" aria-hidden="true">{{ userInitials() }}</span>
+              <fo-avatar [name]="userDisplayName()" aria-hidden="true" />
               <div class="min-w-0">
                 <strong class="fo-user-name">{{ userDisplayName() }}</strong>
                 <span class="fo-user-sub">{{ userSubtitle() }}</span>
@@ -367,8 +359,6 @@ export class ShellComponent {
   protected readonly userDisplayName = computed(
     () => this.session.me()?.fullName ?? 'Mi cuenta',
   );
-
-  protected readonly userInitials = computed(() => initialsOf(this.userDisplayName()));
 
   protected readonly userSubtitle = computed(() => {
     const me = this.session.me();
