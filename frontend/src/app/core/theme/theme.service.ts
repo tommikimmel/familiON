@@ -2,6 +2,12 @@ import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, Signal, inject, signal } from '@angular/core';
 import { ThemePreference } from '../api/models/me.model';
 import { readableTextOn } from '../../shared/utils/color';
+import {
+  ACCENT_ALPHA,
+  LIGHT_ACCENT_FG,
+  findAccentPreset,
+  hexToRgba,
+} from './accent-presets';
 
 const THEME_STORAGE_KEY = 'fo.theme';
 const ACCENT_STORAGE_KEY = 'fo.accent';
@@ -41,6 +47,7 @@ export class ThemeService {
   private readonly mediaListener = (event: MediaQueryListEvent): void => {
     if (this._theme() === 'SYSTEM') {
       this.applyDarkClass(event.matches);
+      this.applyAccentVariables(this._accent(), event.matches);
     }
   };
 
@@ -89,12 +96,34 @@ export class ThemeService {
       }
     }
 
-    const root = this.doc.documentElement;
-    const contrast = readableTextOn(accent);
-    root.style.setProperty('--fo-accent', accent);
-    root.style.setProperty('--fo-accent-contrast', contrast);
+    this.applyAccentVariables(accent, this._isDark());
+  }
 
-    this.updateThemeColorMeta(accent);
+  /**
+   * Resolves the effective accent for the current theme and writes the accent tokens.
+   * Preset accents (mock `ACCENTS`) switch to their dark color + `darkFg` in dark theme;
+   * custom colors keep their hue and get a WCAG-readable foreground.
+   */
+  private applyAccentVariables(accent: string, isDark: boolean): void {
+    const preset = findAccentPreset(accent);
+    let main = accent;
+    let foreground: string = readableTextOn(accent);
+    if (preset) {
+      main = (isDark ? preset.dark : preset.light).toUpperCase();
+      foreground = (isDark ? preset.darkFg : LIGHT_ACCENT_FG).toUpperCase();
+    }
+
+    const mode = isDark ? 'dark' : 'light';
+    const root = this.doc.documentElement;
+    root.style.setProperty('--fo-accent', main);
+    root.style.setProperty('--fo-accent-contrast', foreground);
+    root.style.setProperty('--fo-accent-soft', hexToRgba(main, ACCENT_ALPHA.soft[mode]));
+    root.style.setProperty('--fo-accent-glow-sm', hexToRgba(main, ACCENT_ALPHA.glowMobile[mode]));
+    root.style.setProperty('--fo-accent-glow-lg', hexToRgba(main, ACCENT_ALPHA.glowDesktop[mode]));
+    root.style.setProperty('--fo-accent-mid', hexToRgba(main, ACCENT_ALPHA.mid));
+    root.style.setProperty('--fo-accent-light', hexToRgba(main, ACCENT_ALPHA.light));
+
+    this.updateThemeColorMeta(main);
   }
 
   private applyDarkClass(isDark: boolean): void {
