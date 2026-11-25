@@ -3,6 +3,7 @@ package com.familion.analytics.exports.application;
 import com.familion.analytics.exports.domain.ExportFormat;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.List;
 
 public interface ExportWriter {
 
@@ -10,6 +11,8 @@ public interface ExportWriter {
 
     void writeTransactions(OutputStream out, String lensUnit, TransactionRowSource rowSource)
             throws IOException;
+
+    void writeMonthlySummary(OutputStream out, List<MonthlySummaryRow> rows) throws IOException;
 
     @FunctionalInterface
     interface TransactionRowSink {

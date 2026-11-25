@@ -41,6 +41,17 @@ public class ExportController {
         return toResponse(export);
     }
 
+    @GetMapping("/monthly-summary")
+    public ResponseEntity<StreamingResponseBody> exportMonthlySummary(
+            @RequestParam(defaultValue = "CSV") ExportFormat format,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(defaultValue = "PERSONAL") View view,
+            @RequestParam(defaultValue = "NOMINAL") AnalyticsLens lens) {
+        PreparedExport export = exportService.prepareMonthlySummaryExport(
+                currentUserProvider.get(), format, year, view, lens);
+        return toResponse(export);
+    }
+
     private static ResponseEntity<StreamingResponseBody> toResponse(PreparedExport export) {
         String contentDisposition =
                 ContentDisposition.attachment().filename(export.filename()).build().toString();
