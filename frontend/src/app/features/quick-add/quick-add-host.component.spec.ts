@@ -345,10 +345,10 @@ describe('QuickAddHostComponent', () => {
     // Live preview has aria-live="polite" and shows expected calculation
     const previewEl = host.querySelector('[data-testid="installment-preview"]') as HTMLElement;
     expect(previewEl.getAttribute('aria-live')).toBe('polite');
-    expect(previewEl.textContent).toContain('6 cuotas de');
-    expect(previewEl.textContent).toContain('36.000/mes');
-    expect(previewEl.textContent).toContain('216.000');
-    expect(previewEl.textContent).toContain('(Dic 2026 → May 2027)');
+    expect(previewEl.textContent).toContain('6 cuotas de $36.000 / mes');
+    expect(previewEl.textContent).toContain('Total a pagar: $216.000');
+    expect(previewEl.textContent).toContain('Dic 2026 → May 2027');
+    expect(previewEl.textContent).toContain('Sin interés');
 
     // Select attribution to Sofia
     (host.querySelector('[data-testid="attribution-member-user-child"]') as HTMLButtonElement).click();
@@ -477,7 +477,7 @@ describe('QuickAddHostComponent', () => {
     const host = fixture.nativeElement as HTMLElement;
 
     // Switch to Ingreso
-    const tabs = host.querySelectorAll<HTMLButtonElement>('fo-segmented-toggle [role="tab"]');
+    const tabs = host.querySelectorAll<HTMLButtonElement>('[data-testid="quick-add-type"] [role="tab"]');
     tabs[1].click();
     fixture.detectChanges();
 

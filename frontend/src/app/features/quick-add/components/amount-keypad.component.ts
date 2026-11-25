@@ -20,40 +20,62 @@ const KEYPAD_KEYS: readonly KeypadKey[] = [
   selector: 'fo-amount-keypad',
   standalone: true,
   template: `
-    <div class="space-y-2" role="group" aria-label="Teclado numérico">
-      <div class="grid grid-cols-3 gap-2">
-        @for (key of keys; track key) {
-          <button
-            type="button"
-            [disabled]="disabled()"
-            [attr.data-testid]="'keypad-key-' + key"
-            [attr.aria-label]="ariaLabelFor(key)"
-            (click)="press(key)"
-            class="fo-focus-ring flex h-12 cursor-pointer items-center justify-center rounded-xl border border-border bg-surface-2 text-lg font-semibold text-text tabular-nums transition-transform duration-100 select-none hover:bg-border/40 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
-          >
-            {{ key }}
-          </button>
-        }
-      </div>
-
-      <button
-        type="button"
-        [disabled]="disabled() || !canDelete()"
-        data-testid="keypad-backspace"
-        aria-label="Borrar"
-        (click)="press('BACKSPACE')"
-        class="fo-focus-ring flex h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-border bg-surface text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-text active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
-      >
-        <span aria-hidden="true">⌫</span>
-        <span>Borrar</span>
-      </button>
+    <div class="keypad" role="group" aria-label="Teclado numérico">
+      @for (key of keys; track key) {
+        <button
+          type="button"
+          [disabled]="disabled()"
+          [attr.data-testid]="'keypad-key-' + key"
+          [attr.aria-label]="ariaLabelFor(key)"
+          (click)="press(key)"
+          class="key-btn fo-focus-ring"
+        >
+          {{ key }}
+        </button>
+      }
     </div>
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .key-btn {
+      display: grid;
+      place-items: center;
+      height: 40px;
+      border: none;
+      border-radius: 11px;
+      background: var(--fo-surface-2);
+      color: var(--fo-text);
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+      user-select: none;
+      transition:
+        transform 0.1s var(--fo-ease-spring),
+        background 0.12s ease;
+    }
+    .key-btn:active:not(:disabled) {
+      transform: scale(0.92);
+      background: var(--fo-accent-soft);
+      color: var(--fo-accent);
+    }
+    .key-btn:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AmountKeypadComponent {
   readonly disabled = input<boolean>(false);
-  readonly canDelete = input<boolean>(true);
   readonly keyPress = output<KeypadKey>();
 
   protected readonly keys = KEYPAD_KEYS;

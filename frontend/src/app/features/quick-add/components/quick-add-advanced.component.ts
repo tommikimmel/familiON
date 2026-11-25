@@ -11,18 +11,14 @@ import {
   InstallmentAmountMode,
   TransactionType,
 } from '../../../core/finance/transactions.models';
-import {
-  IconComponent,
-  SegmentedOption,
-  SegmentedToggleComponent,
-} from '../../../shared/ui';
-import { readableTextOn } from '../../../shared/utils/color';
+import { IconComponent } from '../../../shared/ui';
 import { normalizeDecimalInput } from '../amount-input';
 import { QuickAddFamilyMember } from '../data-access/quick-add-members.api';
+import { InstallmentSummaryLines } from '../installment-preview';
 
 type InterestChoice = 'NO_INTEREST' | 'WITH_INTEREST';
 
-const INTEREST_OPTIONS: readonly SegmentedOption<InterestChoice>[] = [
+const INTEREST_OPTIONS: readonly { value: InterestChoice; label: string }[] = [
   { value: 'NO_INTEREST', label: 'Sin interés' },
   { value: 'WITH_INTEREST', label: 'Con interés' },
 ];
@@ -32,159 +28,104 @@ const AMOUNT_MODE_OPTIONS: readonly { value: InstallmentAmountMode; label: strin
   { value: 'PER_INSTALLMENT', label: 'Es cada cuota' },
 ];
 
-function initialsFor(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) {
-    return '?';
-  }
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-}
-
 @Component({
   selector: 'fo-quick-add-advanced',
   standalone: true,
-  imports: [IconComponent, RouterLink, SegmentedToggleComponent],
+  imports: [IconComponent, RouterLink],
   template: `
-    <div class="rounded-xl border border-border bg-surface-2/40">
+    <div class="flex flex-col gap-3">
       <button
         type="button"
         data-testid="quick-add-more-options-btn"
         [attr.aria-expanded]="expanded()"
         (click)="toggleExpanded()"
-        class="fo-focus-ring flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-3.5 py-2.5 text-left text-xs font-medium text-muted transition-colors hover:text-text"
+        class="more-toggle fo-focus-ring"
+        [class.is-prefilled]="datePrefilled() && !expanded()"
       >
-        <span class="flex items-center gap-1.5">
-          <span>Más opciones</span>
-          @if (!expanded() && summaryHint()) {
-            <span
-              class="truncate font-normal"
-              [class.text-muted/80]="!datePrefilled()"
-              [class.text-text]="datePrefilled()"
-              [class.border-b-2]="datePrefilled()"
-              [class.border-b-accent]="datePrefilled()"
-            >
-              · {{ summaryHint() }}
-            </span>
-          }
-        </span>
+        <span>{{ toggleLabel() }}</span>
         <fo-icon
           name="chevron-down"
-          [size]="16"
+          [size]="12"
           class="transition-transform duration-150"
           [class.rotate-180]="expanded()"
         />
       </button>
 
       @if (expanded()) {
-        <div data-testid="quick-add-advanced-panel" class="space-y-3.5 border-t border-border px-3.5 py-3">
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div class="space-y-1">
-              <label for="fo-quick-add-account" class="block text-xs font-medium text-muted">
-                {{ isInstallmentMode() ? 'Tarjeta de crédito' : 'Cuenta' }}
-              </label>
+        <div data-testid="quick-add-advanced-panel" class="more-panel">
+          <div class="more-row">
+            <label for="fo-quick-add-account" class="more-label">
+              {{ isInstallmentMode() ? 'Tarjeta' : 'Cuenta' }}
+            </label>
+            @if (isInstallmentMode() && creditCards().length === 0) {
+              <div role="status" data-testid="quick-add-no-cards-notice" class="more-notice">
+                <span>Necesitás una tarjeta de crédito para cargar cuotas.</span>
+                <a
+                  routerLink="/accounts"
+                  data-testid="quick-add-no-cards-link"
+                  (click)="navigateToAccounts.emit()"
+                  class="fo-focus-ring font-semibold text-accent underline underline-offset-2"
+                >
+                  Ir a Cuentas
+                </a>
+              </div>
+            } @else if (!isInstallmentMode() && usableAccounts().length === 0) {
+              <div role="status" class="more-notice">
+                <span>No tenés cuentas activas en {{ currencyCode() }}.</span>
+                <a
+                  routerLink="/accounts"
+                  (click)="navigateToAccounts.emit()"
+                  class="fo-focus-ring font-semibold text-accent underline underline-offset-2"
+                >
+                  Ir a Cuentas
+                </a>
+              </div>
+            } @else {
+              <select
+                id="fo-quick-add-account"
+                data-testid="quick-add-account-select"
+                [value]="selectedAccountId() ?? ''"
+                (change)="onAccountChange($event)"
+                class="fo-mini-chip is-active fo-focus-ring mini-field"
+              >
+                @for (account of activeAccountOptions(); track account.id) {
+                  <option [value]="account.id">
+                    {{ account.name }} ({{ account.currencyCode }})
+                  </option>
+                }
+              </select>
+            }
+          </div>
 
-              @if (isInstallmentMode() && creditCards().length === 0) {
-                <div
-                  role="status"
-                  data-testid="quick-add-no-cards-notice"
-                  class="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text"
-                >
-                  <p>Necesitás una tarjeta de crédito para cargar cuotas.</p>
-                  <a
-                    routerLink="/accounts"
-                    data-testid="quick-add-no-cards-link"
-                    (click)="navigateToAccounts.emit()"
-                    class="fo-focus-ring mt-1 inline-flex items-center gap-1 font-semibold text-accent underline underline-offset-2"
-                  >
-                    Ir a Cuentas
-                  </a>
-                </div>
-              } @else if (!isInstallmentMode() && usableAccounts().length === 0) {
-                <div
-                  role="status"
-                  class="rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-text"
-                >
-                  <p>No tenés cuentas activas en {{ currencyCode() }}.</p>
-                  <a
-                    routerLink="/accounts"
-                    (click)="navigateToAccounts.emit()"
-                    class="fo-focus-ring mt-1 inline-flex items-center gap-1 font-semibold text-accent underline underline-offset-2"
-                  >
-                    Ir a Cuentas
-                  </a>
-                </div>
-              } @else {
-                <select
-                  id="fo-quick-add-account"
-                  data-testid="quick-add-account-select"
-                  [value]="selectedAccountId() ?? ''"
-                  (change)="onAccountChange($event)"
-                  class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
-                >
-                  @for (account of activeAccountOptions(); track account.id) {
-                    <option [value]="account.id">
-                      {{ account.name }} ({{ account.currencyCode }})
-                    </option>
-                  }
-                </select>
-              }
-            </div>
-
-            <div class="space-y-1">
-              <label for="fo-quick-add-date" class="block text-xs font-medium text-muted">
-                Fecha
-              </label>
-              <input
-                id="fo-quick-add-date"
-                data-testid="quick-add-date-input"
-                [attr.data-prefilled]="datePrefilled() ? 'true' : null"
-                type="date"
-                [value]="transactionDate()"
-                (change)="onDateChange($event)"
-                class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text tabular-nums"
-                [class.border-b-2]="datePrefilled()"
-                [class.border-b-accent]="datePrefilled()"
-              />
-            </div>
+          <div class="more-row">
+            <label for="fo-quick-add-date" class="more-label">Fecha</label>
+            <input
+              id="fo-quick-add-date"
+              data-testid="quick-add-date-input"
+              [attr.data-prefilled]="datePrefilled() ? 'true' : null"
+              type="date"
+              [value]="transactionDate()"
+              (change)="onDateChange($event)"
+              class="fo-mini-chip fo-focus-ring mini-field tabular-nums"
+              [class.is-active]="datePrefilled()"
+            />
           </div>
 
           @if (isAdult() && activeMembers().length > 0) {
-            <div data-testid="quick-add-attribution-section" class="space-y-1.5">
-              <span class="block text-xs font-medium text-muted">Para:</span>
-              <div class="flex flex-wrap gap-1.5" role="group" aria-label="Para integrante">
+            <div data-testid="quick-add-attribution-section" class="more-row">
+              <span class="more-label">Para:</span>
+              <div class="more-chips" role="group" aria-label="Para integrante">
                 @for (member of activeMembers(); track member.id) {
-                  @let selected = isMemberSelected(member.id);
                   <button
                     type="button"
                     [attr.data-testid]="'attribution-member-' + member.id"
-                    [attr.aria-pressed]="selected"
+                    [attr.aria-pressed]="isMemberSelected(member.id)"
+                    [attr.aria-label]="member.fullName"
                     (click)="selectMember(member.id)"
-                    class="fo-focus-ring inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors"
-                    [class.border-accent]="selected"
-                    [class.bg-accent-soft]="selected"
-                    [class.text-accent]="selected"
-                    [class.border-border]="!selected"
-                    [class.bg-surface]="!selected"
-                    [class.text-text]="!selected"
-                    [class.hover:border-accent]="!selected"
+                    class="fo-mini-chip fo-focus-ring"
+                    [class.is-active]="isMemberSelected(member.id)"
                   >
-                    <span
-                      aria-hidden="true"
-                      class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-                      [style.background-color]="member.accentColor || 'var(--fo-accent)'"
-                      [style.color]="avatarTextColor(member.accentColor)"
-                    >
-                      {{ memberInitials(member.fullName) }}
-                    </span>
-                    <span class="truncate">
-                      {{ member.fullName }}
-                      @if (member.id === currentUserId()) {
-                        <span class="text-muted">(vos)</span>
-                      }
-                    </span>
+                    {{ memberLabel(member) }}
                   </button>
                 }
               </div>
@@ -192,36 +133,30 @@ function initialsFor(fullName: string): string {
           }
 
           @if (transactionType() === 'EXPENSE') {
-            <div data-testid="quick-add-installments-section" class="space-y-3 border-t border-border/70 pt-3">
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-xs font-medium text-muted">Cuotas</span>
-
-                <div class="inline-flex items-center gap-2">
+            <div data-testid="quick-add-installments-section" class="flex flex-col gap-2.5">
+              <div class="more-row">
+                <span class="more-label">Cuotas</span>
+                <div class="more-chips items-center">
                   <button
                     type="button"
                     data-testid="installments-decrement"
                     aria-label="Restar cuota"
                     [disabled]="installments() <= 1"
                     (click)="stepInstallments(-1)"
-                    class="fo-focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface text-base font-semibold text-text transition-colors hover:bg-surface-2 disabled:pointer-events-none disabled:opacity-40"
+                    class="fo-mini-chip fo-focus-ring disabled:opacity-40"
                   >
                     −
                   </button>
-
-                  <span
-                    data-testid="installments-count"
-                    class="min-w-20 text-center text-sm font-semibold text-text tabular-nums"
-                  >
+                  <span data-testid="installments-count" class="fo-mini-chip is-active tabular-nums">
                     {{ installments() === 1 ? '1 pago' : installments() + ' cuotas' }}
                   </span>
-
                   <button
                     type="button"
                     data-testid="installments-increment"
                     aria-label="Sumar cuota"
                     [disabled]="installments() >= 24"
                     (click)="stepInstallments(1)"
-                    class="fo-focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-surface text-base font-semibold text-text transition-colors hover:bg-surface-2 disabled:pointer-events-none disabled:opacity-40"
+                    class="fo-mini-chip fo-focus-ring disabled:opacity-40"
                   >
                     +
                   </button>
@@ -229,86 +164,91 @@ function initialsFor(fullName: string): string {
               </div>
 
               @if (isInstallmentMode()) {
-                <div class="space-y-3">
-                  <div class="space-y-1.5">
-                    <span class="block text-xs font-medium text-muted">
-                      El monto ingresado…
-                    </span>
-                    <div
-                      role="radiogroup"
-                      aria-label="Modo del monto en cuotas"
-                      class="grid grid-cols-2 gap-1.5 rounded-full border border-border bg-surface p-1"
-                    >
-                      @for (option of amountModeOptions; track option.value; let i = $index) {
-                        @let selected = amountMode() === option.value;
-                        <button
-                          type="button"
-                          role="radio"
-                          [attr.data-testid]="'amount-mode-' + option.value"
-                          [attr.aria-checked]="selected"
-                          [attr.tabindex]="selected || (amountMode() === null && i === 0) ? 0 : -1"
-                          (click)="amountModeChange.emit(option.value)"
-                          (keydown)="onAmountModeKeydown($event, i)"
-                          class="fo-focus-ring cursor-pointer rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
-                          [class.bg-accent]="selected"
-                          [class.text-accent-contrast]="selected"
-                          [class.text-muted]="!selected"
-                          [class.hover:text-text]="!selected"
-                        >
-                          {{ option.label }}
-                        </button>
-                      }
-                    </div>
-                    @if (amountMode() === null) {
-                      <p class="text-[11px] text-warning">
-                        Elegí si el monto es el total o cada cuota para poder guardar.
-                      </p>
+                <div class="flex flex-col gap-1">
+                  <span class="field-lbl">¿Qué es ese monto?</span>
+                  <div role="radiogroup" aria-label="Modo del monto en cuotas" class="seg">
+                    @for (option of amountModeOptions; track option.value; let i = $index) {
+                      @let selected = amountMode() === option.value;
+                      <button
+                        type="button"
+                        role="radio"
+                        [attr.data-testid]="'amount-mode-' + option.value"
+                        [attr.aria-checked]="selected"
+                        [attr.tabindex]="selected || (amountMode() === null && i === 0) ? 0 : -1"
+                        (click)="amountModeChange.emit(option.value)"
+                        (keydown)="onAmountModeKeydown($event, i)"
+                        class="fo-focus-ring"
+                        [class.is-active]="selected"
+                      >
+                        {{ option.label }}
+                      </button>
                     }
                   </div>
+                  @if (amountMode() === null) {
+                    <p class="text-[11px] text-warning">
+                      Elegí si el monto es el total o cada cuota para poder guardar.
+                    </p>
+                  }
+                </div>
 
-                  <div>
-                    <fo-segmented-toggle
-                      [options]="interestOptions"
-                      [value]="interestChoice()"
-                      (valueChange)="onInterestChange($event)"
-                      ariaLabel="Interés en cuotas"
-                      size="sm"
+                <div class="flex flex-col gap-1">
+                  <span class="field-lbl">Financiación</span>
+                  <div role="radiogroup" aria-label="Interés en cuotas" class="seg">
+                    @for (option of interestOptions; track option.value) {
+                      @let selected = interestChoice() === option.value;
+                      <button
+                        type="button"
+                        role="radio"
+                        [attr.data-testid]="'interest-' + option.value"
+                        [attr.aria-checked]="selected"
+                        (click)="onInterestChange(option.value)"
+                        class="fo-focus-ring"
+                        [class.is-active]="selected"
+                      >
+                        {{ option.label }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                @if (hasInterest()) {
+                  <div class="opt-box">
+                    <label for="fo-quick-add-cash-price" class="field-lbl !mb-0">
+                      <span>Precio de contado (opcional)</span>
+                      <span class="font-medium">Para calcular recargo</span>
+                    </label>
+                    <input
+                      id="fo-quick-add-cash-price"
+                      data-testid="quick-add-cash-price-input"
+                      type="text"
+                      inputmode="decimal"
+                      autocomplete="off"
+                      placeholder="Ej. 180000"
+                      [value]="cashPrice()"
+                      (input)="onCashPriceInput($event)"
+                      class="small-input tabular-nums"
                     />
                   </div>
+                }
 
-                  @if (hasInterest()) {
-                    <div class="space-y-1">
-                      <label for="fo-quick-add-cash-price" class="block text-xs font-medium text-muted">
-                        Precio contado (opcional)
-                      </label>
-                      <input
-                        id="fo-quick-add-cash-price"
-                        data-testid="quick-add-cash-price-input"
-                        type="text"
-                        inputmode="decimal"
-                        autocomplete="off"
-                        placeholder="Ej. 180000"
-                        [value]="cashPrice()"
-                        (input)="onCashPriceInput($event)"
-                        class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text tabular-nums placeholder:text-muted"
-                      />
-                    </div>
+                <div
+                  data-testid="installment-preview"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  class="live-summary tabular-nums"
+                >
+                  @if (installmentSummary(); as summary) {
+                    <strong class="sum-main">{{ summary.main }}</strong>
+                    <span class="sum-sub">
+                      <span>Total a pagar: <strong>{{ summary.total }}</strong></span>
+                      <span>{{ summary.range }}</span>
+                    </span>
+                    <span class="sum-tag">{{ summary.tag }}</span>
+                  } @else {
+                    <span class="text-muted">
+                      Ingresá el monto y elegí el modo para ver el detalle de las cuotas.
+                    </span>
                   }
-
-                  <div
-                    data-testid="installment-preview"
-                    aria-live="polite"
-                    aria-atomic="true"
-                    class="rounded-xl border border-border bg-surface px-3 py-2 text-xs font-medium text-text tabular-nums"
-                  >
-                    @if (installmentPreviewText(); as preview) {
-                      {{ preview }}
-                    } @else {
-                      <span class="font-normal text-muted">
-                        Ingresá el monto y elegí el modo para ver el detalle de las cuotas.
-                      </span>
-                    }
-                  </div>
                 </div>
               }
             </div>
@@ -316,6 +256,162 @@ function initialsFor(fullName: string): string {
         </div>
       }
     </div>
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+    .more-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      align-self: center;
+      gap: 4px;
+      max-width: 100%;
+      padding: 2px 0;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--fo-text-muted);
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .more-toggle:hover,
+    .more-toggle.is-prefilled {
+      color: var(--fo-text);
+    }
+    .more-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      padding: 10px;
+      border: 1px solid var(--fo-border);
+      border-radius: 13px;
+      background: var(--fo-bg);
+      animation: fo-fade-slide-up 0.22s var(--fo-ease-smooth);
+    }
+    .more-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 11px;
+    }
+    .more-label {
+      flex-shrink: 0;
+      color: var(--fo-text-muted);
+    }
+    .more-chips {
+      display: inline-flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+    .more-notice {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      color: var(--fo-text-2);
+      font-size: 10.5px;
+      text-align: right;
+    }
+    .mini-field {
+      max-width: 62%;
+      cursor: pointer;
+    }
+    .field-lbl {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1px;
+      color: var(--fo-text-muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .seg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid var(--fo-border);
+      border-radius: 11px;
+      background: var(--fo-surface-2);
+    }
+    .seg button {
+      padding: 7px 6px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--fo-text-muted);
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .seg button.is-active {
+      background: var(--fo-surface);
+      color: var(--fo-text);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+    .opt-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px 12px;
+      border: 1px solid var(--fo-border);
+      border-radius: 12px;
+      background: var(--fo-surface);
+    }
+    .small-input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--fo-border);
+      border-radius: 9px;
+      outline: none;
+      background: var(--fo-bg);
+      color: var(--fo-text);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .small-input:focus {
+      border-color: var(--fo-accent);
+    }
+    .live-summary {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px 10px;
+      border: 1px solid var(--fo-accent);
+      border-radius: 10px;
+      background: var(--fo-accent-soft);
+      font-size: 11px;
+    }
+    .sum-main {
+      color: var(--fo-text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .sum-sub {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 6px;
+      color: var(--fo-text-2);
+    }
+    .sum-tag {
+      color: var(--fo-accent);
+      font-weight: 700;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .more-panel {
+        animation: none;
+      }
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -335,7 +431,7 @@ export class QuickAddAdvancedComponent {
   readonly amountMode = input<InstallmentAmountMode | null>(null);
   readonly hasInterest = input<boolean>(false);
   readonly cashPrice = input<string>('');
-  readonly installmentPreviewText = input<string | null>(null);
+  readonly installmentSummary = input<InstallmentSummaryLines | null>(null);
   readonly summaryHint = input<string>('');
   readonly datePrefilled = input<boolean>(false);
 
@@ -367,6 +463,15 @@ export class QuickAddAdvancedComponent {
   protected readonly interestChoice = computed<InterestChoice>(() =>
     this.hasInterest() ? 'WITH_INTEREST' : 'NO_INTEREST',
   );
+
+  /** Mock `more-toggle`: `Más opciones (Mercado Pago · Hoy)` / `Ocultar opciones`. */
+  protected readonly toggleLabel = computed(() => {
+    if (this.expanded()) {
+      return 'Ocultar opciones';
+    }
+    const hint = this.summaryHint();
+    return hint ? `Más opciones (${hint})` : 'Más opciones';
+  });
 
   protected toggleExpanded(): void {
     this.expandedChange.emit(!this.expanded());
@@ -437,11 +542,11 @@ export class QuickAddAdvancedComponent {
     this.cashPriceChange.emit(normalized);
   }
 
-  protected memberInitials(fullName: string): string {
-    return initialsFor(fullName);
-  }
-
-  protected avatarTextColor(accentColor: string | null | undefined): string {
-    return readableTextOn(accentColor || '#0F766E');
+  /** Mock chips: `Yo` for the current user, first name for the rest. */
+  protected memberLabel(member: QuickAddFamilyMember): string {
+    if (member.id === this.currentUserId()) {
+      return 'Yo';
+    }
+    return member.fullName.trim().split(/\s+/)[0] || member.fullName;
   }
 }
