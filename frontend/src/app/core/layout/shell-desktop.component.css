@@ -27,6 +27,63 @@
   scrollbar-width: none;
 }
 
+.fo-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fo-rail-btn {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 34px;
+  border: 1px solid var(--fo-border);
+  border-radius: 10px;
+  background: var(--fo-surface);
+  color: var(--fo-text-2);
+  cursor: pointer;
+}
+
+.fo-rail-btn:hover {
+  border-color: var(--fo-accent);
+  color: var(--fo-text);
+}
+
+/* Collapsed rail: labels stay visually hidden as accessible names. */
+.fo-app-shell.is-collapsed {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.is-collapsed .fo-sidebar {
+  padding: 16px 10px;
+}
+
+.is-collapsed .fo-sidebar-head,
+.is-collapsed .fo-new-btn,
+.is-collapsed .fo-nav-btn,
+.is-collapsed .fo-user-chip {
+  justify-content: center;
+}
+
+.is-collapsed .fo-new-btn {
+  padding: 10px 0;
+}
+
+.is-collapsed .fo-sidebar-footer {
+  flex-direction: column;
+}
+
+.is-collapsed .fo-sidebar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .fo-logo-wrap {
   display: inline-flex;
   align-self: flex-start;
