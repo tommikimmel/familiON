@@ -1,272 +1,118 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
-import { MoneyPipe } from '../../../shared/pipes/money.pipe';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { Lens } from '../../../core/state/view-context.store';
 import { CardComponent } from '../../../shared/ui/card/card.component';
+import { PillTagComponent } from '../../../shared/ui/pill-tag/pill-tag.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { toNumber } from '../../../shared/utils/decimal';
 import { formatCompactAxisValue, resolveDisplayUnit } from '../data-access/home.formatters';
 import { Series } from '../data-access/home.models';
 
-export interface EvolutionChartTick {
-  value: number;
-  y: number;
-  label: string;
-}
-
-export interface EvolutionChartScale {
-  min: number;
-  max: number;
-  zeroY: number;
-  ticks: EvolutionChartTick[];
-}
-
-export interface ComputedEvolutionBar {
-  x: number;
-  y: number;
-  height: number;
-}
-
-export interface ComputedEvolutionPoint {
+export interface EvolutionColumn {
   periodStart: string;
   label: string;
-  income: number;
+  shortLabel: string;
   expense: number;
-  balance: number;
-  slotX: number;
-  slotWidth: number;
-  centerX: number;
-  barWidth: number;
-  incomeBar: ComputedEvolutionBar;
-  expenseBar: ComputedEvolutionBar;
-  balancePoint: { x: number; y: number };
+  valueLabel: string;
+  /** Bar height in px (mock: `max(14, value / max * 96)`). */
+  height: number;
+  current: boolean;
 }
 
-const SVG_WIDTH = 560;
-const SVG_HEIGHT = 240;
-const PADDING_TOP = 18;
-const PADDING_RIGHT = 16;
-const PADDING_BOTTOM = 34;
-const PADDING_LEFT = 58;
-const PLOT_WIDTH = SVG_WIDTH - PADDING_LEFT - PADDING_RIGHT;
-const PLOT_HEIGHT = SVG_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
-const TICK_COUNT = 4;
+const MAX_BAR_HEIGHT = 96;
+const MIN_BAR_HEIGHT = 14;
 
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
+/** Desktop 6-month expense evolution (mock `.bar-chart` / `.b-col`). */
 @Component({
   selector: 'fo-evolution-chart',
   standalone: true,
-  imports: [CardComponent, MoneyPipe, SkeletonComponent],
+  imports: [CardComponent, PillTagComponent, SkeletonComponent],
   template: `
-    <fo-card padding="md" class="h-full">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 class="text-base font-semibold text-text">Evolución 6 meses</h2>
-          <p class="text-xs text-muted">Ingresos, gastos y balance mensual</p>
+    <fo-card class="h-full">
+      <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0">
+          <h2 class="text-[13px] font-bold">Evolución de Gastos (6 meses)</h2>
+          <p class="text-[11px] text-muted">{{ subtitle() }}</p>
         </div>
-
-        <div class="flex items-center gap-3 text-xs text-muted" aria-hidden="true">
-          <span class="inline-flex items-center gap-1.5">
-            <span class="h-2.5 w-2.5 rounded-xs bg-success/85"></span>
-            Ingresos
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="h-2.5 w-2.5 rounded-xs bg-danger/80"></span>
-            Gastos
-          </span>
-          <span class="inline-flex items-center gap-1.5">
-            <span class="h-0.5 w-3 rounded-full bg-accent"></span>
-            Balance
-          </span>
-        </div>
+        <fo-pill-tag class="shrink-0">{{ isConstantBase() ? 'Real' : 'Nominal' }}</fo-pill-tag>
       </div>
 
-      @if (loading()) {
-        <div class="mt-4 space-y-3" data-testid="evolution-skeleton">
-          <fo-skeleton height="210px" rounded="lg" />
-          <fo-skeleton height="28px" rounded="md" />
-        </div>
-      } @else if (computedPoints().length === 0) {
-        <p class="py-12 text-center text-sm text-muted">
-          Sin datos de evolución disponibles para este período.
-        </p>
-      } @else {
+      @if (loading() && columns().length === 0) {
         <div class="mt-4">
-          <svg
-            [attr.viewBox]="'0 0 ' + svgWidth + ' ' + svgHeight"
-            class="h-60 w-full overflow-visible"
-            role="img"
-            aria-label="Evolución de ingresos, gastos y balance de los últimos 6 meses"
-          >
-            @for (tick of chartScale().ticks; track tick.value) {
-              <line
-                [attr.x1]="paddingLeft"
-                [attr.x2]="svgWidth - paddingRight"
-                [attr.y1]="tick.y"
-                [attr.y2]="tick.y"
-                stroke="var(--fo-border)"
-                stroke-dasharray="3 3"
-                stroke-width="1"
-              />
-              <text
-                [attr.x]="paddingLeft - 8"
-                [attr.y]="tick.y + 4"
-                text-anchor="end"
-                class="fill-muted text-[10px] tabular-nums"
-              >
-                {{ tick.label }}
-              </text>
-            }
-
-            <line
-              [attr.x1]="paddingLeft"
-              [attr.x2]="svgWidth - paddingRight"
-              [attr.y1]="chartScale().zeroY"
-              [attr.y2]="chartScale().zeroY"
-              stroke="var(--fo-border)"
-              stroke-width="1.5"
-            />
-
-            @for (point of computedPoints(); track point.periodStart; let i = $index) {
-              @let isFocused = activeIndex() === i;
-              <g>
-                @if (isFocused) {
-                  <rect
-                    [attr.x]="point.slotX + 4"
-                    [attr.y]="paddingTop"
-                    [attr.width]="point.slotWidth - 8"
-                    [attr.height]="plotHeight"
-                    rx="8"
-                    fill="var(--fo-surface-2)"
-                    opacity="0.7"
-                  />
-                }
-
-                <rect
-                  data-testid="evolution-income-bar"
-                  [attr.x]="point.incomeBar.x"
-                  [attr.y]="point.incomeBar.y"
-                  [attr.width]="point.barWidth"
-                  [attr.height]="point.incomeBar.height"
-                  rx="4"
-                  fill="var(--fo-success)"
-                  [attr.opacity]="isFocused ? 0.95 : 0.78"
-                  class="fo-chart-bar"
-                />
-
-                <rect
-                  data-testid="evolution-expense-bar"
-                  [attr.x]="point.expenseBar.x"
-                  [attr.y]="point.expenseBar.y"
-                  [attr.width]="point.barWidth"
-                  [attr.height]="point.expenseBar.height"
-                  rx="4"
-                  fill="var(--fo-danger)"
-                  [attr.opacity]="isFocused ? 0.95 : 0.72"
-                  class="fo-chart-bar"
-                />
-
-                <text
-                  [attr.x]="point.centerX"
-                  [attr.y]="svgHeight - 10"
-                  text-anchor="middle"
-                  class="text-[11px] font-medium"
-                  [class.fill-text]="isFocused"
-                  [class.fill-muted]="!isFocused"
-                >
-                  {{ point.label }}
-                </text>
-
-                <rect
-                  [attr.x]="point.slotX"
-                  [attr.y]="paddingTop"
-                  [attr.width]="point.slotWidth"
-                  [attr.height]="plotHeight + 24"
-                  fill="transparent"
-                  role="button"
-                  tabindex="0"
-                  class="fo-focus-ring cursor-pointer"
-                  [attr.aria-label]="pointAriaLabel(point)"
-                  [attr.aria-pressed]="isFocused"
-                  (mouseenter)="selectIndex(i)"
-                  (focus)="selectIndex(i)"
-                  (click)="selectIndex(i)"
-                  (keydown.enter)="selectIndex(i)"
-                  (keydown.space)="$event.preventDefault(); selectIndex(i)"
-                />
-              </g>
-            }
-
-            <polyline
-              data-testid="evolution-balance-line"
-              [attr.points]="balanceLinePoints()"
-              fill="none"
-              stroke="var(--fo-accent)"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              class="pointer-events-none"
-            />
-
-            @for (point of computedPoints(); track point.periodStart; let i = $index) {
-              @let isFocused = activeIndex() === i;
-              <circle
-                data-testid="evolution-balance-dot"
-                [attr.cx]="point.balancePoint.x"
-                [attr.cy]="point.balancePoint.y"
-                [attr.r]="isFocused ? 5 : 3.5"
-                fill="var(--fo-surface)"
-                stroke="var(--fo-accent)"
-                stroke-width="2.5"
-                class="pointer-events-none"
-              />
-            }
-          </svg>
-
-          @if (activePoint(); as current) {
-            <div
-              data-testid="evolution-active-summary"
-              class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface-2/80 px-3.5 py-2 text-xs"
-            >
-              <span class="font-semibold text-text">{{ current.label }}</span>
-              <div class="flex flex-wrap items-center gap-4 tabular-nums">
-                <span class="text-muted">
-                  Ingresos:
-                  <strong class="font-semibold text-success">
-                    {{ current.income | money: displayUnit() }}
-                  </strong>
-                </span>
-                <span class="text-muted">
-                  Gastos:
-                  <strong class="font-semibold text-danger">
-                    {{ current.expense | money: displayUnit() }}
-                  </strong>
-                </span>
-                <span class="text-muted">
-                  Balance:
-                  <strong class="font-semibold text-accent">
-                    {{ current.balance | money: displayUnit() }}
-                  </strong>
-                </span>
-              </div>
-            </div>
-          }
+          <fo-skeleton height="130px" rounded="lg" />
         </div>
+      } @else if (columns().length === 0) {
+        <p class="py-12 text-center text-xs text-muted">Sin datos de evolución para mostrar.</p>
+      } @else {
+        <ul class="bar-chart" aria-label="Gastos de los últimos meses">
+          @for (col of columns(); track col.periodStart) {
+            <li class="b-col" [attr.aria-label]="col.label + ': ' + col.valueLabel">
+              <span data-testid="evolution-value" class="b-val" aria-hidden="true">
+                {{ col.valueLabel }}
+              </span>
+              <div
+                data-testid="evolution-expense-bar"
+                class="b-rect"
+                [class.is-current]="col.current"
+                [class.is-ipc]="!col.current && isConstantBase()"
+                [style.height.px]="col.height"
+              ></div>
+              <span class="b-lbl" aria-hidden="true">{{ col.shortLabel }}</span>
+            </li>
+          }
+        </ul>
       }
     </fo-card>
   `,
   styles: `
     :host {
       display: block;
+    }
+    .bar-chart {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      align-items: end;
+      gap: 10px;
+      height: 146px;
+      padding-top: 16px;
+    }
+    .b-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 5px;
       height: 100%;
     }
-
-    .fo-chart-bar {
+    .b-val {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--fo-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .b-rect {
+      width: 100%;
+      max-width: 34px;
+      border-radius: 7px 7px 3px 3px;
+      background: var(--fo-surface-2);
       transition:
-        height 260ms ease-out,
-        y 260ms ease-out,
-        opacity 150ms ease-out;
+        height 0.45s var(--fo-ease-smooth),
+        background 0.25s ease;
+    }
+    .b-rect.is-current {
+      background: var(--fo-accent);
+    }
+    .b-rect.is-ipc {
+      background: var(--fo-accent-mid);
+    }
+    .b-lbl {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--fo-text-muted);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .b-rect {
+        transition: none;
+      }
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -274,144 +120,40 @@ function round2(value: number): number {
 export class EvolutionChartComponent {
   readonly series = input<Series | null>(null);
   readonly loading = input<boolean>(false);
+  readonly lens = input<Lens>('NOMINAL');
 
-  protected readonly svgWidth = SVG_WIDTH;
-  protected readonly svgHeight = SVG_HEIGHT;
-  protected readonly paddingTop = PADDING_TOP;
-  protected readonly paddingRight = PADDING_RIGHT;
-  protected readonly paddingLeft = PADDING_LEFT;
-  protected readonly plotHeight = PLOT_HEIGHT;
+  protected readonly isConstantBase = computed(() => this.lens() === 'CONSTANT_BASE');
 
-  protected readonly selectedIndex = signal<number | null>(null);
-
-  readonly displayUnit = computed(() => {
-    const current = this.series();
-    return current ? resolveDisplayUnit(current.unit, current.lens) : 'ARS';
-  });
-
-  readonly chartScale = computed<EvolutionChartScale>(() => {
-    const points = this.series()?.points ?? [];
-    const unit = this.displayUnit();
-
-    let rawMax = 0;
-    let rawMin = 0;
-    for (const point of points) {
-      const inc = Math.max(0, toNumber(point.income));
-      const exp = Math.max(0, toNumber(point.expense));
-      const bal = toNumber(point.balance);
-      rawMax = Math.max(rawMax, inc, exp, bal);
-      rawMin = Math.min(rawMin, bal);
-    }
-
-    const max = rawMax > 0 ? rawMax * 1.12 : 100;
-    const min = rawMin < 0 ? rawMin * 1.12 : 0;
-    const range = max - min || 1;
-
-    const yFor = (val: number): number =>
-      round2(PADDING_TOP + ((max - val) / range) * PLOT_HEIGHT);
-
-    const ticks: EvolutionChartTick[] = [];
-    for (let i = 0; i <= TICK_COUNT; i++) {
-      const value = min + (range * i) / TICK_COUNT;
-      ticks.push({
-        value,
-        y: yFor(value),
-        label: formatCompactAxisValue(value, unit),
-      });
-    }
-
-    return {
-      min,
-      max,
-      zeroY: yFor(0),
-      ticks,
-    };
-  });
-
-  readonly computedPoints = computed<ComputedEvolutionPoint[]>(() => {
-    const points = this.series()?.points ?? [];
-    if (points.length === 0) {
-      return [];
-    }
-
-    const scale = this.chartScale();
-    const range = scale.max - scale.min || 1;
-    const yFor = (val: number): number =>
-      round2(PADDING_TOP + ((scale.max - val) / range) * PLOT_HEIGHT);
-
-    const slotWidth = PLOT_WIDTH / points.length;
-    const barWidth = round2(Math.min(22, Math.max(10, slotWidth * 0.28)));
-    const barGap = 4;
-
-    return points.map((point, index) => {
-      const income = Math.max(0, toNumber(point.income));
-      const expense = Math.max(0, toNumber(point.expense));
-      const balance = toNumber(point.balance);
-
-      const slotX = round2(PADDING_LEFT + slotWidth * index);
-      const centerX = round2(slotX + slotWidth / 2);
-
-      const incomeY = yFor(income);
-      const expenseY = yFor(expense);
-      const balanceY = yFor(balance);
-
-      return {
-        periodStart: point.periodStart,
-        label: point.label,
-        income,
-        expense,
-        balance,
-        slotX,
-        slotWidth: round2(slotWidth),
-        centerX,
-        barWidth,
-        incomeBar: {
-          x: round2(centerX - barWidth - barGap / 2),
-          y: incomeY,
-          height: round2(Math.max(0, scale.zeroY - incomeY)),
-        },
-        expenseBar: {
-          x: round2(centerX + barGap / 2),
-          y: expenseY,
-          height: round2(Math.max(0, scale.zeroY - expenseY)),
-        },
-        balancePoint: {
-          x: centerX,
-          y: balanceY,
-        },
-      };
-    });
-  });
-
-  readonly balanceLinePoints = computed(() =>
-    this.computedPoints()
-      .map((point) => `${point.balancePoint.x},${point.balancePoint.y}`)
-      .join(' '),
+  protected readonly subtitle = computed(() =>
+    this.isConstantBase()
+      ? 'Meses pasados traídos a plata de hoy (IPC)'
+      : 'Pesos nominales / divisa elegida',
   );
 
-  protected readonly activeIndex = computed<number>(() => {
-    const points = this.computedPoints();
-    if (points.length === 0) {
-      return -1;
-    }
-    const chosen = this.selectedIndex();
-    if (chosen !== null && chosen >= 0 && chosen < points.length) {
-      return chosen;
-    }
-    return points.length - 1;
+  readonly displayUnit = computed(() => {
+    const series = this.series();
+    return resolveDisplayUnit(series?.unit, series?.lens ?? this.lens());
   });
 
-  protected readonly activePoint = computed<ComputedEvolutionPoint | null>(() => {
-    const idx = this.activeIndex();
-    return idx >= 0 ? (this.computedPoints()[idx] ?? null) : null;
-  });
-
-  protected selectIndex(index: number): void {
-    this.selectedIndex.set(index);
-  }
-
-  protected pointAriaLabel(point: ComputedEvolutionPoint): string {
+  readonly columns = computed<EvolutionColumn[]>(() => {
+    const points = this.series()?.points ?? [];
     const unit = this.displayUnit();
-    return `${point.label}: ingresos ${formatCompactAxisValue(point.income, unit)}, gastos ${formatCompactAxisValue(point.expense, unit)}, balance ${formatCompactAxisValue(point.balance, unit)}`;
-  }
+    const values = points.map((p) => Math.max(0, toNumber(p.expense)));
+    const max = Math.max(...values, 1);
+    return points.map((point, index) => ({
+      periodStart: point.periodStart,
+      label: point.label,
+      shortLabel: shortMonth(point.label),
+      expense: values[index],
+      valueLabel: formatCompactAxisValue(values[index], unit),
+      height: Math.max(MIN_BAR_HEIGHT, Math.round((values[index] / max) * MAX_BAR_HEIGHT)),
+      current: index === points.length - 1,
+    }));
+  });
+}
+
+function shortMonth(label: string): string {
+  const word = label.trim().split(/\s+/)[0] ?? '';
+  const short = word.slice(0, 3);
+  return short.charAt(0).toUpperCase() + short.slice(1);
 }

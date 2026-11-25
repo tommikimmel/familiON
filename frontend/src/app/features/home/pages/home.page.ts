@@ -3,25 +3,26 @@ import { QuickAddLauncher } from '../../../core/layout/quick-add-launcher.servic
 import { SessionStore } from '../../../core/state/session.store';
 import { ViewContextStore } from '../../../core/state/view-context.store';
 import { CountUpDirective } from '../../../shared/directives/count-up.directive';
-import { MoneyPipe } from '../../../shared/pipes/money.pipe';
-import { PeriodLabelPipe } from '../../../shared/pipes/period-label.pipe';
 import { ButtonComponent } from '../../../shared/ui/button/button.component';
 import { CardComponent } from '../../../shared/ui/card/card.component';
 import { EmptyStateComponent } from '../../../shared/ui/empty-state/empty-state.component';
 import { IconComponent } from '../../../shared/ui/icon/icon.component';
+import { PillTagComponent } from '../../../shared/ui/pill-tag/pill-tag.component';
+import { ProgressBarComponent } from '../../../shared/ui/progress-bar/progress-bar.component';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { toNumber } from '../../../shared/utils/decimal';
 import { BreakdownCardComponent } from '../components/breakdown-card.component';
 import { EvolutionChartComponent } from '../components/evolution-chart.component';
 import { HeroBalanceComponent } from '../components/hero-balance.component';
-import { KpiBadgeTone, KpiCardComponent } from '../components/kpi-card.component';
+import { KpiCardComponent } from '../components/kpi-card.component';
 import { MovementsTableComponent } from '../components/movements-table.component';
+import { PeriodBarComponent } from '../components/period-bar.component';
 import { RecentListComponent } from '../components/recent-list.component';
 import {
-  formatMoneyValue,
   formatPercentValue,
   formatRateLabel,
   formatRatePrice,
+  formatWholeMoney,
   pickPrimaryRate,
   resolveDisplayUnit,
 } from '../data-access/home.formatters';
@@ -42,14 +43,15 @@ import { HomeStore } from '../data-access/home.store';
     HeroBalanceComponent,
     IconComponent,
     KpiCardComponent,
-    MoneyPipe,
     MovementsTableComponent,
-    PeriodLabelPipe,
+    PeriodBarComponent,
+    PillTagComponent,
+    ProgressBarComponent,
     RecentListComponent,
     SkeletonComponent,
   ],
   template: `
-    <div class="mx-auto max-w-7xl space-y-5">
+    <div class="mx-auto flex max-w-7xl flex-col gap-[11px] lg:gap-4">
       <h1 class="sr-only">Inicio</h1>
 
       @if (store.demoMode()) {
@@ -180,32 +182,13 @@ import { HomeStore } from '../data-access/home.store';
         } @else if (isPeriodEmpty()) {
           <div class="space-y-4">
             @if (!store.isDesktop()) {
-              <div class="flex items-center justify-between rounded-full border border-border bg-surface px-2 py-1">
-                <button
-                  type="button"
-                  aria-label="Período anterior"
-                  (click)="viewContext.shiftPeriod(-1)"
-                  class="fo-focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-text"
-                >
-                  <fo-icon name="chevron-left" [size]="16" />
-                </button>
-                <button
-                  type="button"
-                  title="Volver a hoy"
-                  (click)="viewContext.resetToToday()"
-                  class="fo-focus-ring cursor-pointer rounded-full px-3 py-1 text-xs font-semibold text-text tabular-nums hover:bg-surface-2"
-                >
-                  {{ viewContext.anchorDate() | periodLabel: viewContext.granularity() }}
-                </button>
-                <button
-                  type="button"
-                  aria-label="Período siguiente"
-                  (click)="viewContext.shiftPeriod(1)"
-                  class="fo-focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-text"
-                >
-                  <fo-icon name="chevron-right" [size]="16" />
-                </button>
-              </div>
+              <fo-period-bar
+                [granularity]="viewContext.granularity()"
+                [anchorDate]="viewContext.anchorDate()"
+                (granularityChange)="viewContext.setGranularity($event)"
+                (shift)="viewContext.shiftPeriod($event)"
+                (today)="viewContext.resetToToday()"
+              />
             }
 
             <fo-empty-state
@@ -218,167 +201,95 @@ import { HomeStore } from '../data-access/home.store';
             </fo-empty-state>
           </div>
         } @else if (store.isDesktop()) {
-          <div data-testid="home-desktop-layout" class="space-y-5">
-            <!-- Row 1: 3 KPI cards -->
-            <div class="grid grid-cols-3 gap-5">
-              <!-- KPI 1: Balance (with glow) -->
+          <div data-testid="home-desktop-layout" class="flex flex-col gap-4">
+            <div class="kpi-grid fo-anim-in">
               <fo-kpi-card
-                title="Balance"
-                [subtitle]="payload.summary?.period?.label ?? periodFallbackLabel()"
-                [badge]="savingsChip()"
-                [badgeTone]="savingsTone()"
-                icon="wallet"
+                [title]="balanceTitle()"
+                [badge]="lensBadge()"
+                [badgeAccent]="viewContext.lens() === 'CONSTANT_BASE'"
                 [glow]="true"
               >
                 @if (payload.summary; as summary) {
-                  <div>
-                    <p
-                      data-testid="desktop-kpi-balance"
-                      class="text-3xl font-bold tracking-tight tabular-nums"
-                      [class.text-danger]="isNegativeBalance()"
-                      [class.text-text]="!isNegativeBalance()"
-                      [foCountUp]="balanceNumeric()"
-                      [foCountUpFormatter]="balanceFormatter()"
-                    ></p>
-
-                    @if (summary.lensApproximated) {
-                      <p class="mt-3 flex items-center gap-1.5 text-xs text-warning">
-                        <fo-icon name="alert-circle" [size]="14" />
-                        <span>Valores aproximados: falta el índice de inflación más reciente</span>
-                      </p>
-                    } @else {
-                      <p class="mt-3 text-xs text-muted">
-                        Resultado neto del período seleccionado
-                      </p>
-                    }
-                  </div>
-                } @else {
-                  <p class="text-sm text-muted">Resumen no disponible.</p>
-                }
-              </fo-kpi-card>
-
-              <!-- KPI 2: Gastos vs Ingresos (comparative bar) -->
-              <fo-kpi-card
-                title="Gastos vs Ingresos"
-                [subtitle]="expenseRatioSubtitle()"
-                icon="arrow-left-right"
-              >
-                @if (payload.summary; as summary) {
-                  <div class="space-y-3">
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between text-xs">
-                        <span class="flex items-center gap-1.5 font-medium text-muted">
-                          <span class="font-bold text-success" aria-hidden="true">↑</span>
-                          Ingresos
-                        </span>
-                        <span class="font-semibold text-text tabular-nums">
-                          {{ summary.income | money: summaryDisplayUnit() }}
-                        </span>
-                      </div>
-                      <div class="h-2 w-full overflow-hidden rounded-full bg-surface-2">
-                        <div
-                          class="h-full rounded-full bg-success/80 transition-all duration-300"
-                          [style.width.%]="incomeBarPct()"
-                        ></div>
-                      </div>
-                    </div>
-
-                    <div class="space-y-1">
-                      <div class="flex items-center justify-between text-xs">
-                        <span class="flex items-center gap-1.5 font-medium text-muted">
-                          <span class="font-bold text-danger" aria-hidden="true">↓</span>
-                          Gastos
-                        </span>
-                        <span class="font-semibold text-text tabular-nums">
-                          {{ summary.expense | money: summaryDisplayUnit() }}
-                        </span>
-                      </div>
-                      <div class="h-2 w-full overflow-hidden rounded-full bg-surface-2">
-                        <div
-                          class="h-full rounded-full bg-danger/80 transition-all duration-300"
-                          [style.width.%]="expenseBarPct()"
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                } @else {
-                  <p class="text-sm text-muted">Comparativa no disponible.</p>
-                }
-              </fo-kpi-card>
-
-              <!-- KPI 3: Divisas + Cuotas -->
-              <fo-kpi-card
-                title="Divisas y cuotas"
-                [subtitle]="primaryRateDateLabel()"
-                icon="credit-card"
-              >
-                <div class="space-y-3">
-                  @if (primaryRate(); as rate) {
-                    <div
-                      data-testid="desktop-primary-rate"
-                      class="flex items-baseline justify-between gap-2"
-                    >
-                      <span class="text-sm font-medium text-muted">{{ rateLabel(rate) }}</span>
-                      <span class="text-xl font-bold text-text tabular-nums">
-                        {{ ratePrice(rate) }}
-                      </span>
-                    </div>
-                  } @else {
-                    <p class="text-xs text-muted">Sin cotizaciones disponibles.</p>
+                  <p
+                    data-testid="desktop-kpi-balance"
+                    class="kpi-val"
+                    [class.text-danger]="isNegativeBalance()"
+                    [foCountUp]="balanceNumeric()"
+                    [foCountUpFormatter]="balanceFormatter()"
+                  ></p>
+                  @if (summary.lensApproximated) {
+                    <p class="kpi-sub flex items-center gap-1 text-warning">
+                      <fo-icon name="alert-circle" [size]="12" />
+                      <span>Valores aproximados: falta el índice de inflación más reciente</span>
+                    </p>
+                  } @else if (savingsPctLabel(); as savings) {
+                    <p class="kpi-sub">
+                      Ahorro real del período: <strong>{{ savings }}</strong> del ingreso
+                    </p>
                   }
+                } @else {
+                  <p class="kpi-sub">Resumen no disponible.</p>
+                }
+              </fo-kpi-card>
 
-                  <div class="border-t border-border/80 pt-3">
-                    @if (installmentPctLabel(); as commitmentPct) {
-                      <p
-                        data-testid="desktop-installment-commitment"
-                        class="text-xs font-medium text-text tabular-nums"
-                      >
-                        Comprometido en cuotas:
-                        <strong class="font-semibold">{{ commitmentPct }}</strong> del ingreso
-                      </p>
-                      <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-2">
-                        <div
-                          class="h-full rounded-full transition-all duration-300"
-                          [class.bg-accent]="installmentNumeric() <= 25"
-                          [class.bg-warning]="
-                            installmentNumeric() > 25 && installmentNumeric() <= 40
-                          "
-                          [class.bg-danger]="installmentNumeric() > 40"
-                          [style.width.%]="installmentBarWidth()"
-                        ></div>
-                      </div>
-                    } @else {
-                      <p class="text-xs text-muted">
-                        Sin compromisos en cuotas en este período.
-                      </p>
-                    }
-                  </div>
-                </div>
+              <fo-kpi-card title="Gastos vs. Ingresos" [badge]="expenseRatioBadge()">
+                @if (payload.summary; as summary) {
+                  <p class="kpi-val">{{ wholeMoney(summary.expense) }}</p>
+                  <fo-progress-bar
+                    class="mt-2.5"
+                    [value]="expenseRatioPct()"
+                    ariaLabel="Gastos sobre ingresos"
+                  />
+                  <p class="kpi-sub">
+                    Ingresos: <strong>{{ wholeMoney(summary.income) }}</strong>
+                  </p>
+                } @else {
+                  <p class="kpi-sub">Comparativa no disponible.</p>
+                }
+              </fo-kpi-card>
+
+              <fo-kpi-card
+                title="Divisas y Cuotas"
+                [badge]="primaryRateBadge()"
+                [badgeAccent]="true"
+              >
+                @if (primaryRate(); as rate) {
+                  <p data-testid="desktop-primary-rate" class="kpi-val">{{ ratePrice(rate) }}</p>
+                } @else {
+                  <p class="kpi-val text-muted">—</p>
+                }
+                @if (installmentPctLabel(); as commitmentPct) {
+                  <p data-testid="desktop-installment-commitment" class="kpi-sub">
+                    Comprometido en cuotas: <strong>{{ commitmentPct }}</strong> del ingreso
+                  </p>
+                } @else {
+                  <p class="kpi-sub">Sin compromisos en cuotas en este período.</p>
+                }
               </fo-kpi-card>
             </div>
 
-            <!-- Row 2: 6-month evolution + Breakdown donut -->
-            <div class="grid grid-cols-12 gap-5">
-              <div class="col-span-7">
-                <fo-evolution-chart
-                  [series]="store.series()"
-                  [loading]="store.seriesLoading()"
-                />
-              </div>
-              <div class="col-span-5">
-                <fo-breakdown-card
-                  [byCategory]="payload.byCategory"
-                  [byPerson]="payload.byPerson"
-                  [view]="viewContext.view()"
-                  [lens]="viewContext.lens()"
-                />
-              </div>
+            <div class="charts-grid fo-anim-in">
+              <fo-evolution-chart
+                [series]="store.series()"
+                [loading]="store.seriesLoading()"
+                [lens]="viewContext.lens()"
+              />
+              <fo-breakdown-card
+                [byCategory]="payload.byCategory"
+                [byPerson]="payload.byPerson"
+                [view]="viewContext.view()"
+                [lens]="viewContext.lens()"
+              />
             </div>
 
             <!-- Row 3: Movements table with instant search -->
             @if (payload.recentTransactions; as txs) {
               @if (txs.length > 0) {
-                <fo-movements-table [transactions]="txs" [lens]="viewContext.lens()" />
+                <fo-movements-table
+                  class="fo-anim-in"
+                  [transactions]="txs"
+                  [lens]="viewContext.lens()"
+                />
               } @else {
                 <fo-empty-state
                   icon="wallet"
@@ -396,38 +307,21 @@ import { HomeStore } from '../data-access/home.store';
           </div>
         } @else {
           <!-- Mobile layout -->
-          <div data-testid="home-mobile-layout" class="space-y-4">
-            <div
-              class="flex items-center justify-between rounded-full border border-border bg-surface px-2 py-1"
-            >
-              <button
-                type="button"
-                aria-label="Período anterior"
-                (click)="viewContext.shiftPeriod(-1)"
-                class="fo-focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-text"
-              >
-                <fo-icon name="chevron-left" [size]="16" />
-              </button>
-              <button
-                type="button"
-                title="Volver a hoy"
-                (click)="viewContext.resetToToday()"
-                class="fo-focus-ring cursor-pointer rounded-full px-3 py-1 text-xs font-semibold text-text tabular-nums hover:bg-surface-2"
-              >
-                {{ viewContext.anchorDate() | periodLabel: viewContext.granularity() }}
-              </button>
-              <button
-                type="button"
-                aria-label="Período siguiente"
-                (click)="viewContext.shiftPeriod(1)"
-                class="fo-focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-text"
-              >
-                <fo-icon name="chevron-right" [size]="16" />
-              </button>
-            </div>
+          <div data-testid="home-mobile-layout" class="flex flex-col gap-[11px]">
+            <fo-period-bar
+              [granularity]="viewContext.granularity()"
+              [anchorDate]="viewContext.anchorDate()"
+              (granularityChange)="viewContext.setGranularity($event)"
+              (shift)="viewContext.shiftPeriod($event)"
+              (today)="viewContext.resetToToday()"
+            />
 
             @if (payload.summary; as summary) {
-              <fo-hero-balance [summary]="summary" />
+              <fo-hero-balance
+                class="fo-anim-in fo-stagger-1"
+                [summary]="summary"
+                [view]="viewContext.view()"
+              />
             } @else {
               <fo-card padding="md">
                 <p class="text-center text-sm text-muted">
@@ -436,19 +330,8 @@ import { HomeStore } from '../data-access/home.store';
               </fo-card>
             }
 
-            @if (primaryRate(); as rate) {
-              <div class="flex flex-wrap items-center gap-2">
-                <span
-                  data-testid="home-rate-pill"
-                  class="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-medium text-text shadow-2xs tabular-nums"
-                >
-                  <fo-icon name="trending-up" [size]="14" class="text-accent" />
-                  <span>{{ rateLabel(rate) }} {{ ratePrice(rate) }}</span>
-                </span>
-              </div>
-            }
-
             <fo-breakdown-card
+              class="fo-anim-in fo-stagger-2"
               [byCategory]="payload.byCategory"
               [byPerson]="payload.byPerson"
               [view]="viewContext.view()"
@@ -457,7 +340,12 @@ import { HomeStore } from '../data-access/home.store';
 
             @if (payload.recentTransactions; as txs) {
               @if (txs.length > 0) {
-                <fo-recent-list [transactions]="txs" [lens]="viewContext.lens()" />
+                <fo-recent-list
+                  class="fo-anim-in fo-stagger-3"
+                  [transactions]="txs"
+                  [lens]="viewContext.lens()"
+                  [view]="viewContext.view()"
+                />
               } @else {
                 <fo-empty-state
                   icon="wallet"
@@ -472,10 +360,50 @@ import { HomeStore } from '../data-access/home.store';
                 </p>
               </fo-card>
             }
+            @if (primaryRate(); as rate) {
+              <div class="flex justify-center">
+                <fo-pill-tag data-testid="home-rate-pill" class="tabular-nums">
+                  {{ rateLabel(rate) }} {{ ratePrice(rate) }}
+                </fo-pill-tag>
+              </div>
+            }
           </div>
         }
       }
     </div>
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 14px;
+    }
+    .kpi-val {
+      margin-top: 4px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .kpi-sub {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--fo-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-sub strong {
+      font-weight: 700;
+      color: var(--fo-text);
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -484,8 +412,6 @@ export class HomePage {
   protected readonly viewContext = inject(ViewContextStore);
   protected readonly quickAdd = inject(QuickAddLauncher);
   private readonly session = inject(SessionStore);
-
-  private readonly periodPipe = new PeriodLabelPipe();
 
   protected readonly baseCurrency = computed(
     () => this.session.me()?.family.baseCurrency ?? 'ARS',
@@ -515,68 +441,47 @@ export class HomePage {
 
   protected readonly balanceFormatter = computed<(value: number) => string>(() => {
     const unit = this.summaryDisplayUnit();
-    return (value: number) => formatMoneyValue(value, unit);
+    return (value: number) => formatWholeMoney(value, unit);
   });
 
-  protected readonly savingsChip = computed<string | null>(() => {
+  protected readonly balanceTitle = computed(() =>
+    this.viewContext.view() === 'FAMILY' ? 'Balance familiar' : 'Mi balance',
+  );
+
+  protected readonly lensBadge = computed(() =>
+    this.viewContext.lens() === 'CONSTANT_BASE' ? 'A plata de hoy' : 'Nominal',
+  );
+
+  protected readonly savingsPctLabel = computed<string | null>(() => {
     const rate = this.store.payload()?.summary?.savingsRatePct;
     if (rate === null || rate === undefined || rate.trim() === '') {
       return null;
     }
-    return `Ahorro ${formatPercentValue(rate)}`;
+    return formatPercentValue(rate);
   });
 
-  protected readonly savingsTone = computed<KpiBadgeTone>(() => {
-    const rate = this.store.payload()?.summary?.savingsRatePct;
-    if (rate === null || rate === undefined) {
-      return 'neutral';
-    }
-    return toNumber(rate) < 0 ? 'danger' : 'success';
-  });
-
-  protected readonly incomeBarPct = computed(() => {
+  /** Expense as a share of income, capped at 100 (mock `ratio`). */
+  protected readonly expenseRatioPct = computed(() => {
     const summary = this.store.payload()?.summary;
     if (!summary) {
       return 0;
-    }
-    const income = Math.max(0, toNumber(summary.income));
-    const expense = Math.max(0, toNumber(summary.expense));
-    const maxVal = Math.max(income, expense);
-    return maxVal > 0 ? Math.round((income / maxVal) * 100) : 0;
-  });
-
-  protected readonly expenseBarPct = computed(() => {
-    const summary = this.store.payload()?.summary;
-    if (!summary) {
-      return 0;
-    }
-    const income = Math.max(0, toNumber(summary.income));
-    const expense = Math.max(0, toNumber(summary.expense));
-    const maxVal = Math.max(income, expense);
-    return maxVal > 0 ? Math.round((expense / maxVal) * 100) : 0;
-  });
-
-  protected readonly expenseRatioSubtitle = computed<string | null>(() => {
-    const summary = this.store.payload()?.summary;
-    if (!summary) {
-      return null;
     }
     const income = toNumber(summary.income);
     const expense = toNumber(summary.expense);
     if (income <= 0) {
-      return 'Comparativa del período';
+      return expense > 0 ? 100 : 0;
     }
-    const pct = (expense / income) * 100;
-    return `Gastos equivalen al ${formatPercentValue(pct)} de ingresos`;
+    return Math.min(100, Math.round((expense / income) * 100));
   });
 
-  protected readonly installmentNumeric = computed(() =>
-    Math.max(0, toNumber(this.store.payload()?.summary?.installmentCommitmentPct)),
+  protected readonly expenseRatioBadge = computed(() =>
+    this.store.payload()?.summary ? `${this.expenseRatioPct()}%` : null,
   );
 
-  protected readonly installmentBarWidth = computed(() =>
-    Math.min(100, this.installmentNumeric()),
-  );
+  protected readonly primaryRateBadge = computed<string | null>(() => {
+    const rate = this.primaryRate();
+    return rate ? this.rateLabel(rate) : null;
+  });
 
   protected readonly installmentPctLabel = computed<string | null>(() => {
     const pct = this.store.payload()?.summary?.installmentCommitmentPct;
@@ -585,18 +490,6 @@ export class HomePage {
     }
     return formatPercentValue(pct);
   });
-
-  protected readonly primaryRateDateLabel = computed<string | null>(() => {
-    const rate = this.primaryRate();
-    if (!rate) {
-      return 'Referencia familiar';
-    }
-    return `Actualizado ${rate.effectiveDate}`;
-  });
-
-  protected readonly periodFallbackLabel = computed(() =>
-    this.periodPipe.transform(this.viewContext.anchorDate(), this.viewContext.granularity()),
-  );
 
   protected readonly isCompletelyUnavailable = computed(() => {
     const payload = this.store.payload();
@@ -624,6 +517,10 @@ export class HomePage {
       (toNumber(payload.summary.income) === 0 && toNumber(payload.summary.expense) === 0);
     return noTransactions && zeroActivity;
   });
+
+  protected wholeMoney(value: string): string {
+    return formatWholeMoney(value, this.summaryDisplayUnit());
+  }
 
   protected rateLabel(rate: IndexValue): string {
     return formatRateLabel(rate.indexCode);
