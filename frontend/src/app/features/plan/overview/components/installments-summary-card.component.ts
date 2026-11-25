@@ -36,8 +36,9 @@ interface NextInstallmentHighlight {
   imports: [ButtonComponent, IconComponent, MoneyPipe, PlanSectionCardComponent, RouterLink],
   template: `
     <fo-plan-section-card
-      title="Planes de cuotas activos"
+      title="Compras en cuotas"
       linkRoute="/plan/installments"
+      description="Cuánto te queda por pagar y cuánto se lleva cada mes."
       testId="plan-installments-card"
       [degraded]="isFullyDegraded()"
       [retrying]="retrying()"
@@ -53,7 +54,7 @@ interface NextInstallmentHighlight {
             class="fo-btn-primary fo-focus-ring mt-2 inline-flex items-center gap-1.5"
           >
             <fo-icon name="plus" [size]="14" />
-            <span>Registrar cuota</span>
+            <span>Registrar compra en cuotas</span>
           </a>
         </div>
       } @else {
@@ -111,7 +112,7 @@ interface NextInstallmentHighlight {
           @if (commitment() !== null) {
             @if (commitmentBars().length > 0) {
               <div data-testid="installments-commitment-bars">
-                <p class="fo-kpi-label">Próximos 6 meses</p>
+                <p class="fo-kpi-label">Cuotas a pagar en los próximos meses</p>
                 <div
                   class="inst-bars"
                   [style.gridTemplateColumns]="'repeat(' + commitmentBars().length + ', minmax(0, 1fr))'"

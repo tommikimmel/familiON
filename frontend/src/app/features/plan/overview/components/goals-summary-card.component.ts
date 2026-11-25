@@ -24,8 +24,9 @@ interface GoalRingViewModel {
   imports: [IconComponent, PlanSectionCardComponent, ProgressBarComponent, RouterLink],
   template: `
     <fo-plan-section-card
-      title="Metas en valor real"
+      title="Metas de ahorro"
       linkRoute="/plan/goals"
+      description="Tu avance hacia cada objetivo, ajustado a plata de hoy."
       testId="plan-goals-card"
       [degraded]="goals() === null"
       [retrying]="retrying()"
@@ -34,7 +35,7 @@ interface GoalRingViewModel {
       @if (goals(); as list) {
         @if (list.length === 0) {
           <div data-testid="goals-empty-state" class="pl-empty">
-            <p class="fo-tx-title">Sin metas activas</p>
+            <p class="fo-tx-title">Todavía no tenés metas</p>
             <p class="pl-sub">Definí un objetivo en pesos, dólares o UVA y seguí tu avance mes a mes.</p>
             <a
               routerLink="/plan/goals"

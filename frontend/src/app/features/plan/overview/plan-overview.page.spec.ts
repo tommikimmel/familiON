@@ -94,7 +94,7 @@ describe('PlanOverviewPage', () => {
     expect(chips?.[1]?.textContent).toContain('-2,3%');
     expect(
       exchangesCard?.querySelector('[data-testid="exchanges-trade-cta"]')?.textContent,
-    ).toContain('Comprar/Vender');
+    ).toContain('Registrar compra o venta');
 
     // Metas (top 3 with progress rings)
     const goalsCard = host.querySelector('[data-testid="plan-goals-card"]');
@@ -117,6 +117,25 @@ describe('PlanOverviewPage', () => {
     expect(allowanceItems).toHaveLength(2);
     expect(allowancesCard?.textContent).toContain('Mateo Gómez');
     expect(allowancesCard?.textContent).toContain('Sofía Gómez');
+  });
+
+  it('shows a visible intro and orders sections most-used first, each with a description', () => {
+    const fixture = renderWithPayload(FULL_PLAN_FIXTURE);
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('[data-testid="plan-overview-intro"] h1')?.textContent).toContain('Planificación');
+
+    const cards = Array.from(host.querySelectorAll('[data-testid="plan-overview-grid"] [data-testid^="plan-"]'));
+    expect(cards.map((el) => el.getAttribute('data-testid'))).toEqual([
+      'plan-recurring-card',
+      'plan-installments-card',
+      'plan-goals-card',
+      'plan-exchanges-card',
+      'plan-allowances-card',
+    ]);
+    cards.forEach((card) => {
+      expect(card.querySelector('[data-testid="section-description"]')?.textContent?.trim()).toBeTruthy();
+    });
   });
 
   it('renders degraded cards with "No se pudo cargar" and Retry when sections are null', () => {

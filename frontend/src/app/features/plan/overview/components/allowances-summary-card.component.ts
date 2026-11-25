@@ -24,6 +24,7 @@ interface AllowanceRowViewModel {
     <fo-plan-section-card
       title="Mensualidades"
       linkRoute="/plan/allowances"
+      description="Lo que le das a cada hijo y cuándo toca el próximo pago."
       testId="plan-allowances-card"
       [degraded]="allowances() === null"
       [retrying]="retrying()"
