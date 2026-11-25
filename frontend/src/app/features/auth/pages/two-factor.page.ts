@@ -24,9 +24,9 @@ const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
   imports: [RouterLink, ButtonComponent, AuthBannerComponent, OtpCodeInputComponent],
   template: `
     <section class="space-y-5">
-      <header class="space-y-1 text-center">
-        <h1 class="text-xl font-semibold text-text">Verificación en dos pasos</h1>
-        <p class="text-sm text-muted">
+      <header class="space-y-1.5 text-center">
+        <h1 class="fo-auth-title">Verificación en dos pasos</h1>
+        <p class="fo-auth-lead">
           Ingresa el código de 6 dígitos que enviamos a tu correo electrónico.
         </p>
       </header>
@@ -47,21 +47,23 @@ const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
 
         <label
           for="two-factor-trust-device"
-          class="flex cursor-pointer items-center gap-2.5 text-sm text-text select-none"
+          class="flex cursor-pointer items-center justify-between gap-3 rounded-[12px] border border-border bg-bg px-3 py-2.5 text-[12.5px] font-medium text-text select-none"
         >
+          <span>Confiar en este dispositivo por 30 días</span>
           <input
             id="two-factor-trust-device"
             type="checkbox"
+            role="switch"
             [checked]="trustDevice()"
             [disabled]="submitting()"
             (change)="onTrustDeviceChange($event)"
-            class="fo-focus-ring h-4 w-4 rounded border-border accent-[var(--fo-accent)]"
+            class="fo-auth-switch fo-focus-ring"
           />
-          <span>Confiar en este dispositivo por 30 días</span>
         </label>
 
         <fo-button
           type="submit"
+          size="lg"
           [fullWidth]="true"
           [loading]="submitting()"
           [disabled]="submitting() || !canSubmit()"
@@ -76,7 +78,7 @@ const DEFAULT_RESEND_COOLDOWN_SECONDS = 60;
           data-testid="resend-2fa-btn"
           [disabled]="resending() || cooldownSeconds() > 0"
           (click)="onResend()"
-          class="fo-focus-ring cursor-pointer rounded-md font-medium text-accent hover:underline disabled:pointer-events-none disabled:text-muted"
+          class="fo-auth-link fo-focus-ring"
         >
           @if (cooldownSeconds() > 0) {
             Reenviar código en {{ cooldownSeconds() }} s

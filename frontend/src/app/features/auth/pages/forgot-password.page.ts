@@ -15,9 +15,9 @@ const NEUTRAL_CONFIRMATION =
   imports: [ReactiveFormsModule, RouterLink, ButtonComponent, AuthBannerComponent],
   template: `
     <section class="space-y-5">
-      <header class="space-y-1 text-center">
-        <h1 class="text-xl font-semibold text-text">Recuperar contraseña</h1>
-        <p class="text-sm text-muted">
+      <header class="space-y-1.5 text-center">
+        <h1 class="fo-auth-title">Recuperar contraseña</h1>
+        <p class="fo-auth-lead">
           Ingresa tu correo y te enviaremos instrucciones para restablecer tu contraseña.
         </p>
       </header>
@@ -32,7 +32,7 @@ const NEUTRAL_CONFIRMATION =
 
       <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="space-y-4">
         <div class="space-y-1.5">
-          <label for="forgot-email" class="block text-sm font-medium text-text">
+          <label for="forgot-email" class="fo-auth-label">
             Correo electrónico
           </label>
           <input
@@ -43,12 +43,10 @@ const NEUTRAL_CONFIRMATION =
             placeholder="nombre@correo.com"
             [attr.aria-invalid]="emailError() ? 'true' : null"
             [attr.aria-describedby]="emailError() ? 'forgot-email-error' : null"
-            class="fo-focus-ring block w-full rounded-xl border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted/70 transition-colors disabled:opacity-60"
-            [class.border-border]="!emailError()"
-            [class.border-danger]="!!emailError()"
+            class="fo-auth-input"
           />
           @if (emailError(); as err) {
-            <p id="forgot-email-error" role="alert" class="text-xs font-medium text-danger">
+            <p id="forgot-email-error" role="alert" class="fo-auth-error">
               {{ err }}
             </p>
           }
@@ -56,6 +54,7 @@ const NEUTRAL_CONFIRMATION =
 
         <fo-button
           type="submit"
+          size="lg"
           [fullWidth]="true"
           [loading]="submitting()"
           [disabled]="submitting()"
@@ -64,10 +63,10 @@ const NEUTRAL_CONFIRMATION =
         </fo-button>
       </form>
 
-      <p class="text-center text-sm text-muted">
+      <p class="fo-auth-foot">
         <a
           routerLink="/auth/login"
-          class="fo-focus-ring rounded-md font-medium text-accent hover:underline"
+          class="fo-auth-link fo-focus-ring"
         >
           Volver a iniciar sesión
         </a>

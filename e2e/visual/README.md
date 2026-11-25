@@ -57,6 +57,12 @@ Add an entry to `PAIRS` in `pairs.ts`:
 }
 ```
 
+For a logged-out screen (such as `/auth/login`), set `public: true`. The app is then captured without a session or login, and the script waits for `main` instead of the shell. A viewport with no mock writes an app-only `visual/out/<pair>-<viewport>-<theme>.png`:
+
+```ts
+{ id: 'auth-login', route: '/auth/login', public: true, mocks: {} }
+```
+
 ## How the mock side is captured
 
 1. CSS is injected to hide the presentation frame: the bezel, notch, status bar, browser chrome, outer controls, accent picker and splash.
