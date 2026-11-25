@@ -11,6 +11,8 @@ RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -DskipTests package
 FROM eclipse-temurin:21-jre-alpine AS runtime
 WORKDIR /app
 
+RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-spa
+
 RUN addgroup -S familion && adduser -S -G familion familion
 
 COPY --from=build --chown=familion:familion /workspace/target/*.jar /app/app.jar
