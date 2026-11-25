@@ -23,26 +23,36 @@ import {
   standalone: true,
   imports: [FormsModule, ButtonComponent, CardComponent, IconComponent],
   template: `
-    <fo-card padding="md">
-      <div class="space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="space-y-0.5">
-            <h2 class="text-base font-semibold text-text">Divisas habilitadas</h2>
-            <p class="text-xs text-muted">
-              Monedas disponibles para registrar movimientos y consultar saldos.
-            </p>
+    <fo-card padding="lg">
+      <div class="space-y-5">
+        <div class="flex items-start justify-between gap-3">
+          <div class="space-y-1">
+            <h2 class="text-base font-semibold text-text">Monedas</h2>
+            <p class="text-sm text-muted">Las monedas que podés usar en tus movimientos.</p>
           </div>
 
-          @if (editable() && availableToAdd().length > 0 && !showAddForm()) {
-            <fo-button
-              size="sm"
-              variant="ghost"
-              data-testid="open-add-currency-btn"
-              (click)="openAddForm()"
-            >
-              <fo-icon name="plus" [size]="16" />
-              <span>Agregar divisa</span>
-            </fo-button>
+          @if (editable()) {
+            @if (editing()) {
+              <fo-button
+                size="sm"
+                variant="ghost"
+                data-testid="done-currencies-btn"
+                [disabled]="adding()"
+                (click)="stopEdit()"
+              >
+                Listo
+              </fo-button>
+            } @else {
+              <fo-button
+                size="sm"
+                variant="soft"
+                data-testid="edit-currencies-btn"
+                (click)="editing.set(true)"
+              >
+                <fo-icon name="pencil" [size]="14" />
+                <span>Editar</span>
+              </fo-button>
+            }
           }
         </div>
 
@@ -151,7 +161,7 @@ import {
                 </div>
               </div>
 
-              @if (editable()) {
+              @if (editing()) {
                 <button
                   type="button"
                   role="switch"
@@ -160,7 +170,7 @@ import {
                   [attr.aria-checked]="currency.isActive"
                   [attr.aria-label]="
                     isBase
-                      ? currency.currencyCode + ' es la divisa principal y no se puede desactivar'
+                      ? currency.currencyCode + ' es la moneda principal y no se puede desactivar'
                       : (currency.isActive ? 'Desactivar ' : 'Activar ') + currency.currencyCode
                   "
                   [disabled]="isBase || isUpdating"
@@ -186,7 +196,19 @@ import {
           }
         </ul>
 
-        @if (editable() && showAddForm() && availableToAdd().length > 0) {
+        @if (editing() && !showAddForm() && availableToAdd().length > 0) {
+          <fo-button
+            size="sm"
+            variant="ghost"
+            data-testid="open-add-currency-btn"
+            (click)="openAddForm()"
+          >
+            <fo-icon name="plus" [size]="16" />
+            <span>Agregar moneda</span>
+          </fo-button>
+        }
+
+        @if (editing() && showAddForm() && availableToAdd().length > 0) {
           <form
             data-testid="add-currency-form"
             (ngSubmit)="onAddSubmit()"
@@ -195,7 +217,7 @@ import {
             <div class="grid gap-3 sm:grid-cols-2">
               <div class="space-y-1">
                 <label for="add-currency-code" class="block text-xs font-medium text-text">
-                  Divisa
+                  Moneda
                 </label>
                 <select
                   id="add-currency-code"
@@ -240,7 +262,7 @@ import {
                 Cancelar
               </fo-button>
               <fo-button type="submit" size="sm" [loading]="adding()" [disabled]="adding()">
-                Agregar divisa
+                Agregar
               </fo-button>
             </div>
           </form>
@@ -262,6 +284,12 @@ export class FamilyCurrenciesSectionComponent {
 
   protected readonly rateSources = RATE_SOURCES;
   protected readonly showAddForm = signal(false);
+  protected readonly editing = signal(false);
+
+  protected stopEdit(): void {
+    this.showAddForm.set(false);
+    this.editing.set(false);
+  }
   protected readonly selectedCode = signal<string>('');
   protected readonly selectedRateSource = signal<string>('');
 
