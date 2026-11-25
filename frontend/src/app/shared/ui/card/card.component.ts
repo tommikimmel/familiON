@@ -21,6 +21,11 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       display: block;
     }
 
+    /* Lets a stretched grid item (class="h-full") fill its cell. */
+    :host(.h-full) .fo-card {
+      height: 100%;
+    }
+
     .fo-card.fo-card--none {
       padding: 0;
     }

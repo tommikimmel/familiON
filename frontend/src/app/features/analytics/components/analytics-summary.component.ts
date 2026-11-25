@@ -36,9 +36,9 @@ import { AnalyticsSummary } from '../data-access/analytics.models';
         }
 
         <!-- 4 KPI summary cards -->
-        <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div class="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <!-- Income -->
-          <fo-card padding="md" data-testid="summary-income-card">
+          <fo-card class="h-full" padding="md" data-testid="summary-income-card">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs font-medium text-muted">Ingresos</span>
               <span
@@ -67,7 +67,7 @@ import { AnalyticsSummary } from '../data-access/analytics.models';
           </fo-card>
 
           <!-- Expense -->
-          <fo-card padding="md" data-testid="summary-expense-card">
+          <fo-card class="h-full" padding="md" data-testid="summary-expense-card">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs font-medium text-muted">Gastos</span>
               <span
@@ -96,7 +96,7 @@ import { AnalyticsSummary } from '../data-access/analytics.models';
           </fo-card>
 
           <!-- Balance -->
-          <fo-card padding="md" data-testid="summary-balance-card">
+          <fo-card class="h-full" padding="md" data-testid="summary-balance-card">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs font-medium text-muted">Balance</span>
               <span
@@ -117,7 +117,7 @@ import { AnalyticsSummary } from '../data-access/analytics.models';
           </fo-card>
 
           <!-- Savings rate -->
-          <fo-card padding="md" data-testid="summary-savings-card">
+          <fo-card class="h-full" padding="md" data-testid="summary-savings-card">
             <div class="flex items-center justify-between gap-2">
               <span class="text-xs font-medium text-muted">Tasa de ahorro</span>
               <span

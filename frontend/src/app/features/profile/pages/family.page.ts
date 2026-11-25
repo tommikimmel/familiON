@@ -16,6 +16,7 @@ import { FamilySettingsFormComponent } from '../components/family-settings-form.
 import {
   CreateInvitationRequest,
   EnableFamilyCurrencyRequest,
+  Invitation,
   InvitationCreated,
   UpdateFamilySettingsRequest,
 } from '../data-access/family.models';
@@ -37,8 +38,8 @@ import { FamilyStore } from '../data-access/family.store';
     SkeletonComponent,
   ],
   template: `
-    <section class="mx-auto max-w-3xl space-y-5">
-      <header class="space-y-2">
+    <section class="mx-auto max-w-3xl space-y-6">
+      <header class="space-y-3">
         <a
           routerLink="/profile"
           class="fo-focus-ring inline-flex items-center gap-1 rounded-lg text-xs font-medium text-muted transition-colors hover:text-text"
@@ -46,17 +47,15 @@ import { FamilyStore } from '../data-access/family.store';
           <fo-icon name="chevron-left" [size]="14" />
           <span>Volver a Perfil</span>
         </a>
-        <div class="space-y-0.5">
+        <div class="space-y-1">
           <h1 class="text-xl font-semibold text-text">Familia</h1>
-          <p class="text-sm text-muted">
-            Administra la configuración económica, las divisas habilitadas y los miembros del hogar.
-          </p>
+          <p class="text-sm text-muted">Quiénes forman tu familia y cómo usan FamiliON.</p>
         </div>
       </header>
 
       @if (store.loading()) {
         <div data-testid="family-loading" class="space-y-4">
-          <fo-card padding="md">
+          <fo-card padding="lg">
             <div class="space-y-3">
               <fo-skeleton width="40%" height="1.25rem" />
               <fo-skeleton width="100%" height="2.5rem" />
@@ -85,6 +84,31 @@ import { FamilyStore } from '../data-access/family.store';
           <fo-button size="sm" (click)="reload()">Reintentar</fo-button>
         </fo-empty-state>
       } @else if (store.family(); as family) {
+        <fo-family-members-list
+          [members]="store.members()"
+          [editable]="isAdult()"
+          [currentUserId]="currentUserId()"
+          [updatingUserId]="store.updatingVisibilityUserId()"
+          (visibilityChange)="onVisibilityChange($event)"
+        >
+          @if (isAdult()) {
+            <fo-family-invitations-section
+              [invitations]="store.invitations()"
+              [lastCreated]="store.lastCreatedInvitation()"
+              [creating]="store.creatingInvitation()"
+              [revokingId]="store.revokingInvitationId()"
+              [resendingId]="store.resendingInvitationId()"
+              [canShare]="canShare"
+              (createInvitation)="onCreateInvitation($event)"
+              (revokeInvitation)="onRevokeInvitation($event)"
+              (resendInvitation)="onResendInvitation($event)"
+              (copyLink)="onCopyInviteLink($event)"
+              (shareLink)="onShareInviteLink($event)"
+              (dismissCreated)="store.clearLastCreatedInvitation()"
+            />
+          }
+        </fo-family-members-list>
+
         <fo-family-settings-form
           [family]="family"
           [editable]="isAdult()"
@@ -102,29 +126,6 @@ import { FamilyStore } from '../data-access/family.store';
           (addCurrency)="onAddCurrency($event)"
           (toggleCurrency)="onToggleCurrency($event)"
         />
-
-        <fo-family-members-list
-          [members]="store.members()"
-          [editable]="isAdult()"
-          [currentUserId]="currentUserId()"
-          [updatingUserId]="store.updatingVisibilityUserId()"
-          (visibilityChange)="onVisibilityChange($event)"
-        />
-
-        @if (isAdult()) {
-          <fo-family-invitations-section
-            [invitations]="store.invitations()"
-            [lastCreated]="store.lastCreatedInvitation()"
-            [creating]="store.creatingInvitation()"
-            [revokingId]="store.revokingInvitationId()"
-            [canShare]="canShare"
-            (createInvitation)="onCreateInvitation($event)"
-            (revokeInvitation)="onRevokeInvitation($event)"
-            (copyLink)="onCopyInviteLink($event)"
-            (shareLink)="onShareInviteLink($event)"
-            (dismissCreated)="store.clearLastCreatedInvitation()"
-          />
-        }
       }
     </section>
   `,
@@ -175,6 +176,10 @@ export class FamilyPage implements OnInit {
 
   protected onRevokeInvitation(id: string): void {
     void this.store.revokeInvitation(id);
+  }
+
+  protected onResendInvitation(invitation: Invitation): void {
+    void this.store.resendInvitation(invitation);
   }
 
   protected async onCopyInviteLink(url: string): Promise<void> {

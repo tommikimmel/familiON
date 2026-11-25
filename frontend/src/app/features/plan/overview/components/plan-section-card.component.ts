@@ -21,9 +21,14 @@ export type SectionBadgeTone = 'neutral' | 'danger' | 'success' | 'accent';
       [attr.data-testid]="testId()"
     >
       <header class="pl-head">
-        <h2 class="pl-title min-w-0 truncate" [class.plan-flat-title]="flatOnMobile()">
-          {{ title() }}
-        </h2>
+        <div class="min-w-0">
+          <h2 class="pl-title truncate" [class.plan-flat-title]="flatOnMobile()">
+            {{ title() }}
+          </h2>
+          @if (description(); as desc) {
+            <p class="pl-sub mt-0.5" data-testid="section-description">{{ desc }}</p>
+          }
+        </div>
         <div class="flex shrink-0 items-center gap-2">
           @if (badgeText(); as badge) {
             <span
@@ -102,6 +107,8 @@ export type SectionBadgeTone = 'neutral' | 'danger' | 'success' | 'accent';
 export class PlanSectionCardComponent {
   readonly title = input.required<string>();
   readonly linkRoute = input.required<string>();
+  /** One-line explanation of what the section is for, shown under the title. */
+  readonly description = input<string | null>(null);
   readonly degraded = input<boolean>(false);
   readonly retrying = input<boolean>(false);
   readonly badgeText = input<string | null>(null);

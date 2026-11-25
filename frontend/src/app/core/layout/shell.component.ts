@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   inject,
+  signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -19,6 +20,7 @@ import { SessionStore } from '../state/session.store';
 import { Granularity, View, ViewContextStore } from '../state/view-context.store';
 import { ThemeService } from '../theme/theme.service';
 import { PeriodLabelPipe } from '../../shared/pipes/period-label.pipe';
+import { avatarUrl } from '../api/models/me.model';
 import { AvatarComponent } from '../../shared/ui/avatar/avatar.component';
 import { FoIconName, IconComponent } from '../../shared/ui/icon/icon.component';
 import { LogoComponent } from '../../shared/ui/logo/logo.component';
@@ -31,7 +33,7 @@ import { QuickAddHostComponent } from '../../features/quick-add/quick-add-host.c
 import { PwaShellBannersComponent } from '../pwa/pwa-shell-banners.component';
 import { PwaSplashComponent } from '../pwa/pwa-splash.component';
 import { CurrencyMenuComponent } from './currency-menu.component';
-import { NotificationBadgeService } from './notification-badge.service';
+import { NotificationsBellComponent } from '../../features/notifications/components/notifications-bell.component';
 import { QuickAddLauncher } from './quick-add-launcher.service';
 
 interface NavItem {
@@ -41,6 +43,16 @@ interface NavItem {
 }
 
 const DESKTOP_BREAKPOINT = '(min-width: 1024px)';
+const SIDEBAR_EXPANDED_KEY = 'fo.sidebarExpanded';
+
+// Storage can throw (private mode, blocked site data); default to collapsed.
+function readSidebarExpanded(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_EXPANDED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
 
 const VIEW_OPTIONS: readonly SegmentedOption<View>[] = [
   { value: 'PERSONAL', label: 'Personal' },
@@ -96,6 +108,7 @@ function isEditableElement(target: EventTarget | null): boolean {
     CurrencyMenuComponent,
     IconComponent,
     LogoComponent,
+    NotificationsBellComponent,
     PeriodLabelPipe,
     PwaShellBannersComponent,
     PwaSplashComponent,
@@ -108,13 +121,45 @@ function isEditableElement(target: EventTarget | null): boolean {
   },
   template: `
     @if (isDesktop()) {
-      <div class="fo-app-shell">
-        <aside data-testid="desktop-sidebar" aria-label="Barra lateral" class="fo-sidebar">
-          <a routerLink="/home" aria-label="FamiliON inicio" class="fo-logo-wrap fo-focus-ring">
-            <fo-logo [animate]="true" />
-          </a>
+      <div class="fo-app-shell" [class.is-collapsed]="!sidebarExpanded()">
+        <aside
+          id="fo-desktop-sidebar"
+          data-testid="desktop-sidebar"
+          aria-label="Barra lateral"
+          class="fo-sidebar"
+        >
+          <div class="fo-sidebar-head">
+            @if (sidebarExpanded()) {
+              <a routerLink="/home" aria-label="FamiliON inicio" class="fo-logo-wrap fo-focus-ring">
+                <fo-logo [animate]="true" />
+              </a>
+            }
+            <button
+              type="button"
+              data-testid="sidebar-toggle"
+              aria-controls="fo-desktop-sidebar"
+              [attr.aria-expanded]="sidebarExpanded()"
+              [attr.aria-label]="sidebarExpanded() ? 'Contraer barra lateral' : 'Expandir barra lateral'"
+              [attr.title]="sidebarExpanded() ? 'Contraer barra lateral' : 'Expandir barra lateral'"
+              (click)="toggleSidebar()"
+              class="fo-icon-btn fo-focus-ring"
+            >
+              <fo-icon [name]="sidebarExpanded() ? 'chevron-left' : 'chevron-right'" [size]="14" />
+            </button>
+          </div>
 
-          @if (viewContext.canSeeFamily()) {
+          @if (viewContext.canSeeFamily() && !sidebarExpanded()) {
+            <button
+              type="button"
+              data-testid="sidebar-scope-btn"
+              [attr.aria-label]="scopeButtonLabel()"
+              [attr.title]="scopeButtonLabel()"
+              (click)="viewContext.setView(viewContext.view() === 'FAMILY' ? 'PERSONAL' : 'FAMILY')"
+              class="fo-icon-btn fo-focus-ring self-center"
+            >
+              <fo-icon [name]="viewContext.view() === 'FAMILY' ? 'users' : 'user'" [size]="16" />
+            </button>
+          } @else if (viewContext.canSeeFamily()) {
             <fo-segmented-toggle
               [options]="viewOptions"
               [value]="viewContext.view()"
@@ -127,14 +172,17 @@ function isEditableElement(target: EventTarget | null): boolean {
           <button
             type="button"
             data-testid="desktop-quick-add-btn"
+            [attr.title]="sidebarExpanded() ? null : 'Nuevo movimiento (N)'"
             (click)="quickAdd.open()"
             class="fo-new-btn fo-focus-ring"
           >
             <span class="inline-flex items-center gap-[7px]">
               <fo-icon name="plus" [size]="15" [strokeWidth]="2.6" />
-              <span>Nuevo movimiento</span>
+              <span class="fo-sidebar-label">Nuevo movimiento</span>
             </span>
-            <kbd class="fo-kbd-hint" aria-hidden="true">N</kbd>
+            @if (sidebarExpanded()) {
+              <kbd class="fo-kbd-hint" aria-hidden="true">N</kbd>
+            }
           </button>
 
           <nav aria-label="Navegación principal" class="fo-nav-list">
@@ -144,18 +192,19 @@ function isEditableElement(target: EventTarget | null): boolean {
                 routerLinkActive="is-active"
                 #rla="routerLinkActive"
                 [attr.aria-current]="rla.isActive ? 'page' : null"
+                [attr.title]="sidebarExpanded() ? null : item.label"
                 class="fo-nav-btn fo-focus-ring"
               >
                 <fo-icon [name]="item.icon" [size]="16" />
-                <span class="truncate">{{ item.label }}</span>
+                <span class="fo-sidebar-label truncate">{{ item.label }}</span>
               </a>
             }
           </nav>
 
           <footer class="fo-sidebar-footer">
-            <div class="fo-user-chip">
-              <fo-avatar [name]="userDisplayName()" aria-hidden="true" />
-              <div class="min-w-0">
+            <div class="fo-user-chip" [attr.title]="sidebarExpanded() ? null : userDisplayName()">
+              <fo-avatar [name]="userDisplayName()" [src]="userAvatarUrl()" aria-hidden="true" />
+              <div class="fo-sidebar-label min-w-0">
                 <strong class="fo-user-name">{{ userDisplayName() }}</strong>
                 <span class="fo-user-sub">{{ userSubtitle() }}</span>
               </div>
@@ -217,18 +266,7 @@ function isEditableElement(target: EventTarget | null): boolean {
             <div class="fo-top-right">
               <fo-currency-menu />
 
-              <a
-                routerLink="/notifications"
-                [attr.aria-label]="notificationsLabel()"
-                class="fo-icon-btn fo-focus-ring"
-              >
-                <fo-icon name="bell" [size]="15" />
-                @if (notificationBadge.unread() > 0) {
-                  <span data-testid="notification-badge" class="fo-notif-dot">
-                    <span class="sr-only">{{ badgeLabel() }}</span>
-                  </span>
-                }
-              </a>
+              <fo-notifications-bell />
             </div>
           </header>
 
@@ -246,7 +284,10 @@ function isEditableElement(target: EventTarget | null): boolean {
             <fo-logo [compact]="true" />
           </a>
 
-          <fo-currency-menu />
+          <div class="flex items-center gap-2">
+            <fo-currency-menu />
+            <fo-notifications-bell />
+          </div>
         </header>
 
         <fo-pwa-shell-banners />
@@ -332,13 +373,20 @@ export class ShellComponent {
   protected readonly viewContext = inject(ViewContextStore);
   protected readonly theme = inject(ThemeService);
   protected readonly quickAdd = inject(QuickAddLauncher);
-  protected readonly notificationBadge = inject(NotificationBadgeService);
 
   protected readonly viewOptions = VIEW_OPTIONS;
   protected readonly granularityOptions = GRANULARITY_OPTIONS;
   protected readonly mobileLeftNav = MOBILE_LEFT_NAV;
   protected readonly mobileRightNav = MOBILE_RIGHT_NAV;
   protected readonly desktopNav = DESKTOP_NAV;
+
+  protected readonly sidebarExpanded = signal(readSidebarExpanded());
+
+  protected readonly scopeButtonLabel = computed(() =>
+    this.viewContext.view() === 'FAMILY'
+      ? 'Vista Familia. Cambiar a vista Personal'
+      : 'Vista Personal. Cambiar a vista Familia',
+  );
 
   protected readonly isDesktop = toSignal(
     this.breakpointObserver
@@ -360,6 +408,8 @@ export class ShellComponent {
     () => this.session.me()?.fullName ?? 'Mi cuenta',
   );
 
+  protected readonly userAvatarUrl = computed(() => avatarUrl(this.session.me()));
+
   protected readonly userSubtitle = computed(() => {
     const me = this.session.me();
     if (!me) {
@@ -369,15 +419,15 @@ export class ShellComponent {
     return me.twoFactorEnabled ? `${role} · 2FA activo` : `${role} · ${me.family.name}`;
   });
 
-  protected readonly notificationsLabel = computed(() => {
-    const count = this.notificationBadge.unread();
-    return count > 0 ? `Notificaciones (${this.badgeLabel()} sin leer)` : 'Notificaciones';
-  });
-
-  protected readonly badgeLabel = computed(() => {
-    const count = this.notificationBadge.unread();
-    return count > 99 ? '99+' : String(count);
-  });
+  protected toggleSidebar(): void {
+    const expanded = !this.sidebarExpanded();
+    this.sidebarExpanded.set(expanded);
+    try {
+      localStorage.setItem(SIDEBAR_EXPANDED_KEY, String(expanded));
+    } catch {
+      // Preference just won't persist this session.
+    }
+  }
 
   protected onGlobalKeydown(event: KeyboardEvent): void {
     if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) {

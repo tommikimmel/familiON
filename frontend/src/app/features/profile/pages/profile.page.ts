@@ -9,7 +9,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Subject, debounceTime, firstValueFrom } from 'rxjs';
-import { ThemePreference } from '../../../core/api/models/me.model';
+import { ThemePreference, avatarUrl } from '../../../core/api/models/me.model';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { SessionStore } from '../../../core/state/session.store';
 import { ThemeService } from '../../../core/theme/theme.service';
@@ -24,6 +24,7 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
 import { ToastService } from '../../../shared/ui/toast/toast.service';
 import { AccentColorPickerComponent } from '../components/accent-color-picker.component';
 import { ProfileHeaderComponent } from '../components/profile-header.component';
+import { ProfilePhotoControlsComponent } from '../components/profile-photo-controls.component';
 import { ProfileApi } from '../data-access/profile.api';
 import {
   UpdatePreferencesRequest,
@@ -54,6 +55,7 @@ const PREFERENCES_DEBOUNCE_MS = 400;
     CardComponent,
     IconComponent,
     ProfileHeaderComponent,
+    ProfilePhotoControlsComponent,
     SegmentedToggleComponent,
     SkeletonComponent,
   ],
@@ -74,7 +76,13 @@ const PREFERENCES_DEBOUNCE_MS = 400;
             [role]="user.role"
             [familyName]="user.family.name"
             [accentColor]="theme.accent()"
-          />
+            [photoUrl]="photoPreview() ?? savedPhotoUrl()"
+          >
+            <fo-profile-photo-controls
+              [hasPhoto]="!!savedPhotoUrl()"
+              (previewChange)="photoPreview.set($event)"
+            />
+          </fo-profile-header>
         } @else {
           <div class="flex items-center gap-4">
             <fo-skeleton width="3.5rem" height="3.5rem" rounded="full" />
@@ -190,6 +198,8 @@ export class ProfilePage {
 
   protected readonly theme = inject(ThemeService);
   protected readonly me = computed(() => this.session.me());
+  protected readonly savedPhotoUrl = computed(() => avatarUrl(this.session.me()));
+  protected readonly photoPreview = signal<string | null>(null);
   protected readonly themeOptions = THEME_OPTIONS;
   protected readonly savingPreferences = signal(false);
   protected readonly loggingOut = signal(false);

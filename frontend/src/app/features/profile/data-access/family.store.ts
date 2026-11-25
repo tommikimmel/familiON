@@ -40,6 +40,7 @@ export class FamilyStore {
   private readonly _updatingVisibilityUserId = signal<string | null>(null);
   private readonly _creatingInvitation = signal<boolean>(false);
   private readonly _revokingInvitationId = signal<string | null>(null);
+  private readonly _resendingInvitationId = signal<string | null>(null);
   private readonly _lastCreatedInvitation = signal<InvitationCreated | null>(null);
 
   readonly family: Signal<Family | null> = this._family.asReadonly();
@@ -55,6 +56,7 @@ export class FamilyStore {
     this._updatingVisibilityUserId.asReadonly();
   readonly creatingInvitation: Signal<boolean> = this._creatingInvitation.asReadonly();
   readonly revokingInvitationId: Signal<string | null> = this._revokingInvitationId.asReadonly();
+  readonly resendingInvitationId: Signal<string | null> = this._resendingInvitationId.asReadonly();
   readonly lastCreatedInvitation: Signal<InvitationCreated | null> =
     this._lastCreatedInvitation.asReadonly();
 
@@ -242,6 +244,37 @@ export class FamilyStore {
       return false;
     } finally {
       this._revokingInvitationId.set(null);
+    }
+  }
+
+  /** No resend endpoint: issue a fresh invitation (new email + link) and revoke the old one. */
+  async resendInvitation(old: Invitation): Promise<boolean> {
+    this._resendingInvitationId.set(old.id);
+
+    try {
+      const created = await firstValueFrom(
+        this.api.createInvitation({
+          email: old.email,
+          role: old.role,
+          ...(old.role === 'HIJO' ? { familyVisibility: old.familyVisibility } : {}),
+        }),
+      );
+      const { inviteUrl: _inviteUrl, ...invitation } = created;
+      void _inviteUrl;
+      this._invitations.update((list) => [invitation, ...list.filter((i) => i.id !== old.id)]);
+      this._lastCreatedInvitation.set(created);
+      try {
+        await firstValueFrom(this.api.deleteInvitation(old.id));
+      } catch {
+        // New invitation already sent; the stale one simply expires.
+      }
+      this.toast.success('Invitación reenviada.');
+      return true;
+    } catch (err: unknown) {
+      this.toast.error(extractApiErrorMessage(err, 'No se pudo reenviar la invitación.'));
+      return false;
+    } finally {
+      this._resendingInvitationId.set(null);
     }
   }
 

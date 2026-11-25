@@ -198,6 +198,39 @@ describe('FamilyStore', () => {
     expect(store.invitations().map((i) => i.id)).toEqual(['inv-2']);
   });
 
+  it('resends an invitation by creating a fresh one and revoking the old one', async () => {
+    const old = buildInvitation({ id: 'inv-old' });
+    const loadPromise = store.load(true);
+    httpMock.expectOne('/bff/api/family').flush(buildFamily());
+    httpMock.expectOne('/bff/api/family/members').flush(buildMembers());
+    httpMock.expectOne('/bff/api/family/invitations').flush([old]);
+    await loadPromise;
+
+    const resendPromise = store.resendInvitation(old);
+    const createReq = httpMock.expectOne('/bff/api/family/invitations');
+    expect(createReq.request.method).toBe('POST');
+    expect(createReq.request.body).toEqual({
+      email: 'sofia@familion.test',
+      role: 'HIJO',
+      familyVisibility: 'FAMILY_SUMMARY',
+    });
+    const created: InvitationCreated = {
+      ...buildInvitation({ id: 'inv-new' }),
+      inviteUrl: 'https://familion.app/auth/invite?token=new',
+    };
+    createReq.flush(created);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const deleteReq = httpMock.expectOne('/bff/api/family/invitations/inv-old');
+    expect(deleteReq.request.method).toBe('DELETE');
+    deleteReq.flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(await resendPromise).toBe(true);
+    expect(store.invitations().map((i) => i.id)).toEqual(['inv-new']);
+    expect(store.lastCreatedInvitation()).toEqual(created);
+  });
+
   it('applies optimistic visibility update and rolls back on error with toast', async () => {
     const toastSpy = vi.spyOn(toast, 'error');
     const loadPromise = store.load(false);

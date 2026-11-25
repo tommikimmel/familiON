@@ -64,7 +64,8 @@ public class NotificationService {
                 new Notification(familyId, userId, category, title, body, metadata, Instant.now());
         notification = notificationRepository.save(notification);
 
-        if (webPushProperties.isConfigured()) {
+        // Activity feed entries are in-app only: pushing every change would spam devices.
+        if (webPushProperties.isConfigured() && category != NotificationCategory.ACTIVITY) {
             String link = metadata != null && metadata.containsKey("link")
                     ? String.valueOf(metadata.get("link"))
                     : null;

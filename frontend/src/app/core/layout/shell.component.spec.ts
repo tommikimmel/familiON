@@ -207,4 +207,48 @@ describe('ShellComponent', () => {
     expect(host.querySelector('[data-testid="mobile-bottom-nav"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="desktop-sidebar"]')).toBeNull();
   });
+
+  it('starts the desktop sidebar collapsed, toggles it and remembers the choice', () => {
+    const setup = () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [ShellComponent],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideRouter([{ path: 'home', component: DummyHomeComponent }]),
+          { provide: BreakpointObserver, useValue: createMockBreakpointObserver(true).observer },
+        ],
+      });
+      const fixture = TestBed.createComponent(ShellComponent);
+      TestBed.inject(SessionStore).setMe(buildMe());
+      fixture.detectChanges();
+      return { fixture, host: fixture.nativeElement as HTMLElement };
+    };
+
+    let { fixture, host } = setup();
+    const shell = () => host.querySelector('.fo-app-shell') as HTMLElement;
+    const toggle = () => host.querySelector('[data-testid="sidebar-toggle"]') as HTMLButtonElement;
+
+    expect(shell().classList).toContain('is-collapsed');
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+    expect(toggle().getAttribute('aria-label')).toBe('Expandir barra lateral');
+    expect(host.querySelector('a[title="Movimientos"]')).not.toBeNull();
+
+    // Collapsed scope button flips the view
+    const viewContext = TestBed.inject(ViewContextStore);
+    (host.querySelector('[data-testid="sidebar-scope-btn"]') as HTMLButtonElement).click();
+    expect(viewContext.view()).toBe('FAMILY');
+
+    toggle().click();
+    fixture.detectChanges();
+    expect(shell().classList).not.toContain('is-collapsed');
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+    expect(host.querySelector('.fo-sidebar fo-segmented-toggle')).not.toBeNull();
+    expect(localStorage.getItem('fo.sidebarExpanded')).toBe('true');
+
+    // Preference survives a reload
+    ({ fixture, host } = setup());
+    expect(shell().classList).not.toContain('is-collapsed');
+  });
 });
