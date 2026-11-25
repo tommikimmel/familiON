@@ -320,7 +320,7 @@ function isEditableElement(target: EventTarget | null): boolean {
     <fo-toast />
     <fo-pwa-splash />
   `,
-  styleUrl: './shell.component.css',
+  styleUrls: ['./shell-desktop.component.css', './shell-mobile.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ShellComponent {
