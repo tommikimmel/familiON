@@ -27,6 +27,8 @@ import {
 } from '../../shared/ui/segmented-toggle/segmented-toggle.component';
 import { ToastComponent } from '../../shared/ui/toast/toast.component';
 import { QuickAddHostComponent } from '../../features/quick-add/quick-add-host.component';
+import { PwaShellBannersComponent } from '../pwa/pwa-shell-banners.component';
+import { PwaSplashComponent } from '../pwa/pwa-splash.component';
 import { CurrencyMenuComponent } from './currency-menu.component';
 import { NotificationBadgeService } from './notification-badge.service';
 import { QuickAddLauncher } from './quick-add-launcher.service';
@@ -93,6 +95,8 @@ function isEditableElement(target: EventTarget | null): boolean {
     IconComponent,
     LogoComponent,
     PeriodLabelPipe,
+    PwaShellBannersComponent,
+    PwaSplashComponent,
     QuickAddHostComponent,
     SegmentedToggleComponent,
     ToastComponent,
@@ -247,6 +251,8 @@ function isEditableElement(target: EventTarget | null): boolean {
             </div>
           </header>
 
+          <fo-pwa-shell-banners />
+
           <main class="flex-1 p-6">
             <router-outlet />
           </main>
@@ -282,6 +288,8 @@ function isEditableElement(target: EventTarget | null): boolean {
             </div>
           }
         </header>
+
+        <fo-pwa-shell-banners />
 
         <main class="flex-1 px-4 pt-4 pb-24">
           <router-outlet />
@@ -343,6 +351,7 @@ function isEditableElement(target: EventTarget | null): boolean {
 
     <fo-quick-add-host />
     <fo-toast />
+    <fo-pwa-splash />
   `,
   styles: `
     .fo-fab-icon {

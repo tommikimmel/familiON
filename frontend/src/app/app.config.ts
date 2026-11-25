@@ -16,6 +16,7 @@ import { provideServiceWorker } from '@angular/service-worker';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthStore } from './core/auth/auth.store';
+import { providePwa } from './core/pwa/pwa.providers';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -34,5 +35,6 @@ export const appConfig: ApplicationConfig = {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',
     }),
+    providePwa(),
   ],
 };
