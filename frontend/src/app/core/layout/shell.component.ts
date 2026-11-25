@@ -153,7 +153,7 @@ function isEditableElement(target: EventTarget | null): boolean {
               [attr.aria-label]="scopeButtonLabel()"
               [attr.title]="scopeButtonLabel()"
               (click)="viewContext.setView(viewContext.view() === 'FAMILY' ? 'PERSONAL' : 'FAMILY')"
-              class="fo-rail-btn fo-focus-ring"
+              class="fo-icon-btn fo-focus-ring self-center"
             >
               <fo-icon [name]="viewContext.view() === 'FAMILY' ? 'users' : 'user'" [size]="16" />
             </button>
