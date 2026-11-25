@@ -73,6 +73,15 @@ import { ToastComponent } from '../../shared/ui/toast/toast.component';
         box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
       }
     }
+    .fo-auth fo-password-input,
+    .fo-auth fo-otp-code-input,
+    .fo-auth fo-auth-banner,
+    .fo-auth fo-button[type='submit'] {
+      display: block;
+    }
+    .fo-auth fo-button[type='submit'] .fo-btn {
+      width: 100%;
+    }
     .fo-auth-title {
       font-size: 18px;
       font-weight: 700;
