@@ -2,6 +2,7 @@ package com.familion.family.application.api;
 
 import com.familion.common.security.FamilyVisibility;
 import com.familion.common.security.Role;
+import java.time.Instant;
 import java.util.UUID;
 
 public record UserProfile(
@@ -14,4 +15,5 @@ public record UserProfile(
         String themePreference,
         String accentColor,
         boolean twoFactorEnabled,
-        boolean emailVerified) {}
+        boolean emailVerified,
+        Instant avatarUpdatedAt) {}

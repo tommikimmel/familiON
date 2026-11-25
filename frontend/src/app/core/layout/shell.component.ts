@@ -20,6 +20,7 @@ import { SessionStore } from '../state/session.store';
 import { Granularity, View, ViewContextStore } from '../state/view-context.store';
 import { ThemeService } from '../theme/theme.service';
 import { PeriodLabelPipe } from '../../shared/pipes/period-label.pipe';
+import { avatarUrl } from '../api/models/me.model';
 import { AvatarComponent } from '../../shared/ui/avatar/avatar.component';
 import { FoIconName, IconComponent } from '../../shared/ui/icon/icon.component';
 import { LogoComponent } from '../../shared/ui/logo/logo.component';
@@ -202,7 +203,7 @@ function isEditableElement(target: EventTarget | null): boolean {
 
           <footer class="fo-sidebar-footer">
             <div class="fo-user-chip" [attr.title]="sidebarExpanded() ? null : userDisplayName()">
-              <fo-avatar [name]="userDisplayName()" aria-hidden="true" />
+              <fo-avatar [name]="userDisplayName()" [src]="userAvatarUrl()" aria-hidden="true" />
               <div class="fo-sidebar-label min-w-0">
                 <strong class="fo-user-name">{{ userDisplayName() }}</strong>
                 <span class="fo-user-sub">{{ userSubtitle() }}</span>
@@ -406,6 +407,8 @@ export class ShellComponent {
   protected readonly userDisplayName = computed(
     () => this.session.me()?.fullName ?? 'Mi cuenta',
   );
+
+  protected readonly userAvatarUrl = computed(() => avatarUrl(this.session.me()));
 
   protected readonly userSubtitle = computed(() => {
     const me = this.session.me();

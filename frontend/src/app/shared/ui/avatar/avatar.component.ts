@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 
-/** Initials avatar (mock `.avatar` 30px / `.avatar-circle` 36px). */
+/** Initials avatar (mock `.avatar` 30px / `.avatar-circle` 36px); shows `src` photo when given. */
 @Component({
   selector: 'fo-avatar',
   standalone: true,
@@ -14,7 +14,16 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
       [attr.aria-label]="name()"
       role="img"
     >
-      {{ initials() }}
+      @if (showPhoto()) {
+        <img
+          [src]="src()"
+          alt=""
+          class="h-full w-full rounded-full object-cover"
+          (error)="failedSrc.set(src())"
+        />
+      } @else {
+        {{ initials() }}
+      }
     </span>
   `,
   styles: `
@@ -28,6 +37,10 @@ export class AvatarComponent {
   readonly name = input.required<string>();
   readonly size = input<number>(30);
   readonly color = input<string | null>(null);
+  readonly src = input<string | null>(null);
+
+  protected readonly failedSrc = signal<string | null>(null);
+  protected readonly showPhoto = computed(() => !!this.src() && this.src() !== this.failedSrc());
 
   readonly initials = computed(() => {
     const parts = this.name()

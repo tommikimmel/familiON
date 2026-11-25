@@ -5,6 +5,8 @@ import com.familion.common.error.ConflictException;
 import com.familion.common.error.NotFoundException;
 import com.familion.common.security.FamilyVisibility;
 import com.familion.common.security.Role;
+import com.familion.family.application.api.AvatarImage;
+import com.familion.family.application.api.InvalidAvatarException;
 import com.familion.family.application.api.RegisteredUser;
 import com.familion.family.application.api.UserAccount;
 import com.familion.family.application.api.UserAccountApi;
@@ -14,8 +16,10 @@ import com.familion.family.domain.Family;
 import com.familion.family.domain.FamilyCurrency;
 import com.familion.family.domain.ThemePreference;
 import com.familion.family.domain.User;
+import com.familion.family.domain.UserAvatar;
 import com.familion.family.infrastructure.persistence.FamilyCurrencyRepository;
 import com.familion.family.infrastructure.persistence.FamilyRepository;
+import com.familion.family.infrastructure.persistence.UserAvatarRepository;
 import com.familion.family.infrastructure.persistence.UserRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -33,6 +37,7 @@ public class UserAccountService implements UserAccountApi, UserProfileApi {
     private final FamilyRepository familyRepository;
     private final FamilyCurrencyRepository familyCurrencyRepository;
     private final UserRepository userRepository;
+    private final UserAvatarRepository userAvatarRepository;
     private final PasswordEncoder passwordEncoder;
     private final Clock clock;
 
@@ -40,11 +45,13 @@ public class UserAccountService implements UserAccountApi, UserProfileApi {
             FamilyRepository familyRepository,
             FamilyCurrencyRepository familyCurrencyRepository,
             UserRepository userRepository,
+            UserAvatarRepository userAvatarRepository,
             PasswordEncoder passwordEncoder,
             Clock clock) {
         this.familyRepository = familyRepository;
         this.familyCurrencyRepository = familyCurrencyRepository;
         this.userRepository = userRepository;
+        this.userAvatarRepository = userAvatarRepository;
         this.passwordEncoder = passwordEncoder;
         this.clock = clock;
     }
@@ -172,6 +179,47 @@ public class UserAccountService implements UserAccountApi, UserProfileApi {
         return toUserProfile(userRepository.save(user));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AvatarImage> getAvatar(UUID userId) {
+        return userAvatarRepository
+                .findById(userId)
+                .map(a -> new AvatarImage(a.getContentType(), a.getContent()));
+    }
+
+    @Override
+    @Transactional
+    public UserProfile updateAvatar(UUID userId, byte[] content) {
+        User user = requireUser(userId);
+        if (content == null || content.length == 0) {
+            throw new InvalidAvatarException(
+                    InvalidAvatarException.Reason.EMPTY, "Avatar file is empty");
+        }
+        if (content.length > UserAvatar.MAX_SIZE_BYTES) {
+            throw new InvalidAvatarException(
+                    InvalidAvatarException.Reason.TOO_LARGE,
+                    "Avatar exceeds the maximum allowed size of 2 MB");
+        }
+        String contentType = UserAvatar.detectContentType(content)
+                .orElseThrow(() -> new InvalidAvatarException(
+                        InvalidAvatarException.Reason.UNSUPPORTED_TYPE,
+                        "Avatar must be a JPEG, PNG or WebP image"));
+        UserAvatar avatar =
+                userAvatarRepository.findById(userId).orElseGet(() -> new UserAvatar(userId));
+        avatar.replace(contentType, content, clock.instant());
+        userAvatarRepository.saveAndFlush(avatar);
+        return toUserProfile(user);
+    }
+
+    @Override
+    @Transactional
+    public UserProfile removeAvatar(UUID userId) {
+        User user = requireUser(userId);
+        userAvatarRepository.findById(userId).ifPresent(userAvatarRepository::delete);
+        userAvatarRepository.flush();
+        return toUserProfile(user);
+    }
+
     private User requireUser(UUID userId) {
         Objects.requireNonNull(userId, "userId must not be null");
         return userRepository
@@ -193,7 +241,7 @@ public class UserAccountService implements UserAccountApi, UserProfileApi {
                 user.isActive());
     }
 
-    private static UserProfile toUserProfile(User user) {
+    private UserProfile toUserProfile(User user) {
         return new UserProfile(
                 user.getId(),
                 user.getFamilyId(),
@@ -204,6 +252,7 @@ public class UserAccountService implements UserAccountApi, UserProfileApi {
                 user.getThemePreference().name(),
                 user.getAccentColor(),
                 user.isTwoFactorEnabled(),
-                user.isEmailVerified());
+                user.isEmailVerified(),
+                userAvatarRepository.findUpdatedAtByUserId(user.getId()).orElse(null));
     }
 }
