@@ -167,4 +167,51 @@ describe('AnalyticsPage', () => {
 
     expect(el.querySelector('[data-testid="calendar-grid"]')).not.toBeNull();
   });
+  it('exports the monthly summary of the period year with the Content-Disposition filename', async () => {
+    const createObjectURL = vi.fn(() => 'blob:summary-1');
+    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, 'revokeObjectURL', { value: vi.fn(), configurable: true });
+    const downloads: string[] = [];
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        downloads.push(this.download);
+      });
+
+    try {
+      fixture.detectChanges();
+      httpMock.expectOne((r) => r.url === '/bff/api/analytics/summary').flush(SUMMARY_NOMINAL);
+      httpMock.expectOne((r) => r.url === '/bff/api/analytics/series').flush(SERIES_NOMINAL);
+      httpMock.expectOne((r) => r.url === '/bff/api/analytics/by-category').flush(CATEGORY_NOMINAL);
+      fixture.detectChanges();
+
+      const el = fixture.nativeElement as HTMLElement;
+      const trigger = el.querySelector<HTMLButtonElement>('[data-testid="analytics-export-btn"]')!;
+      trigger.click();
+      fixture.detectChanges();
+      el.querySelector<HTMLButtonElement>('[data-testid="analytics-export-CSV"]')!.click();
+      fixture.detectChanges();
+
+      expect(trigger.disabled).toBe(true);
+
+      const req = httpMock.expectOne((r) => r.url === '/bff/api/exports/monthly-summary');
+      expect(req.request.responseType).toBe('blob');
+      expect(req.request.params.get('format')).toBe('CSV');
+      expect(req.request.params.get('year')).toBe(viewContext.anchorDate().slice(0, 4));
+      expect(req.request.params.get('view')).toBe(viewContext.view());
+      expect(req.request.params.get('lens')).toBe(viewContext.lens());
+
+      req.flush(new Blob(['mes,ingresos']), {
+        headers: { 'Content-Disposition': 'attachment; filename="resumen_2026.csv"' },
+      });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      expect(downloads).toEqual(['resumen_2026.csv']);
+      expect(trigger.disabled).toBe(false);
+    } finally {
+      clickSpy.mockRestore();
+    }
+  });
 });

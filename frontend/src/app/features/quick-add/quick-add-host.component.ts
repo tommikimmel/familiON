@@ -4,6 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   computed,
   effect,
@@ -13,11 +14,12 @@ import {
   viewChild,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { firstValueFrom, map } from 'rxjs';
+import { Subscription, catchError, exhaustMap, firstValueFrom, map, of, timer } from 'rxjs';
 import { AccountsStore } from '../../core/finance/accounts.store';
 import { CategoriesStore } from '../../core/finance/categories.store';
 import { FinanceEvents } from '../../core/finance/finance-events';
 import { Account } from '../../core/finance/finance.models';
+import { Receipt, ReceiptDraft, ReceiptsApi } from '../../core/finance/receipts.api';
 import { TransactionsApi } from '../../core/finance/transactions.api';
 import {
   InstallmentAmountMode,
@@ -33,6 +35,7 @@ import {
   IconComponent,
   SegmentedOption,
   SegmentedToggleComponent,
+  SkeletonComponent,
   ToastService,
 } from '../../shared/ui';
 import {
@@ -52,8 +55,16 @@ import {
 } from './data-access/quick-add-members.api';
 import { installmentPreview } from './installment-preview';
 import { extractQuickAddProblemMessage } from './utils/problem-message';
+import { prepareReceiptFile } from './utils/receipt-image';
 
 const DESKTOP_BREAKPOINT = '(min-width: 1024px)';
+const RECEIPT_POLL_INTERVAL_MS = 1500;
+const RECEIPT_POLL_TIMEOUT_MS = 30_000;
+const LOW_CONFIDENCE_THRESHOLD = 0.5;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+type PrefilledField = 'amount' | 'currency' | 'date' | 'description' | 'category';
+type QuickAddTransactionCreate = TransactionCreate & { receiptAttachmentId?: string };
 
 const TYPE_OPTIONS: readonly SegmentedOption<TransactionType>[] = [
   { value: 'EXPENSE', label: 'Gasto' },
@@ -94,6 +105,7 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
     IconComponent,
     QuickAddAdvancedComponent,
     SegmentedToggleComponent,
+    SkeletonComponent,
   ],
   host: {
     '(document:keydown.enter)': 'onSheetEnter($event)',
@@ -118,13 +130,27 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
             </div>
 
             <div class="flex items-center gap-1">
+              <input
+                #receiptFileInput
+                type="file"
+                accept="image/*,application/pdf"
+                capture="environment"
+                data-testid="quick-add-receipt-input"
+                (change)="onReceiptFileSelected($event)"
+                class="sr-only"
+              />
+
               <button
                 type="button"
-                disabled
-                title="Próximamente"
-                aria-label="Escanear comprobante (próximamente)"
+                [disabled]="scanning() || saving()"
+                title="Escanear ticket"
+                aria-label="Escanear ticket"
                 data-testid="quick-add-camera-btn"
-                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted/60 disabled:cursor-not-allowed"
+                (click)="openReceiptPicker()"
+                class="fo-focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface-2 hover:text-text disabled:cursor-not-allowed disabled:opacity-50"
+                [class.text-accent]="receiptAttachmentId() !== null"
+                [class.bg-accent-soft]="receiptAttachmentId() !== null"
+                [class.text-muted]="receiptAttachmentId() === null"
               >
                 <fo-icon name="camera" [size]="18" />
               </button>
@@ -141,136 +167,244 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
             </div>
           </header>
 
-          <section aria-label="Monto" class="space-y-2">
-            <div class="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface-2/50 px-4 py-3">
-              <div class="flex min-w-0 flex-1 items-baseline gap-2">
-                <span class="shrink-0 text-xl font-semibold text-muted" aria-hidden="true">
-                  {{ activeCurrencySymbol() }}
-                </span>
+          @if (!scanning() && scanWarning(); as warningText) {
+            <div
+              role="status"
+              aria-live="polite"
+              data-testid="receipt-scan-warning"
+              class="flex items-start gap-2 rounded-xl border border-warning/35 bg-warning/10 px-3 py-2 text-xs text-text"
+            >
+              <fo-icon name="alert-circle" [size]="15" class="mt-0.5 shrink-0 text-warning" />
+              <span>{{ warningText }}</span>
+            </div>
+          }
 
-                @if (isDesktop()) {
-                  <label for="fo-quick-add-amount" class="sr-only">Monto</label>
-                  <input
-                    #desktopAmountInput
-                    id="fo-quick-add-amount"
-                    data-testid="quick-add-amount-input"
-                    cdkFocusInitial
-                    type="text"
-                    inputmode="decimal"
-                    autocomplete="off"
-                    placeholder="0"
-                    [value]="desktopDisplayValue()"
-                    (input)="onDesktopAmountInput($event)"
-                    class="fo-focus-ring w-full min-w-0 bg-transparent text-[40px] leading-none font-bold tracking-tight text-text tabular-nums placeholder:text-muted/45 focus:outline-none"
-                  />
-                } @else {
-                  <div
-                    #mobileAmountDisplay
-                    data-testid="quick-add-amount-display"
-                    tabindex="0"
-                    cdkFocusInitial
-                    role="textbox"
-                    aria-readonly="true"
-                    aria-label="Monto"
-                    class="fo-focus-ring min-w-0 flex-1 truncate rounded-lg text-[40px] leading-none font-bold tracking-tight tabular-nums"
-                    [class.text-text]="rawAmount().length > 0"
-                    [class.text-muted/45]="rawAmount().length === 0"
-                    [class.fo-amount-bump-a]="bumpPhase() === 'a'"
-                    [class.fo-amount-bump-b]="bumpPhase() === 'b'"
-                  >
-                    {{ formattedMobileAmount() }}
-                  </div>
-                }
-              </div>
+          @if (!scanning() && receiptAttachmentId()) {
+            <div
+              data-testid="receipt-attached-badge"
+              class="flex items-center justify-between gap-2 rounded-xl border border-accent/25 bg-accent-soft/60 px-3 py-1.5 text-xs text-accent"
+            >
+              <span class="flex items-center gap-1.5 font-medium">
+                <fo-icon name="file-text" [size]="14" />
+                <span>Comprobante adjunto</span>
+              </span>
+              <button
+                type="button"
+                data-testid="receipt-detach-btn"
+                aria-label="Quitar comprobante adjunto"
+                (click)="clearAttachedReceipt()"
+                class="fo-focus-ring inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full hover:bg-accent/15"
+              >
+                <fo-icon name="x" [size]="12" />
+              </button>
+            </div>
+          }
 
-              <div class="relative shrink-0">
-                <button
-                  type="button"
-                  data-testid="quick-add-currency-chip"
-                  [disabled]="enabledCurrencies().length <= 1"
-                  [attr.aria-expanded]="enabledCurrencies().length > 1 ? currencyMenuOpen() : null"
-                  aria-label="Divisa del movimiento"
-                  (click)="toggleCurrencyMenu()"
-                  class="fo-focus-ring inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:border-accent disabled:cursor-default disabled:hover:border-border"
+          <div class="relative space-y-4">
+            <div
+              class="space-y-4"
+              [class.opacity-35]="scanning()"
+              [class.pointer-events-none]="scanning()"
+              [attr.aria-hidden]="scanning() ? 'true' : null"
+            >
+              <section aria-label="Monto" class="space-y-2">
+                <div
+                  class="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface-2/50 px-4 py-3"
+                  [class.border-b-2]="isFieldPrefilled('amount')"
+                  [class.border-b-accent]="isFieldPrefilled('amount')"
                 >
-                  <span>{{ currencyCode() }}</span>
-                  @if (enabledCurrencies().length > 1) {
-                    <fo-icon name="chevron-down" [size]="12" />
-                  }
-                </button>
+                  <div class="flex min-w-0 flex-1 items-baseline gap-2">
+                    <span class="shrink-0 text-xl font-semibold text-muted" aria-hidden="true">
+                      {{ activeCurrencySymbol() }}
+                    </span>
 
-                @if (currencyMenuOpen() && enabledCurrencies().length > 1) {
-                  <div
-                    role="listbox"
-                    aria-label="Elegir divisa"
-                    data-testid="quick-add-currency-menu"
-                    class="absolute right-0 z-20 mt-1.5 min-w-24 rounded-xl border border-border bg-surface p-1 shadow-lg"
-                  >
-                    @for (code of enabledCurrencies(); track code) {
-                      <button
-                        type="button"
-                        role="option"
-                        [attr.aria-selected]="code === currencyCode()"
-                        [attr.data-testid]="'quick-add-currency-option-' + code"
-                        (click)="selectCurrency(code)"
-                        class="fo-focus-ring flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-surface-2"
-                        [class.text-accent]="code === currencyCode()"
-                        [class.text-text]="code !== currencyCode()"
+                    @if (isDesktop()) {
+                      <label for="fo-quick-add-amount" class="sr-only">Monto</label>
+                      <input
+                        #desktopAmountInput
+                        id="fo-quick-add-amount"
+                        data-testid="quick-add-amount-input"
+                        [attr.data-prefilled]="isFieldPrefilled('amount') ? 'true' : null"
+                        cdkFocusInitial
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
+                        placeholder="0"
+                        [value]="desktopDisplayValue()"
+                        (input)="onDesktopAmountInput($event)"
+                        class="fo-focus-ring w-full min-w-0 bg-transparent text-[40px] leading-none font-bold tracking-tight text-text tabular-nums placeholder:text-muted/45 focus:outline-none"
+                        [class.underline]="isFieldPrefilled('amount')"
+                        [class.decoration-accent]="isFieldPrefilled('amount')"
+                        [class.decoration-2]="isFieldPrefilled('amount')"
+                        [class.underline-offset-4]="isFieldPrefilled('amount')"
+                      />
+                    } @else {
+                      <div
+                        #mobileAmountDisplay
+                        data-testid="quick-add-amount-display"
+                        [attr.data-prefilled]="isFieldPrefilled('amount') ? 'true' : null"
+                        tabindex="0"
+                        cdkFocusInitial
+                        role="textbox"
+                        aria-readonly="true"
+                        aria-label="Monto"
+                        class="fo-focus-ring min-w-0 flex-1 truncate rounded-lg text-[40px] leading-none font-bold tracking-tight tabular-nums"
+                        [class.text-text]="rawAmount().length > 0"
+                        [class.text-muted/45]="rawAmount().length === 0"
+                        [class.fo-amount-bump-a]="bumpPhase() === 'a'"
+                        [class.fo-amount-bump-b]="bumpPhase() === 'b'"
+                        [class.underline]="isFieldPrefilled('amount')"
+                        [class.decoration-accent]="isFieldPrefilled('amount')"
+                        [class.decoration-2]="isFieldPrefilled('amount')"
+                        [class.underline-offset-4]="isFieldPrefilled('amount')"
                       >
-                        <span>{{ code }}</span>
-                        @if (code === currencyCode()) {
-                          <fo-icon name="check" [size]="12" />
-                        }
-                      </button>
+                        {{ formattedMobileAmount() }}
+                      </div>
                     }
                   </div>
-                }
-              </div>
+
+                  <div class="relative shrink-0">
+                    <button
+                      type="button"
+                      data-testid="quick-add-currency-chip"
+                      [attr.data-prefilled]="isFieldPrefilled('currency') ? 'true' : null"
+                      [disabled]="enabledCurrencies().length <= 1"
+                      [attr.aria-expanded]="enabledCurrencies().length > 1 ? currencyMenuOpen() : null"
+                      aria-label="Divisa del movimiento"
+                      (click)="toggleCurrencyMenu()"
+                      class="fo-focus-ring inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:border-accent disabled:cursor-default disabled:hover:border-border"
+                      [class.border-b-2]="isFieldPrefilled('currency')"
+                      [class.border-b-accent]="isFieldPrefilled('currency')"
+                    >
+                      <span>{{ currencyCode() }}</span>
+                      @if (enabledCurrencies().length > 1) {
+                        <fo-icon name="chevron-down" [size]="12" />
+                      }
+                    </button>
+
+                    @if (currencyMenuOpen() && enabledCurrencies().length > 1) {
+                      <div
+                        role="listbox"
+                        aria-label="Elegir divisa"
+                        data-testid="quick-add-currency-menu"
+                        class="absolute right-0 z-20 mt-1.5 min-w-24 rounded-xl border border-border bg-surface p-1 shadow-lg"
+                      >
+                        @for (code of enabledCurrencies(); track code) {
+                          <button
+                            type="button"
+                            role="option"
+                            [attr.aria-selected]="code === currencyCode()"
+                            [attr.data-testid]="'quick-add-currency-option-' + code"
+                            (click)="selectCurrency(code)"
+                            class="fo-focus-ring flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-surface-2"
+                            [class.text-accent]="code === currencyCode()"
+                            [class.text-text]="code !== currencyCode()"
+                          >
+                            <span>{{ code }}</span>
+                            @if (code === currencyCode()) {
+                              <fo-icon name="check" [size]="12" />
+                            }
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              </section>
+
+              <fo-category-picker
+                [frequentCategories]="frequentCategories()"
+                [allCategories]="allCategoriesForKind()"
+                [selectedCategoryId]="selectedCategoryId()"
+                [description]="description()"
+                [categoryPrefilled]="isFieldPrefilled('category')"
+                [descriptionPrefilled]="isFieldPrefilled('description')"
+                (selectedCategoryIdChange)="onCategoryChange($event)"
+                (descriptionChange)="onDescriptionChange($event)"
+                (enterSubmit)="save()"
+              />
+
+              <fo-quick-add-advanced
+                [expanded]="advancedExpanded()"
+                [transactionType]="transactionType()"
+                [currencyCode]="currencyCode()"
+                [usableAccounts]="usableAccounts()"
+                [creditCards]="creditCards()"
+                [selectedAccountId]="resolvedAccountId()"
+                [transactionDate]="transactionDate()"
+                [isAdult]="session.isAdult()"
+                [currentUserId]="currentUserId()"
+                [members]="members()"
+                [attributedToUserId]="attributedToUserId()"
+                [installments]="installments()"
+                [amountMode]="amountMode()"
+                [hasInterest]="hasInterest()"
+                [cashPrice]="cashPrice()"
+                [installmentPreviewText]="installmentPreviewText()"
+                [summaryHint]="advancedSummaryHint()"
+                [datePrefilled]="isFieldPrefilled('date')"
+                (expandedChange)="advancedExpanded.set($event)"
+                (accountIdChange)="selectedAccountIdOverride.set($event)"
+                (transactionDateChange)="onTransactionDateChange($event)"
+                (attributedToUserIdChange)="attributedToUserId.set($event)"
+                (installmentsChange)="onInstallmentsChange($event)"
+                (amountModeChange)="amountMode.set($event)"
+                (hasInterestChange)="onHasInterestChange($event)"
+                (cashPriceChange)="cashPrice.set($event)"
+                (navigateToAccounts)="closeSheet()"
+              />
             </div>
-          </section>
 
-          <fo-category-picker
-            [frequentCategories]="frequentCategories()"
-            [allCategories]="allCategoriesForKind()"
-            [selectedCategoryId]="selectedCategoryId()"
-            [description]="description()"
-            (selectedCategoryIdChange)="selectedCategoryId.set($event)"
-            (descriptionChange)="description.set($event)"
-            (enterSubmit)="save()"
-          />
+            @if (scanning()) {
+              <div
+                role="status"
+                aria-live="polite"
+                aria-busy="true"
+                data-testid="receipt-scanning-state"
+                class="absolute inset-0 z-10 flex flex-col justify-between gap-3 rounded-2xl border border-accent/30 bg-surface/95 p-4 backdrop-blur-[1px]"
+              >
+                <div class="flex items-center gap-2 text-sm font-medium text-accent">
+                  <svg
+                    class="h-4 w-4 shrink-0 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="9"
+                      stroke="currentColor"
+                      stroke-opacity="0.25"
+                      stroke-width="3"
+                    />
+                    <path
+                      d="M21 12a9 9 0 0 0-9-9"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                  <span>Leyendo ticket…</span>
+                </div>
 
-          <fo-quick-add-advanced
-            [expanded]="advancedExpanded()"
-            [transactionType]="transactionType()"
-            [currencyCode]="currencyCode()"
-            [usableAccounts]="usableAccounts()"
-            [creditCards]="creditCards()"
-            [selectedAccountId]="resolvedAccountId()"
-            [transactionDate]="transactionDate()"
-            [isAdult]="session.isAdult()"
-            [currentUserId]="currentUserId()"
-            [members]="members()"
-            [attributedToUserId]="attributedToUserId()"
-            [installments]="installments()"
-            [amountMode]="amountMode()"
-            [hasInterest]="hasInterest()"
-            [cashPrice]="cashPrice()"
-            [installmentPreviewText]="installmentPreviewText()"
-            [summaryHint]="advancedSummaryHint()"
-            (expandedChange)="advancedExpanded.set($event)"
-            (accountIdChange)="selectedAccountIdOverride.set($event)"
-            (transactionDateChange)="transactionDate.set($event)"
-            (attributedToUserIdChange)="attributedToUserId.set($event)"
-            (installmentsChange)="onInstallmentsChange($event)"
-            (amountModeChange)="amountMode.set($event)"
-            (hasInterestChange)="onHasInterestChange($event)"
-            (cashPriceChange)="cashPrice.set($event)"
-            (navigateToAccounts)="closeSheet()"
-          />
+                <div class="space-y-3">
+                  <fo-skeleton height="3rem" rounded="lg" />
+                  <div class="flex flex-wrap gap-1.5">
+                    <fo-skeleton width="5.5rem" height="1.75rem" rounded="full" />
+                    <fo-skeleton width="6.5rem" height="1.75rem" rounded="full" />
+                    <fo-skeleton width="4.5rem" height="1.75rem" rounded="full" />
+                  </div>
+                  <fo-skeleton height="2.25rem" rounded="md" />
+                  <fo-skeleton height="2.25rem" rounded="md" />
+                </div>
+              </div>
+            }
+          </div>
 
           @if (!isDesktop()) {
             <fo-amount-keypad
-              [disabled]="saving()"
+              [disabled]="saving() || scanning()"
               [canDelete]="rawAmount().length > 0"
               (keyPress)="onKeypadPress($event)"
             />
@@ -333,10 +467,12 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
 })
 export class QuickAddHostComponent {
   private readonly breakpointObserver = inject(BreakpointObserver);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly session = inject(SessionStore);
   private readonly accountsStore = inject(AccountsStore);
   private readonly categoriesStore = inject(CategoriesStore);
   private readonly transactionsApi = inject(TransactionsApi);
+  private readonly receiptsApi = inject(ReceiptsApi);
   private readonly membersApi = inject(QuickAddMembersApi);
   private readonly financeEvents = inject(FinanceEvents);
   private readonly toast = inject(ToastService);
@@ -348,6 +484,8 @@ export class QuickAddHostComponent {
     viewChild<ElementRef<HTMLInputElement>>('desktopAmountInput');
   private readonly mobileAmountDisplay =
     viewChild<ElementRef<HTMLElement>>('mobileAmountDisplay');
+  private readonly receiptFileInput =
+    viewChild<ElementRef<HTMLInputElement>>('receiptFileInput');
 
   protected readonly isDesktop = toSignal(
     this.breakpointObserver
@@ -373,9 +511,16 @@ export class QuickAddHostComponent {
   protected readonly cashPrice = signal<string>('');
   protected readonly members = signal<QuickAddFamilyMember[]>([]);
   protected readonly saving = signal<boolean>(false);
+  protected readonly scanning = signal<boolean>(false);
+  protected readonly receiptAttachmentId = signal<string | null>(null);
+  protected readonly scanWarning = signal<string | null>(null);
+  protected readonly prefilledFields = signal<ReadonlySet<PrefilledField>>(new Set());
   protected readonly bumpPhase = signal<'idle' | 'a' | 'b'>('idle');
 
   private membersLoaded = false;
+  private receiptScanSeq = 0;
+  private pollSub: Subscription | null = null;
+  private pollTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 
   private readonly expenseFrequent = this.categoriesStore.frequent('EXPENSE', 8);
   private readonly incomeFrequent = this.categoriesStore.frequent('INCOME', 8);
@@ -496,7 +641,7 @@ export class QuickAddHostComponent {
   });
 
   protected readonly canSave = computed(() => {
-    if (this.saving()) {
+    if (this.saving() || this.scanning()) {
       return false;
     }
     if (!this.parsedAmount()) {
@@ -519,6 +664,10 @@ export class QuickAddHostComponent {
   private wasOpen = false;
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.stopPolling();
+    });
+
     effect(() => {
       const open = this.launcher.isOpen();
       if (open && !this.wasOpen) {
@@ -533,6 +682,53 @@ export class QuickAddHostComponent {
         });
       }
     });
+  }
+
+  protected isFieldPrefilled(field: PrefilledField): boolean {
+    return this.prefilledFields().has(field);
+  }
+
+  protected openReceiptPicker(): void {
+    if (this.scanning() || this.saving()) {
+      return;
+    }
+    this.receiptFileInput()?.nativeElement.click();
+  }
+
+  protected async onReceiptFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (input) {
+      input.value = '';
+    }
+    if (!file) {
+      return;
+    }
+    await this.scanReceiptFile(file);
+  }
+
+  protected clearAttachedReceipt(): void {
+    this.receiptScanSeq += 1;
+    this.stopPolling();
+    this.scanning.set(false);
+    this.receiptAttachmentId.set(null);
+    this.scanWarning.set(null);
+    this.prefilledFields.set(new Set());
+  }
+
+  protected onCategoryChange(categoryId: string | null): void {
+    this.selectedCategoryId.set(categoryId);
+    this.clearPrefilled('category');
+  }
+
+  protected onDescriptionChange(value: string): void {
+    this.description.set(value);
+    this.clearPrefilled('description');
+  }
+
+  protected onTransactionDateChange(value: string): void {
+    this.transactionDate.set(value);
+    this.clearPrefilled('date');
   }
 
   protected onTypeChange(nextType: TransactionType): void {
@@ -561,6 +757,7 @@ export class QuickAddHostComponent {
     this.currencyCode.set(code);
     this.currencyMenuOpen.set(false);
     this.selectedAccountIdOverride.set(null);
+    this.clearPrefilled('currency');
   }
 
   protected onKeypadPress(key: KeypadKey): void {
@@ -568,6 +765,7 @@ export class QuickAddHostComponent {
     this.rawAmount.set(next);
     this.desktopDisplayValue.set(next);
     this.bumpPhase.update((phase) => (phase === 'a' ? 'b' : 'a'));
+    this.clearPrefilled('amount');
   }
 
   protected onDesktopAmountInput(event: Event): void {
@@ -582,6 +780,7 @@ export class QuickAddHostComponent {
       target.value = normalized;
     }
     this.desktopDisplayValue.set(target.value);
+    this.clearPrefilled('amount');
   }
 
   protected onInstallmentsChange(nextCount: number): void {
@@ -699,7 +898,7 @@ export class QuickAddHostComponent {
         return;
       }
 
-      const body: TransactionCreate = {
+      const body: QuickAddTransactionCreate = {
         type,
         amount: decimalAmount,
         currencyCode: this.currencyCode(),
@@ -715,6 +914,10 @@ export class QuickAddHostComponent {
       }
       if (attributedId) {
         body.attributedToUserId = attributedId;
+      }
+      const attachmentId = this.receiptAttachmentId();
+      if (attachmentId) {
+        body.receiptAttachmentId = attachmentId;
       }
 
       await firstValueFrom(this.transactionsApi.create(body));
@@ -743,6 +946,8 @@ export class QuickAddHostComponent {
   }
 
   private resetForm(): void {
+    this.receiptScanSeq += 1;
+    this.stopPolling();
     const baseCurrency = this.session.me()?.family.baseCurrency ?? 'ARS';
     this.transactionType.set('EXPENSE');
     this.rawAmount.set('');
@@ -760,7 +965,221 @@ export class QuickAddHostComponent {
     this.hasInterest.set(false);
     this.cashPrice.set('');
     this.saving.set(false);
+    this.scanning.set(false);
+    this.receiptAttachmentId.set(null);
+    this.scanWarning.set(null);
+    this.prefilledFields.set(new Set());
     this.bumpPhase.set('idle');
+  }
+
+  private async scanReceiptFile(file: File): Promise<void> {
+    const seq = ++this.receiptScanSeq;
+    this.stopPolling();
+    this.scanning.set(true);
+    this.scanWarning.set(null);
+    this.prefilledFields.set(new Set());
+
+    try {
+      const prepared = await prepareReceiptFile(file);
+      if (seq !== this.receiptScanSeq || !this.launcher.isOpen()) {
+        return;
+      }
+
+      const initial = await firstValueFrom(this.receiptsApi.scan(prepared));
+      if (seq !== this.receiptScanSeq || !this.launcher.isOpen()) {
+        return;
+      }
+
+      this.receiptAttachmentId.set(initial.id);
+
+      if (initial.status === 'PARSED') {
+        this.handleParsedReceipt(initial);
+        return;
+      }
+      if (initial.status === 'FAILED') {
+        this.handleFailedReceipt();
+        return;
+      }
+
+      this.startReceiptPolling(initial.id, seq);
+    } catch (err) {
+      if (seq !== this.receiptScanSeq) {
+        return;
+      }
+      this.scanning.set(false);
+      this.toast.error(this.extractReceiptUploadError(err));
+    }
+  }
+
+  private startReceiptPolling(receiptId: string, seq: number): void {
+    this.stopPolling();
+
+    this.pollTimeoutHandle = setTimeout(() => {
+      if (seq !== this.receiptScanSeq) {
+        return;
+      }
+      this.stopPolling();
+      this.scanning.set(false);
+      this.scanWarning.set(
+        'La lectura del ticket tardó demasiado. Completa los datos manualmente; el comprobante quedó adjunto.',
+      );
+    }, RECEIPT_POLL_TIMEOUT_MS);
+
+    this.pollSub = timer(RECEIPT_POLL_INTERVAL_MS, RECEIPT_POLL_INTERVAL_MS)
+      .pipe(
+        exhaustMap(() =>
+          this.receiptsApi.get(receiptId).pipe(catchError(() => of<Receipt | null>(null))),
+        ),
+      )
+      .subscribe((receipt) => {
+        if (seq !== this.receiptScanSeq) {
+          this.stopPolling();
+          return;
+        }
+        if (!receipt) {
+          return;
+        }
+        if (receipt.status === 'PARSED') {
+          this.stopPolling();
+          this.handleParsedReceipt(receipt);
+        } else if (receipt.status === 'FAILED') {
+          this.stopPolling();
+          this.handleFailedReceipt();
+        }
+      });
+  }
+
+  private stopPolling(): void {
+    if (this.pollSub) {
+      this.pollSub.unsubscribe();
+      this.pollSub = null;
+    }
+    if (this.pollTimeoutHandle !== null) {
+      clearTimeout(this.pollTimeoutHandle);
+      this.pollTimeoutHandle = null;
+    }
+  }
+
+  private handleParsedReceipt(receipt: Receipt): void {
+    this.scanning.set(false);
+    const draft = receipt.draft;
+    if (!draft) {
+      this.scanWarning.set('Revisa los datos: la lectura no fue precisa');
+      return;
+    }
+
+    if (this.transactionType() !== 'EXPENSE') {
+      this.onTypeChange('EXPENSE');
+    }
+
+    const marked = new Set<PrefilledField>();
+
+    if (draft.totalAmount !== null && draft.totalAmount !== undefined) {
+      const normalized = normalizeDecimalInput(String(draft.totalAmount));
+      if (toApiDecimal(normalized)) {
+        this.rawAmount.set(normalized);
+        this.desktopDisplayValue.set(normalized);
+        marked.add('amount');
+      }
+    }
+
+    if (draft.currencyCode && draft.currencyCode.trim().length > 0) {
+      const code = draft.currencyCode.trim().toUpperCase();
+      if (this.enabledCurrencies().includes(code)) {
+        this.currencyCode.set(code);
+        this.currencyMenuOpen.set(false);
+        this.selectedAccountIdOverride.set(null);
+        marked.add('currency');
+      }
+    }
+
+    if (draft.date && ISO_DATE_PATTERN.test(draft.date.trim())) {
+      this.transactionDate.set(draft.date.trim());
+      marked.add('date');
+    }
+
+    if (draft.merchant && draft.merchant.trim().length > 0) {
+      this.description.set(draft.merchant.trim().slice(0, 140));
+      marked.add('description');
+    }
+
+    const categoryId = this.resolveSuggestedCategoryId(draft);
+    if (categoryId) {
+      this.selectedCategoryId.set(categoryId);
+      marked.add('category');
+    }
+
+    this.prefilledFields.set(marked);
+
+    const confidence = this.parseConfidence(draft.confidence);
+    if (confidence !== null && confidence < LOW_CONFIDENCE_THRESHOLD) {
+      this.scanWarning.set('Revisa los datos: la lectura no fue precisa');
+    } else {
+      this.scanWarning.set(null);
+    }
+  }
+
+  private handleFailedReceipt(): void {
+    this.scanning.set(false);
+    this.scanWarning.set(null);
+    this.toast.error('No se pudo leer el ticket; el comprobante quedó adjunto');
+  }
+
+  private resolveSuggestedCategoryId(draft: ReceiptDraft): string | null {
+    const expenseCategories = this.expenseAll();
+    if (draft.suggestedCategoryId) {
+      const direct = expenseCategories.find((cat) => cat.id === draft.suggestedCategoryId);
+      if (direct) {
+        return direct.id;
+      }
+    }
+    if (draft.suggestedCategoryKey) {
+      const byKey = this.categoriesStore.bySystemKey(draft.suggestedCategoryKey);
+      if (byKey && byKey.kind === 'EXPENSE' && byKey.isActive !== false) {
+        return byKey.id;
+      }
+    }
+    return null;
+  }
+
+  private parseConfidence(raw: string | number | null | undefined): number | null {
+    if (raw === null || raw === undefined || raw === '') {
+      return null;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private clearPrefilled(field: PrefilledField): void {
+    if (!this.prefilledFields().has(field)) {
+      return;
+    }
+    this.prefilledFields.update((current) => {
+      const next = new Set(current);
+      next.delete(field);
+      return next;
+    });
+  }
+
+  private extractReceiptUploadError(err: unknown): string {
+    if (err instanceof HttpErrorResponse) {
+      if (err.status === 413) {
+        return extractQuickAddProblemMessage(
+          err,
+          'El archivo supera el tamaño máximo permitido (5 MB).',
+        );
+      }
+      if (err.status === 415) {
+        return extractQuickAddProblemMessage(
+          err,
+          'Formato no compatible. Usa JPG, PNG, WebP o PDF.',
+        );
+      }
+    }
+    return extractQuickAddProblemMessage(
+      err,
+      'No pudimos subir el comprobante. Intenta de nuevo.',
+    );
   }
 
   private focusAmount(): void {

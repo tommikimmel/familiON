@@ -264,4 +264,61 @@ describe('TransactionsPage', () => {
 
     httpMock.expectOne((r) => r.url === '/bff/api/transactions').flush(makePage([]));
   });
+  it('downloads the transactions export using the current filters and Content-Disposition filename', async () => {
+    const createObjectURL = vi.fn(() => 'blob:export-1');
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, 'revokeObjectURL', { value: revokeObjectURL, configurable: true });
+    const downloads: string[] = [];
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        downloads.push(this.download);
+      });
+
+    try {
+      const fixture = TestBed.createComponent(TransactionsPage);
+      fixture.detectChanges();
+      flushInitialRequests([makeTx()]);
+      fixture.detectChanges();
+
+      const trigger = fixture.nativeElement.querySelector(
+        '[data-testid="transactions-export-btn"]',
+      ) as HTMLButtonElement;
+      trigger.click();
+      fixture.detectChanges();
+
+      const excelOption = fixture.nativeElement.querySelector(
+        '[data-testid="transactions-export-XLSX"]',
+      ) as HTMLButtonElement;
+      excelOption.click();
+      fixture.detectChanges();
+
+      expect(trigger.disabled).toBe(true);
+      expect(trigger.textContent).toContain('Exportando');
+
+      const req = httpMock.expectOne((r) => r.url === '/bff/api/exports/transactions');
+      expect(req.request.method).toBe('GET');
+      expect(req.request.responseType).toBe('blob');
+      expect(req.request.params.get('format')).toBe('XLSX');
+      expect(req.request.params.get('from')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(req.request.params.get('to')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(req.request.params.get('view')).toBeTruthy();
+      expect(req.request.params.get('lens')).toBe('NOMINAL');
+
+      req.flush(new Blob(['data']), {
+        headers: {
+          'Content-Disposition': 'attachment; filename="movimientos_2026-11.xlsx"',
+        },
+      });
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      expect(downloads).toEqual(['movimientos_2026-11.xlsx']);
+      expect(trigger.disabled).toBe(false);
+    } finally {
+      clickSpy.mockRestore();
+    }
+  });
 });

@@ -59,7 +59,15 @@ function initialsFor(fullName: string): string {
         <span class="flex items-center gap-1.5">
           <span>Más opciones</span>
           @if (!expanded() && summaryHint()) {
-            <span class="truncate font-normal text-muted/80">· {{ summaryHint() }}</span>
+            <span
+              class="truncate font-normal"
+              [class.text-muted/80]="!datePrefilled()"
+              [class.text-text]="datePrefilled()"
+              [class.border-b-2]="datePrefilled()"
+              [class.border-b-accent]="datePrefilled()"
+            >
+              · {{ summaryHint() }}
+            </span>
           }
         </span>
         <fo-icon
@@ -132,10 +140,13 @@ function initialsFor(fullName: string): string {
               <input
                 id="fo-quick-add-date"
                 data-testid="quick-add-date-input"
+                [attr.data-prefilled]="datePrefilled() ? 'true' : null"
                 type="date"
                 [value]="transactionDate()"
                 (change)="onDateChange($event)"
                 class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text tabular-nums"
+                [class.border-b-2]="datePrefilled()"
+                [class.border-b-accent]="datePrefilled()"
               />
             </div>
           </div>
@@ -326,6 +337,7 @@ export class QuickAddAdvancedComponent {
   readonly cashPrice = input<string>('');
   readonly installmentPreviewText = input<string | null>(null);
   readonly summaryHint = input<string>('');
+  readonly datePrefilled = input<boolean>(false);
 
   readonly expandedChange = output<boolean>();
   readonly accountIdChange = output<string>();
