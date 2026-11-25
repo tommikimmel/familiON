@@ -11,7 +11,7 @@ export type AuthBannerKind = 'error' | 'info' | 'success';
     <div
       [attr.role]="kind() === 'error' ? 'alert' : 'status'"
       [attr.aria-live]="kind() === 'error' ? 'assertive' : 'polite'"
-      class="flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm leading-snug"
+      class="flex items-start gap-2 rounded-[12px] border px-3 py-2.5 text-[12px] font-medium leading-snug"
       [class.border-danger/30]="kind() === 'error'"
       [class.bg-danger/10]="kind() === 'error'"
       [class.text-danger]="kind() === 'error'"
@@ -24,8 +24,8 @@ export type AuthBannerKind = 'error' | 'info' | 'success';
     >
       <fo-icon
         [name]="kind() === 'error' ? 'alert-circle' : 'check-circle'"
-        [size]="18"
-        class="mt-0.5 shrink-0"
+        [size]="16"
+        class="mt-px shrink-0"
       />
       <span>{{ message() }}</span>
     </div>

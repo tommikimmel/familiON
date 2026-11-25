@@ -18,8 +18,8 @@ const OTP_INDICES = [0, 1, 2, 3, 4, 5] as const;
   selector: 'fo-otp-code-input',
   standalone: true,
   template: `
-    <fieldset class="space-y-2 border-0 p-0" [disabled]="disabled()">
-      <legend class="block text-sm font-medium text-text">
+    <fieldset class="space-y-1.5 border-0 p-0" [disabled]="disabled()">
+      <legend class="fo-auth-label">
         {{ label() }}
       </legend>
 
@@ -44,15 +44,13 @@ const OTP_INDICES = [0, 1, 2, 3, 4, 5] as const;
             (keydown)="onKeydown(index, $event)"
             (paste)="onPaste(index, $event)"
             (focus)="onFocus($event)"
-            class="fo-focus-ring h-12 w-full rounded-xl border bg-surface text-center text-lg font-semibold text-text tabular-nums transition-colors disabled:opacity-60"
-            [class.border-border]="!hasError()"
-            [class.border-danger]="hasError()"
+            class="fo-auth-input fo-auth-otp"
           />
         }
       </div>
 
       @if (error(); as errorMsg) {
-        <p [id]="errorId()" role="alert" class="text-xs font-medium text-danger">
+        <p [id]="errorId()" role="alert" class="fo-auth-error">
           {{ errorMsg }}
         </p>
       }

@@ -63,8 +63,8 @@ function formatCompactAmount(value: number, unit: string): string {
     <fo-card padding="md">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 class="text-base font-semibold text-text">Costos mensuales</h2>
-          <p class="text-xs text-muted">Combustible y mantenimiento apilados por mes</p>
+          <h2 class="text-[12.5px] font-bold text-text lg:text-[13px]">Costos mensuales</h2>
+          <p class="mt-px text-[10.5px] text-muted">Combustible y mantenimiento apilados por mes</p>
         </div>
 
         <div class="flex items-center gap-3 text-xs text-muted" aria-hidden="true">

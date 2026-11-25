@@ -75,7 +75,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div class="space-y-1.5 sm:col-span-2">
-          <label for="fo-vehicle-nickname" class="block text-sm font-medium text-text">
+          <label for="fo-vehicle-nickname" class="block text-[11.5px] font-semibold text-text-2">
             Apodo <span class="text-danger">*</span>
           </label>
           <input
@@ -85,7 +85,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
             maxlength="80"
             placeholder="Ej. Cronos gris, Auto familiar"
             [attr.aria-invalid]="hasError('nickname')"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
           />
           @if (fieldError('nickname'); as err) {
             <p role="alert" class="text-xs text-danger">{{ err }}</p>
@@ -95,7 +95,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
         </div>
 
         <div class="space-y-1.5">
-          <label for="fo-vehicle-brand" class="block text-sm font-medium text-text">
+          <label for="fo-vehicle-brand" class="block text-[11.5px] font-semibold text-text-2">
             Marca <span class="text-danger">*</span>
           </label>
           <input
@@ -105,7 +105,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
             maxlength="60"
             placeholder="Ej. Fiat, Toyota"
             [attr.aria-invalid]="hasError('brand')"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
           />
           @if (fieldError('brand'); as err) {
             <p role="alert" class="text-xs text-danger">{{ err }}</p>
@@ -115,7 +115,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
         </div>
 
         <div class="space-y-1.5">
-          <label for="fo-vehicle-model" class="block text-sm font-medium text-text">
+          <label for="fo-vehicle-model" class="block text-[11.5px] font-semibold text-text-2">
             Modelo <span class="text-danger">*</span>
           </label>
           <input
@@ -125,7 +125,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
             maxlength="60"
             placeholder="Ej. Cronos, Corolla"
             [attr.aria-invalid]="hasError('model')"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
           />
           @if (fieldError('model'); as err) {
             <p role="alert" class="text-xs text-danger">{{ err }}</p>
@@ -135,7 +135,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
         </div>
 
         <div class="space-y-1.5">
-          <label for="fo-vehicle-year" class="block text-sm font-medium text-text">
+          <label for="fo-vehicle-year" class="block text-[11.5px] font-semibold text-text-2">
             Año <span class="text-danger">*</span>
           </label>
           <input
@@ -148,7 +148,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
             formControlName="modelYear"
             placeholder="Ej. 2022"
             [attr.aria-invalid]="hasError('modelYear')"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums placeholder:text-muted"
           />
           @if (fieldError('modelYear'); as err) {
             <p role="alert" class="text-xs text-danger">{{ err }}</p>
@@ -158,7 +158,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
         </div>
 
         <div class="space-y-1.5">
-          <label for="fo-vehicle-plate" class="block text-sm font-medium text-text">
+          <label for="fo-vehicle-plate" class="block text-[11.5px] font-semibold text-text-2">
             Patente <span class="text-danger">*</span>
           </label>
           <input
@@ -168,7 +168,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
             maxlength="20"
             placeholder="Ej. AF 123 CD"
             [attr.aria-invalid]="hasError('licensePlate')"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 font-mono text-sm uppercase text-text placeholder:font-sans placeholder:normal-case placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] font-mono text-[13px] focus:border-accent uppercase text-text placeholder:font-sans placeholder:normal-case placeholder:text-muted"
           />
           @if (fieldError('licensePlate'); as err) {
             <p role="alert" class="text-xs text-danger">{{ err }}</p>
@@ -178,13 +178,13 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
         </div>
 
         <div class="space-y-1.5">
-          <label for="fo-vehicle-primary-fuel" class="block text-sm font-medium text-text">
+          <label for="fo-vehicle-primary-fuel" class="block text-[11.5px] font-semibold text-text-2">
             Combustible principal <span class="text-danger">*</span>
           </label>
           <select
             id="fo-vehicle-primary-fuel"
             formControlName="primaryFuelType"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           >
             @for (fuel of primaryFuelOptions; track fuel) {
               <option [value]="fuel">{{ fuelLabel[fuel] }}</option>
@@ -193,13 +193,13 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
         </div>
 
         <div class="space-y-1.5">
-          <label for="fo-vehicle-secondary-fuel" class="block text-sm font-medium text-text">
+          <label for="fo-vehicle-secondary-fuel" class="block text-[11.5px] font-semibold text-text-2">
             Combustible secundario (opcional)
           </label>
           <select
             id="fo-vehicle-secondary-fuel"
             formControlName="secondaryFuelType"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           >
             <option value="">Ninguno</option>
             @for (fuel of fuelOptions; track fuel) {
@@ -209,7 +209,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
         </div>
 
         <div class="space-y-1.5 sm:col-span-2">
-          <label for="fo-vehicle-odometer" class="block text-sm font-medium text-text">
+          <label for="fo-vehicle-odometer" class="block text-[11.5px] font-semibold text-text-2">
             Odómetro actual (km) <span class="text-danger">*</span>
           </label>
           <input
@@ -219,7 +219,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
             formControlName="currentOdometerKm"
             placeholder="Ej. 45200"
             [attr.aria-invalid]="hasError('currentOdometerKm')"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums placeholder:text-muted"
           />
           @if (fieldError('currentOdometerKm'); as err) {
             <p role="alert" data-testid="vehicle-odometer-error" class="text-xs text-danger">
@@ -240,31 +240,31 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div class="space-y-1.5">
-            <label for="fo-vehicle-vtv" class="block text-sm font-medium text-text">
+            <label for="fo-vehicle-vtv" class="block text-[11.5px] font-semibold text-text-2">
               Vencimiento VTV
             </label>
             <input
               id="fo-vehicle-vtv"
               type="date"
               formControlName="vtvExpirationDate"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums"
             />
           </div>
 
           <div class="space-y-1.5">
-            <label for="fo-vehicle-insurance-exp" class="block text-sm font-medium text-text">
+            <label for="fo-vehicle-insurance-exp" class="block text-[11.5px] font-semibold text-text-2">
               Vencimiento del seguro
             </label>
             <input
               id="fo-vehicle-insurance-exp"
               type="date"
               formControlName="insuranceExpiration"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums"
             />
           </div>
 
           <div class="space-y-1.5 sm:col-span-2">
-            <label for="fo-vehicle-insurance-company" class="block text-sm font-medium text-text">
+            <label for="fo-vehicle-insurance-company" class="block text-[11.5px] font-semibold text-text-2">
               Compañía de seguro
             </label>
             <input
@@ -273,14 +273,14 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
               formControlName="insuranceCompany"
               maxlength="80"
               placeholder="Ej. La Caja, Federación Patronal"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
             />
           </div>
         </div>
       </div>
 
       <div class="space-y-1.5">
-        <label for="fo-vehicle-notes" class="block text-sm font-medium text-text">
+        <label for="fo-vehicle-notes" class="block text-[11.5px] font-semibold text-text-2">
           Notas (opcional)
         </label>
         <textarea
@@ -289,7 +289,7 @@ function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors
           formControlName="notes"
           maxlength="500"
           placeholder="Número de póliza, presión de cubiertas, tipo de aceite..."
-          class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+          class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
         ></textarea>
       </div>
 

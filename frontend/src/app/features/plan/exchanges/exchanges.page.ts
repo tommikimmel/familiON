@@ -40,11 +40,11 @@ import { extractProblemMessage } from './utils/problem-message';
     SkeletonComponent,
   ],
   template: `
-    <section class="mx-auto max-w-5xl space-y-6">
+    <section class="w-full space-y-3 lg:space-y-4">
       <header class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 class="text-xl font-semibold text-text">Cambio de moneda</h1>
-          <p class="mt-0.5 text-sm text-muted">
+          <h1 class="fo-page-title text-text lg:sr-only">Cambio de moneda</h1>
+          <p class="mt-0.5 text-[11px] text-muted">
             Registrá compras y ventas de divisas y seguí tu precio promedio ponderado.
           </p>
         </div>

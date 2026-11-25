@@ -3,10 +3,7 @@ import { RouterLink } from '@angular/router';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { ButtonComponent, IconComponent } from '../../../../shared/ui';
 import { toNumber } from '../../../../shared/utils/decimal';
-import {
-  PlanCommitmentItem,
-  PlanInstallmentItem,
-} from '../data-access/plan-overview.models';
+import { PlanCommitmentItem, PlanInstallmentItem } from '../data-access/plan-overview.models';
 import {
   formatCurrencyTotals,
   formatShortDate,
@@ -39,8 +36,7 @@ interface NextInstallmentHighlight {
   imports: [ButtonComponent, IconComponent, MoneyPipe, PlanSectionCardComponent, RouterLink],
   template: `
     <fo-plan-section-card
-      title="Cuotas"
-      icon="credit-card"
+      title="Planes de cuotas activos"
       linkRoute="/plan/installments"
       testId="plan-installments-card"
       [degraded]="isFullyDegraded()"
@@ -48,44 +44,64 @@ interface NextInstallmentHighlight {
       (retry)="retry.emit()"
     >
       @if (isEmpty()) {
-        <div
-          data-testid="installments-empty-state"
-          class="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface-2/40 px-4 py-6 text-center"
-        >
-          <p class="text-sm font-medium text-text">Sin compras en cuotas activas</p>
-          <p class="mt-1 text-xs text-muted">
-            Registrá tus cuotas con tarjeta para proyectar el compromiso de los próximos meses.
-          </p>
+        <div data-testid="installments-empty-state" class="pl-empty">
+          <p class="fo-tx-title">Sin compras en cuotas activas</p>
+          <p class="pl-sub">Registrá tus cuotas con tarjeta para proyectar el compromiso de los próximos meses.</p>
           <a
             routerLink="/plan/installments"
             data-testid="installments-empty-cta"
-            class="fo-focus-ring mt-3 inline-flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-xs font-semibold text-accent-contrast transition-opacity duration-150 hover:opacity-92"
+            class="fo-btn-primary fo-focus-ring mt-2 inline-flex items-center gap-1.5"
           >
             <fo-icon name="plus" [size]="14" />
             <span>Registrar cuota</span>
           </a>
         </div>
       } @else {
-        <div class="flex flex-1 flex-col justify-between gap-4">
+        <div class="flex flex-1 flex-col gap-3">
           @if (installments(); as plans) {
-            <div>
-              <p class="text-xs font-medium text-muted">Total pendiente</p>
-              <p
-                data-testid="installments-total"
-                class="mt-0.5 text-xl font-bold tracking-tight text-text tabular-nums"
-              >
-                {{ totalRemainingLabel() }}
-              </p>
-              <p class="mt-0.5 text-xs text-muted tabular-nums">
+            <div class="pl-head items-end">
+              <div>
+                <p class="fo-kpi-label">Total pendiente</p>
+                <p data-testid="installments-total" class="pl-big mt-0.5">
+                  {{ totalRemainingLabel() }}
+                </p>
+              </div>
+              <span class="fo-pill-tag fo-num">
                 {{ plans.length }} {{ plans.length === 1 ? 'plan activo' : 'planes activos' }}
-              </p>
+              </span>
             </div>
+
+            @if (plans.length > 0) {
+              <table class="pl-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Compra</th>
+                    <th scope="col">Progreso</th>
+                    <th scope="col" class="text-right">Cuota</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (plan of plans.slice(0, 4); track plan.id) {
+                    <tr>
+                      <td class="max-w-0 truncate font-semibold">{{ plan.description }}</td>
+                      <td class="fo-num whitespace-nowrap">
+                        {{ plan.paidInstallments }} / {{ plan.totalInstallments }}
+                      </td>
+                      <td class="fo-num text-right font-bold whitespace-nowrap">
+                        @if (plan.nextInstallment; as nextRow) {
+                          {{ nextRow.amount | money: plan.currencyCode }}
+                        } @else {
+                          —
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
           } @else {
-            <div
-              data-testid="installments-partial-error"
-              class="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-surface-2/40 px-3 py-2"
-            >
-              <span class="text-xs text-muted">No se pudo cargar el detalle de cuotas</span>
+            <div data-testid="installments-partial-error" class="pl-empty">
+              <span class="pl-sub">No se pudo cargar el detalle de cuotas</span>
               <fo-button variant="ghost" size="sm" [loading]="retrying()" (click)="retry.emit()">
                 Reintentar
               </fo-button>
@@ -94,44 +110,31 @@ interface NextInstallmentHighlight {
 
           @if (commitment() !== null) {
             @if (commitmentBars().length > 0) {
-              <div data-testid="installments-commitment-bars" class="space-y-1.5">
-                <p class="text-[11px] font-semibold tracking-wide text-muted uppercase">
-                  Próximos 6 meses
-                </p>
+              <div data-testid="installments-commitment-bars">
+                <p class="fo-kpi-label">Próximos 6 meses</p>
                 <div
-                  class="grid h-18 items-end gap-1.5 rounded-xl bg-surface-2/50 px-2.5 pt-3 pb-2"
+                  class="inst-bars"
                   [style.gridTemplateColumns]="'repeat(' + commitmentBars().length + ', minmax(0, 1fr))'"
                   role="img"
                   aria-label="Compromiso mensual de cuotas para los próximos meses"
                 >
-                  @for (bar of commitmentBars(); track bar.month) {
-                    <div
-                      class="flex h-full flex-col items-center justify-end gap-1"
-                      [title]="bar.tooltip"
-                    >
-                      <div class="flex w-full flex-1 items-end justify-center">
-                        <span
-                          data-testid="commitment-bar"
-                          class="block w-full max-w-6 rounded-t-md transition-all duration-300"
-                          [class.bg-accent]="bar.amount > 0"
-                          [class.bg-border]="bar.amount <= 0"
-                          [style.height.%]="bar.heightPct"
-                        ></span>
-                      </div>
-                      <span class="text-[10px] font-medium text-muted">
-                        {{ bar.shortLabel }}
-                      </span>
+                  @for (bar of commitmentBars(); track bar.month; let first = $first) {
+                    <div class="inst-col" [title]="bar.tooltip">
+                      <span
+                        data-testid="commitment-bar"
+                        class="inst-rect"
+                        [class.is-current]="first && bar.amount > 0"
+                        [style.height.%]="bar.heightPct"
+                      ></span>
+                      <span class="inst-lbl">{{ bar.shortLabel }}</span>
                     </div>
                   }
                 </div>
               </div>
             }
           } @else {
-            <div
-              data-testid="commitment-partial-error"
-              class="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border bg-surface-2/40 px-3 py-2"
-            >
-              <span class="text-xs text-muted">No se pudo cargar la proyección</span>
+            <div data-testid="commitment-partial-error" class="pl-empty">
+              <span class="pl-sub">No se pudo cargar la proyección</span>
               <fo-button variant="ghost" size="sm" [loading]="retrying()" (click)="retry.emit()">
                 Reintentar
               </fo-button>
@@ -139,37 +142,52 @@ interface NextInstallmentHighlight {
           }
 
           @if (nextInstallment(); as next) {
-            <div
-              data-testid="installments-next"
-              class="rounded-xl border border-border bg-surface-2/60 p-3"
-            >
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-[11px] font-semibold tracking-wide text-muted uppercase">
-                  Próxima cuota
-                </span>
-                <span class="text-[11px] font-medium text-muted tabular-nums">
-                  Cuota {{ next.number }}/{{ next.total }}
-                </span>
+            <div data-testid="installments-next" class="pl-tx-row mt-auto">
+              <div class="pl-tx-body">
+                <p class="fo-tx-title">{{ next.description }}</p>
+                <p class="fo-tx-meta fo-num">
+                  Próxima cuota {{ next.number }}/{{ next.total }} · {{ formatDate(next.date) }}
+                </p>
               </div>
-              <div class="mt-1 flex items-baseline justify-between gap-2">
-                <span class="min-w-0 truncate text-sm font-semibold text-text">
-                  {{ next.description }}
-                </span>
-                <span class="shrink-0 text-sm font-bold text-text tabular-nums">
-                  {{ next.amount | money: next.currencyCode }}
-                </span>
-              </div>
-              <p class="mt-0.5 text-xs text-muted">{{ formatDate(next.date) }}</p>
+              <span class="fo-tx-amt">{{ next.amount | money: next.currencyCode }}</span>
             </div>
           }
         </div>
       }
     </fo-plan-section-card>
   `,
+  styleUrl: '../../plan-ui.css',
   styles: `
-    :host {
-      display: block;
+    .inst-bars {
+      display: grid;
+      align-items: end;
+      gap: 8px;
+      height: 92px;
+      margin-top: 8px;
+    }
+    .inst-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 5px;
       height: 100%;
+    }
+    .inst-rect {
+      display: block;
+      width: 100%;
+      max-width: 34px;
+      border-radius: 7px 7px 3px 3px;
+      background: var(--fo-surface-2);
+      transition: height 0.45s var(--fo-ease-smooth);
+    }
+    .inst-rect.is-current {
+      background: var(--fo-accent);
+    }
+    .inst-lbl {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--fo-text-muted);
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -184,9 +202,7 @@ export class InstallmentsSummaryCardComponent {
 
   private readonly moneyPipe = new MoneyPipe();
 
-  protected readonly isFullyDegraded = computed(
-    () => this.installments() === null && this.commitment() === null,
-  );
+  protected readonly isFullyDegraded = computed(() => this.installments() === null && this.commitment() === null);
 
   protected readonly isEmpty = computed(() => {
     const plans = this.installments();
@@ -239,9 +255,7 @@ export class InstallmentsSummaryCardComponent {
 
     const rows = sortedMonths.map(([month, currencies]) => {
       const amount = currencies.get(preferred) ?? Array.from(currencies.values())[0] ?? 0;
-      const summaryParts = Array.from(currencies.entries()).map(([code, val]) =>
-        this.moneyPipe.transform(val, code),
-      );
+      const summaryParts = Array.from(currencies.entries()).map(([code, val]) => this.moneyPipe.transform(val, code));
       return {
         month,
         amount: Math.max(0, amount),
@@ -255,10 +269,7 @@ export class InstallmentsSummaryCardComponent {
       month: row.month,
       shortLabel: formatYearMonthShort(row.month),
       amount: row.amount,
-      heightPct:
-        maxAmount > 0 && row.amount > 0
-          ? Math.max(14, Math.round((row.amount / maxAmount) * 100))
-          : 6,
+      heightPct: maxAmount > 0 && row.amount > 0 ? Math.max(14, Math.round((row.amount / maxAmount) * 100)) : 6,
       tooltip: row.tooltip,
     }));
   });

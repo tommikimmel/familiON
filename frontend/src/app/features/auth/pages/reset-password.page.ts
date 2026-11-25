@@ -25,9 +25,9 @@ import {
   ],
   template: `
     <section class="space-y-5">
-      <header class="space-y-1 text-center">
-        <h1 class="text-xl font-semibold text-text">Restablecer contraseña</h1>
-        <p class="text-sm text-muted">Elige una nueva contraseña segura para tu cuenta.</p>
+      <header class="space-y-1.5 text-center">
+        <h1 class="fo-auth-title">Restablecer contraseña</h1>
+        <p class="fo-auth-lead">Elige una nueva contraseña segura para tu cuenta.</p>
       </header>
 
       @if (!token()) {
@@ -39,7 +39,7 @@ import {
         <div class="flex flex-col items-center gap-2 text-sm">
           <a
             routerLink="/auth/forgot-password"
-            class="fo-focus-ring rounded-md font-medium text-accent hover:underline"
+            class="fo-auth-link fo-focus-ring"
           >
             Solicitar un nuevo enlace
           </a>
@@ -77,6 +77,7 @@ import {
 
           <fo-button
             type="submit"
+          size="lg"
             [fullWidth]="true"
             [loading]="submitting()"
             [disabled]="submitting()"
@@ -85,10 +86,10 @@ import {
           </fo-button>
         </form>
 
-        <p class="text-center text-sm text-muted">
+        <p class="fo-auth-foot">
           <a
             routerLink="/auth/login"
-            class="fo-focus-ring rounded-md font-medium text-accent hover:underline"
+            class="fo-auth-link fo-focus-ring"
           >
             Volver a iniciar sesión
           </a>

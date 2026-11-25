@@ -60,7 +60,7 @@ const SCOPE_OPTIONS: readonly SegmentedOption<RecurringScope>[] = [
           (input)="onNameInput($event)"
           [attr.aria-invalid]="nameError() ? 'true' : null"
           placeholder="Ej. Alquiler, Internet, Expensas"
-          class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+          class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
         />
         @if (nameError(); as err) {
           <p role="alert" data-testid="recurring-name-error" class="mt-1 text-xs text-danger">
@@ -80,7 +80,7 @@ const SCOPE_OPTIONS: readonly SegmentedOption<RecurringScope>[] = [
             [value]="categoryId()"
             (change)="onCategoryChange($event)"
             [attr.aria-invalid]="categoryError() ? 'true' : null"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           >
             <option value="">Elegí una categoría</option>
             @for (cat of categories(); track cat.id) {
@@ -120,7 +120,7 @@ const SCOPE_OPTIONS: readonly SegmentedOption<RecurringScope>[] = [
             (input)="onAmountInput($event)"
             [attr.aria-invalid]="amountError() ? 'true' : null"
             placeholder="0,00"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text tabular-nums"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums"
           />
           @if (amountError(); as err) {
             <p role="alert" data-testid="recurring-amount-error" class="mt-1 text-xs text-danger">
@@ -138,7 +138,7 @@ const SCOPE_OPTIONS: readonly SegmentedOption<RecurringScope>[] = [
             data-testid="recurring-currency-select"
             [value]="currencyCode()"
             (change)="onCurrencyChange($event)"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           >
             @for (code of currencyOptions(); track code) {
               <option [value]="code">{{ code }}</option>
@@ -157,7 +157,7 @@ const SCOPE_OPTIONS: readonly SegmentedOption<RecurringScope>[] = [
             data-testid="recurring-account-select"
             [value]="accountId()"
             (change)="onAccountChange($event)"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           >
             <option value="">Sin cuenta sugerida</option>
             @for (acc of matchingAccounts(); track acc.id) {
@@ -180,7 +180,7 @@ const SCOPE_OPTIONS: readonly SegmentedOption<RecurringScope>[] = [
             [value]="dueDay()"
             (input)="onDueDayInput($event)"
             [attr.aria-invalid]="dueDayError() ? 'true' : null"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text tabular-nums"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums"
           />
           @if (dueDayError(); as err) {
             <p role="alert" data-testid="recurring-due-day-error" class="mt-1 text-xs text-danger">
@@ -231,7 +231,7 @@ const SCOPE_OPTIONS: readonly SegmentedOption<RecurringScope>[] = [
             [value]="startDate()"
             (input)="onStartDateInput($event)"
             [attr.aria-invalid]="startDateError() ? 'true' : null"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           />
           @if (startDateError(); as err) {
             <p role="alert" class="mt-1 text-xs text-danger">{{ err }}</p>
@@ -249,7 +249,7 @@ const SCOPE_OPTIONS: readonly SegmentedOption<RecurringScope>[] = [
             [value]="endDate()"
             (input)="onEndDateInput($event)"
             [attr.aria-invalid]="endDateError() ? 'true' : null"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           />
           @if (endDateError(); as err) {
             <p role="alert" data-testid="recurring-end-date-error" class="mt-1 text-xs text-danger">

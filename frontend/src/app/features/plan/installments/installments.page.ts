@@ -49,10 +49,10 @@ const STATUS_OPTIONS: readonly SegmentedOption<InstallmentPlanStatus>[] = [
     SkeletonComponent,
   ],
   template: `
-    <section class="mx-auto max-w-5xl space-y-6">
+    <section class="w-full space-y-3 lg:space-y-4">
       <header class="space-y-1">
-        <h1 class="text-xl font-semibold text-text">Cuotas</h1>
-        <p class="text-sm text-muted">
+        <h1 class="fo-page-title text-text lg:sr-only">Cuotas</h1>
+        <p class="mt-0.5 text-[11px] text-muted">
           Seguí tus compras en cuotas, el recargo real y lo que ya tenés comprometido mes a mes.
         </p>
       </header>

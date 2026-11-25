@@ -13,8 +13,10 @@ describe('PWA UI components', () => {
   let versionUpdates$: Subject<VersionEvent>;
   let unrecoverable$: Subject<UnrecoverableStateEvent>;
   let reloadSpy: ReturnType<typeof vi.fn>;
+  let originalMatchMedia: PropertyDescriptor | undefined;
 
   beforeEach(() => {
+    originalMatchMedia = Object.getOwnPropertyDescriptor(window, 'matchMedia');
     localStorage.clear();
     sessionStorage.clear();
     versionUpdates$ = new Subject<VersionEvent>();
@@ -44,6 +46,11 @@ describe('PWA UI components', () => {
   });
 
   afterEach(() => {
+    if (originalMatchMedia) {
+      Object.defineProperty(window, 'matchMedia', originalMatchMedia);
+    } else {
+      Reflect.deleteProperty(window, 'matchMedia');
+    }
     httpMock.verify();
     localStorage.clear();
     sessionStorage.clear();
