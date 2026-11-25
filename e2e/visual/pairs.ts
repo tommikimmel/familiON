@@ -1,6 +1,6 @@
 /**
  * Editable table of (mock, mock tab) ↔ (app route) pairs captured by `capture.ts`.
- * Each pair declares which mock file represents each viewport. T43–T45 append their own pairs.
+ * Each pair declares which mock file represents each viewport. T43–T45 append their own pairs; auth (public) pairs stay grouped at the end.
  */
 export type ViewportId = 'mobile' | 'desktop';
 export type ThemeId = 'light' | 'dark';
@@ -19,6 +19,11 @@ export interface VisualPair {
   /** App route (relative to APP_BASE_URL). */
   route: string;
   mocks: Partial<Record<ViewportId, MockTarget>>;
+  /**
+   * Logged-out screen (for example `/auth/*`): captured without a session or login, waiting for
+   * `main` instead of the shell. Viewports without a mock are written as app-only images.
+   */
+  public?: boolean;
 }
 
 export const VIEWPORTS: Record<ViewportId, { width: number; height: number }> = {
@@ -53,5 +58,17 @@ export const PAIRS: readonly VisualPair[] = [
       mobile: { file: 'mobile.html', tab: 'vehicles' },
       desktop: { file: 'desktop.html', tab: 'vehicles' },
     },
+  },
+  {
+    id: 'auth-login',
+    route: '/auth/login',
+    public: true,
+    mocks: {},
+  },
+  {
+    id: 'auth-register',
+    route: '/auth/register',
+    public: true,
+    mocks: {},
   },
 ];

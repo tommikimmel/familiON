@@ -20,9 +20,9 @@ import { PasswordInputComponent } from '../components/password-input.component';
   ],
   template: `
     <section class="space-y-5">
-      <header class="space-y-1 text-center">
-        <h1 class="text-xl font-semibold text-text">Iniciar sesión</h1>
-        <p class="text-sm text-muted">Ingresa con tu cuenta familiar para continuar.</p>
+      <header class="space-y-1.5 text-center">
+        <h1 class="fo-auth-title">Iniciar sesión</h1>
+        <p class="fo-auth-lead">Ingresa con tu cuenta familiar para continuar.</p>
       </header>
 
       @if (generalError(); as message) {
@@ -31,7 +31,7 @@ import { PasswordInputComponent } from '../components/password-input.component';
 
       <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="space-y-4">
         <div class="space-y-1.5">
-          <label for="login-email" class="block text-sm font-medium text-text">
+          <label for="login-email" class="fo-auth-label">
             Correo electrónico
           </label>
           <input
@@ -42,12 +42,10 @@ import { PasswordInputComponent } from '../components/password-input.component';
             placeholder="nombre@correo.com"
             [attr.aria-invalid]="emailError() ? 'true' : null"
             [attr.aria-describedby]="emailError() ? 'login-email-error' : null"
-            class="fo-focus-ring block w-full rounded-xl border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted/70 transition-colors disabled:opacity-60"
-            [class.border-border]="!emailError()"
-            [class.border-danger]="!!emailError()"
+            class="fo-auth-input"
           />
           @if (emailError(); as err) {
-            <p id="login-email-error" role="alert" class="text-xs font-medium text-danger">
+            <p id="login-email-error" role="alert" class="fo-auth-error">
               {{ err }}
             </p>
           }
@@ -65,7 +63,7 @@ import { PasswordInputComponent } from '../components/password-input.component';
         <div class="flex justify-end">
           <a
             routerLink="/auth/forgot-password"
-            class="fo-focus-ring rounded-md text-xs font-medium text-accent hover:underline"
+            class="fo-auth-link fo-focus-ring text-xs"
           >
             ¿Olvidaste tu contraseña?
           </a>
@@ -73,6 +71,7 @@ import { PasswordInputComponent } from '../components/password-input.component';
 
         <fo-button
           type="submit"
+          size="lg"
           [fullWidth]="true"
           [loading]="submitting()"
           [disabled]="submitting()"
@@ -81,11 +80,11 @@ import { PasswordInputComponent } from '../components/password-input.component';
         </fo-button>
       </form>
 
-      <p class="text-center text-sm text-muted">
+      <p class="fo-auth-foot">
         ¿Nuevo en FamiliON?
         <a
           routerLink="/auth/register"
-          class="fo-focus-ring rounded-md font-medium text-accent hover:underline"
+          class="fo-auth-link fo-focus-ring"
         >
           Crear cuenta familiar
         </a>
