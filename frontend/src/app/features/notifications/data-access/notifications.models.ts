@@ -4,7 +4,8 @@ export type NotificationCategory =
   | 'ALLOWANCE'
   | 'FIXED_EXPENSE_DUE'
   | 'VEHICLE_ALERT'
-  | 'SYSTEM';
+  | 'SYSTEM'
+  | 'ACTIVITY';
 
 export interface NotificationMetadata {
   link?: string;

@@ -31,7 +31,7 @@ import { QuickAddHostComponent } from '../../features/quick-add/quick-add-host.c
 import { PwaShellBannersComponent } from '../pwa/pwa-shell-banners.component';
 import { PwaSplashComponent } from '../pwa/pwa-splash.component';
 import { CurrencyMenuComponent } from './currency-menu.component';
-import { NotificationBadgeService } from './notification-badge.service';
+import { NotificationsBellComponent } from '../../features/notifications/components/notifications-bell.component';
 import { QuickAddLauncher } from './quick-add-launcher.service';
 
 interface NavItem {
@@ -96,6 +96,7 @@ function isEditableElement(target: EventTarget | null): boolean {
     CurrencyMenuComponent,
     IconComponent,
     LogoComponent,
+    NotificationsBellComponent,
     PeriodLabelPipe,
     PwaShellBannersComponent,
     PwaSplashComponent,
@@ -217,18 +218,7 @@ function isEditableElement(target: EventTarget | null): boolean {
             <div class="fo-top-right">
               <fo-currency-menu />
 
-              <a
-                routerLink="/notifications"
-                [attr.aria-label]="notificationsLabel()"
-                class="fo-icon-btn fo-focus-ring"
-              >
-                <fo-icon name="bell" [size]="15" />
-                @if (notificationBadge.unread() > 0) {
-                  <span data-testid="notification-badge" class="fo-notif-dot">
-                    <span class="sr-only">{{ badgeLabel() }}</span>
-                  </span>
-                }
-              </a>
+              <fo-notifications-bell />
             </div>
           </header>
 
@@ -246,7 +236,10 @@ function isEditableElement(target: EventTarget | null): boolean {
             <fo-logo [compact]="true" />
           </a>
 
-          <fo-currency-menu />
+          <div class="flex items-center gap-2">
+            <fo-currency-menu />
+            <fo-notifications-bell />
+          </div>
         </header>
 
         <fo-pwa-shell-banners />
@@ -332,7 +325,6 @@ export class ShellComponent {
   protected readonly viewContext = inject(ViewContextStore);
   protected readonly theme = inject(ThemeService);
   protected readonly quickAdd = inject(QuickAddLauncher);
-  protected readonly notificationBadge = inject(NotificationBadgeService);
 
   protected readonly viewOptions = VIEW_OPTIONS;
   protected readonly granularityOptions = GRANULARITY_OPTIONS;
@@ -367,16 +359,6 @@ export class ShellComponent {
     }
     const role = me.role === 'HIJO' ? 'Hijo/a' : 'Adulto';
     return me.twoFactorEnabled ? `${role} · 2FA activo` : `${role} · ${me.family.name}`;
-  });
-
-  protected readonly notificationsLabel = computed(() => {
-    const count = this.notificationBadge.unread();
-    return count > 0 ? `Notificaciones (${this.badgeLabel()} sin leer)` : 'Notificaciones';
-  });
-
-  protected readonly badgeLabel = computed(() => {
-    const count = this.notificationBadge.unread();
-    return count > 99 ? '99+' : String(count);
   });
 
   protected onGlobalKeydown(event: KeyboardEvent): void {

@@ -1,14 +1,20 @@
 package com.familion.notifications.infrastructure.external;
 
+import com.familion.common.events.FamilyActivityEvent;
+import com.familion.common.security.Role;
 import com.familion.family.allowances.application.api.AllowanceDisbursedEvent;
 import com.familion.family.application.api.FamilyQueryApi;
 import com.familion.family.application.api.MemberRef;
 import com.familion.finance.transactions.application.api.ExpenseAttributedEvent;
+import com.familion.notifications.application.ActivityDescriber;
 import com.familion.notifications.application.NotificationService;
 import com.familion.notifications.domain.NotificationCategory;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,5 +88,53 @@ public class NotificationEventListener {
         } catch (Exception e) {
             log.error("Failed to handle AllowanceDisbursedEvent", e);
         }
+    }
+
+    /** Published by the web layer after the request's transaction committed, so a plain listener is enough. */
+    @EventListener
+    public void onFamilyActivity(FamilyActivityEvent event) {
+        try {
+            ActivityDescriber.Activity activity =
+                    ActivityDescriber.describe(event.method(), event.path()).orElse(null);
+            if (activity == null || event.familyId() == null) {
+                return;
+            }
+            List<MemberRef> members = familyQueryApi.listMembers(event.familyId());
+            String actorName = members.stream()
+                    .filter(m -> m.userId().equals(event.actorUserId()))
+                    .map(MemberRef::fullName)
+                    .findFirst()
+                    .orElse("Un miembro");
+            String title = truncate(actorName + " " + activity.phrase(), 140);
+            String body = event.label() != null ? event.label() : title;
+
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("actorUserId", event.actorUserId().toString());
+            metadata.put("action", event.method());
+            metadata.put("resource", event.path());
+            if (activity.link() != null) {
+                metadata.put("link", activity.link());
+            }
+
+            for (MemberRef member : members) {
+                boolean isActor = member.userId().equals(event.actorUserId());
+                // shortcut: children never see others' activity (MemberRef has no visibility);
+                // expose visibility on MemberRef if FAMILY_FULL children should get the feed.
+                if (!isActor && (activity.actorOnly() || member.role() != Role.ADULTO)) {
+                    continue;
+                }
+                notificationService
+                        .notify(member.userId(), event.familyId(), NotificationCategory.ACTIVITY, title, body, metadata)
+                        // The actor's own changes show in their feed but never count as unread.
+                        .filter(n -> isActor)
+                        .ifPresent(n -> notificationService.markAsRead(member.userId(), n.getId()));
+            }
+        } catch (Exception e) {
+            log.error("Failed to handle FamilyActivityEvent", e);
+        }
+    }
+
+    private static String truncate(String text, int max) {
+        return text.length() <= max ? text : text.substring(0, max - 1) + "…";
     }
 }
