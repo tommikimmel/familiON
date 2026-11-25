@@ -54,7 +54,7 @@ export const DONUT_PALETTE: readonly string[] = [
   selector: 'fo-donut-chart',
   standalone: true,
   template: `
-    <div class="fo-donut-body">
+    <div class="fo-donut-body" [class.fo-donut--lg]="size() === 'lg'">
       <div class="fo-donut-wrap">
         <svg
           [attr.viewBox]="'0 0 ' + svgSize + ' ' + svgSize"
@@ -326,6 +326,56 @@ export const DONUT_PALETTE: readonly string[] = [
         font-size: 11.5px;
       }
     }
+
+    /* size="lg": bigger ring + legend, stacked and centered on narrow screens. */
+    .fo-donut--lg {
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: center;
+      gap: 16px;
+    }
+
+    .fo-donut--lg .fo-donut-wrap,
+    .fo-donut--lg .fo-donut-svg {
+      width: 184px;
+      height: 184px;
+    }
+
+    .fo-donut--lg .fo-donut-center-k {
+      max-width: 120px;
+      font-size: 11px;
+    }
+
+    .fo-donut--lg .fo-donut-center-v {
+      font-size: 17px;
+    }
+
+    .fo-donut--lg .fo-donut-center-p {
+      font-size: 12px;
+    }
+
+    .fo-donut--lg .fo-donut-legend {
+      width: 100%;
+      max-width: 340px;
+    }
+
+    .fo-donut--lg .fo-legend-row {
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+
+    @media (min-width: 640px) {
+      .fo-donut--lg {
+        grid-template-columns: 200px minmax(0, 340px);
+        justify-content: center;
+        gap: 32px;
+      }
+
+      .fo-donut--lg .fo-donut-wrap,
+      .fo-donut--lg .fo-donut-svg {
+        width: 200px;
+        height: 200px;
+      }
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -337,6 +387,8 @@ export class DonutChartComponent {
   readonly accent = input<string | null>(null);
   /** What the legend shows on the right: percentage (mock) or formatted amount. */
   readonly legendValue = input<'percent' | 'amount'>('percent');
+  /** `lg`: bigger chart with its legend centered, for wide cards. */
+  readonly size = input<'md' | 'lg'>('md');
   readonly selected = output<DonutSlice | null>();
 
   protected readonly svgSize = SVG_SIZE;

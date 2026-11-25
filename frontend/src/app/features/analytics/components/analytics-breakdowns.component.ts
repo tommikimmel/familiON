@@ -26,7 +26,7 @@ interface CategoryVariationItem {
   template: `
     <div class="grid grid-cols-1 gap-5" [class.lg:grid-cols-2]="showPerson()">
       <!-- By Category -->
-      <fo-card padding="md" data-testid="category-breakdown-card">
+      <fo-card class="h-full" padding="md" data-testid="category-breakdown-card">
         <div class="flex items-center justify-between gap-2">
           <div>
             <h2 class="text-base font-semibold text-text">Gastos por categoría</h2>
@@ -49,6 +49,7 @@ interface CategoryVariationItem {
           } @else {
             <fo-donut-chart
               [slices]="categorySlices()"
+              size="lg"
               centerLabel="Categorías"
               [formatValue]="categoryFormatter()"
               (selected)="selectedCategoryId.set($event?.id ?? null)"
@@ -59,10 +60,10 @@ interface CategoryVariationItem {
                 data-testid="category-variation-list"
                 class="mt-4 border-t border-border/80 pt-3"
               >
-                <p class="mb-2 text-[11px] font-medium tracking-wide text-muted uppercase">
+                <p class="mb-2 text-center text-[11px] font-medium tracking-wide text-muted uppercase">
                   Variación real por categoría
                 </p>
-                <div class="flex flex-wrap gap-1.5">
+                <div class="flex flex-wrap justify-center gap-1.5">
                   @for (item of categoryVariations(); track item.id) {
                     <span
                       class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums"
@@ -89,7 +90,7 @@ interface CategoryVariationItem {
 
       <!-- By Person (FAMILY view only, hidden on 403) -->
       @if (showPerson()) {
-        <fo-card padding="md" data-testid="person-breakdown-card">
+        <fo-card class="h-full" padding="md" data-testid="person-breakdown-card">
           <div class="flex items-center justify-between gap-2">
             <div>
               <h2 class="text-base font-semibold text-text">Gastos por persona</h2>
@@ -112,6 +113,7 @@ interface CategoryVariationItem {
             } @else {
               <fo-donut-chart
                 [slices]="personSlices()"
+                size="lg"
                 centerLabel="Personas"
                 [formatValue]="personFormatter()"
               />
