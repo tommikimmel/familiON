@@ -20,15 +20,15 @@ import { OtpCodeInputComponent } from '../components/otp-code-input.component';
   ],
   template: `
     <section class="space-y-5">
-      <header class="space-y-1 text-center">
-        <h1 class="text-xl font-semibold text-text">Verificar correo</h1>
+      <header class="space-y-1.5 text-center">
+        <h1 class="fo-auth-title">Verificar correo</h1>
         @if (queryEmail(); as email) {
-          <p class="text-sm text-muted">
+          <p class="fo-auth-lead">
             Ingresa el código de 6 dígitos que enviamos a
             <span class="font-medium text-text">{{ email }}</span>.
           </p>
         } @else {
-          <p class="text-sm text-muted">
+          <p class="fo-auth-lead">
             Ingresa tu correo y el código de 6 dígitos que recibiste.
           </p>
         }
@@ -41,7 +41,7 @@ import { OtpCodeInputComponent } from '../components/otp-code-input.component';
       <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="space-y-4">
         @if (!queryEmail()) {
           <div class="space-y-1.5">
-            <label for="verify-email-address" class="block text-sm font-medium text-text">
+            <label for="verify-email-address" class="fo-auth-label">
               Correo electrónico
             </label>
             <input
@@ -52,12 +52,10 @@ import { OtpCodeInputComponent } from '../components/otp-code-input.component';
               placeholder="nombre@correo.com"
               [attr.aria-invalid]="emailError() ? 'true' : null"
               [attr.aria-describedby]="emailError() ? 'verify-email-address-error' : null"
-              class="fo-focus-ring block w-full rounded-xl border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted/70 transition-colors disabled:opacity-60"
-              [class.border-border]="!emailError()"
-              [class.border-danger]="!!emailError()"
+              class="fo-auth-input"
             />
             @if (emailError(); as err) {
-              <p id="verify-email-address-error" role="alert" class="text-xs font-medium text-danger">
+              <p id="verify-email-address-error" role="alert" class="fo-auth-error">
                 {{ err }}
               </p>
             }
@@ -75,6 +73,7 @@ import { OtpCodeInputComponent } from '../components/otp-code-input.component';
 
         <fo-button
           type="submit"
+          size="lg"
           [fullWidth]="true"
           [loading]="submitting()"
           [disabled]="submitting() || !canSubmit()"
@@ -83,10 +82,10 @@ import { OtpCodeInputComponent } from '../components/otp-code-input.component';
         </fo-button>
       </form>
 
-      <p class="text-center text-sm text-muted">
+      <p class="fo-auth-foot">
         <a
           routerLink="/auth/login"
-          class="fo-focus-ring rounded-md font-medium text-accent hover:underline"
+          class="fo-auth-link fo-focus-ring"
         >
           Volver a iniciar sesión
         </a>

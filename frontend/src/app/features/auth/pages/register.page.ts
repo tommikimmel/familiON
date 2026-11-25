@@ -24,9 +24,9 @@ import {
   ],
   template: `
     <section class="space-y-5">
-      <header class="space-y-1 text-center">
-        <h1 class="text-xl font-semibold text-text">Crear cuenta</h1>
-        <p class="text-sm text-muted">Crea tu cuenta y espacio familiar en pocos pasos.</p>
+      <header class="space-y-1.5 text-center">
+        <h1 class="fo-auth-title">Crear cuenta</h1>
+        <p class="fo-auth-lead">Crea tu cuenta y espacio familiar en pocos pasos.</p>
       </header>
 
       @if (generalError(); as message) {
@@ -35,7 +35,7 @@ import {
 
       <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="space-y-4">
         <div class="space-y-1.5">
-          <label for="register-full-name" class="block text-sm font-medium text-text">
+          <label for="register-full-name" class="fo-auth-label">
             Nombre completo
           </label>
           <input
@@ -46,19 +46,17 @@ import {
             placeholder="Ana García"
             [attr.aria-invalid]="fieldError('fullName') ? 'true' : null"
             [attr.aria-describedby]="fieldError('fullName') ? 'register-full-name-error' : null"
-            class="fo-focus-ring block w-full rounded-xl border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted/70 transition-colors disabled:opacity-60"
-            [class.border-border]="!fieldError('fullName')"
-            [class.border-danger]="!!fieldError('fullName')"
+            class="fo-auth-input"
           />
           @if (fieldError('fullName'); as err) {
-            <p id="register-full-name-error" role="alert" class="text-xs font-medium text-danger">
+            <p id="register-full-name-error" role="alert" class="fo-auth-error">
               {{ err }}
             </p>
           }
         </div>
 
         <div class="space-y-1.5">
-          <label for="register-family-name" class="block text-sm font-medium text-text">
+          <label for="register-family-name" class="fo-auth-label">
             Nombre de la familia
           </label>
           <input
@@ -69,19 +67,17 @@ import {
             placeholder="Familia García"
             [attr.aria-invalid]="fieldError('familyName') ? 'true' : null"
             [attr.aria-describedby]="fieldError('familyName') ? 'register-family-name-error' : null"
-            class="fo-focus-ring block w-full rounded-xl border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted/70 transition-colors disabled:opacity-60"
-            [class.border-border]="!fieldError('familyName')"
-            [class.border-danger]="!!fieldError('familyName')"
+            class="fo-auth-input"
           />
           @if (fieldError('familyName'); as err) {
-            <p id="register-family-name-error" role="alert" class="text-xs font-medium text-danger">
+            <p id="register-family-name-error" role="alert" class="fo-auth-error">
               {{ err }}
             </p>
           }
         </div>
 
         <div class="space-y-1.5">
-          <label for="register-email" class="block text-sm font-medium text-text">
+          <label for="register-email" class="fo-auth-label">
             Correo electrónico
           </label>
           <input
@@ -92,12 +88,10 @@ import {
             placeholder="nombre@correo.com"
             [attr.aria-invalid]="fieldError('email') ? 'true' : null"
             [attr.aria-describedby]="fieldError('email') ? 'register-email-error' : null"
-            class="fo-focus-ring block w-full rounded-xl border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted/70 transition-colors disabled:opacity-60"
-            [class.border-border]="!fieldError('email')"
-            [class.border-danger]="!!fieldError('email')"
+            class="fo-auth-input"
           />
           @if (fieldError('email'); as err) {
-            <p id="register-email-error" role="alert" class="text-xs font-medium text-danger">
+            <p id="register-email-error" role="alert" class="fo-auth-error">
               {{ err }}
             </p>
           }
@@ -124,6 +118,7 @@ import {
 
         <fo-button
           type="submit"
+          size="lg"
           [fullWidth]="true"
           [loading]="submitting()"
           [disabled]="submitting()"
@@ -132,11 +127,11 @@ import {
         </fo-button>
       </form>
 
-      <p class="text-center text-sm text-muted">
+      <p class="fo-auth-foot">
         ¿Ya tienes cuenta?
         <a
           routerLink="/auth/login"
-          class="fo-focus-ring rounded-md font-medium text-accent hover:underline"
+          class="fo-auth-link fo-focus-ring"
         >
           Iniciar sesión
         </a>

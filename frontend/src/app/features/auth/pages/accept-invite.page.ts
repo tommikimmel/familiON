@@ -38,8 +38,8 @@ type InviteLoadState = 'loading' | 'ready' | 'invalid';
   ],
   template: `
     <section class="space-y-5">
-      <header class="space-y-1 text-center">
-        <h1 class="text-xl font-semibold text-text">Aceptar invitación</h1>
+      <header class="space-y-1.5 text-center">
+        <h1 class="fo-auth-title">Aceptar invitación</h1>
       </header>
 
       @switch (loadState()) {
@@ -60,7 +60,7 @@ type InviteLoadState = 'loading' | 'ready' | 'invalid';
           >
             <a
               routerLink="/auth/login"
-              class="fo-focus-ring inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-contrast transition-opacity hover:opacity-92"
+              class="fo-btn-primary fo-focus-ring inline-flex items-center justify-center px-5 no-underline"
             >
               Ir a iniciar sesión
             </a>
@@ -69,11 +69,11 @@ type InviteLoadState = 'loading' | 'ready' | 'invalid';
 
         @case ('ready') {
           @if (invitation(); as inv) {
-            <div class="rounded-xl border border-border bg-surface-2/70 px-3.5 py-3 text-center">
-              <p class="text-sm font-medium text-text">
+            <div class="rounded-[12px] border border-accent-light bg-accent-soft px-3.5 py-3 text-center">
+              <p class="text-[12.5px] font-semibold text-text">
                 Te invitaron a la familia {{ inv.familyName }} como {{ roleLabel() }}
               </p>
-              <p class="mt-1 text-xs text-muted">{{ inv.email }}</p>
+              <p class="mt-1 text-[11px] text-muted">{{ inv.email }}</p>
             </div>
           }
 
@@ -83,7 +83,7 @@ type InviteLoadState = 'loading' | 'ready' | 'invalid';
 
           <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="space-y-4">
             <div class="space-y-1.5">
-              <label for="invite-full-name" class="block text-sm font-medium text-text">
+              <label for="invite-full-name" class="fo-auth-label">
                 Nombre completo
               </label>
               <input
@@ -94,12 +94,10 @@ type InviteLoadState = 'loading' | 'ready' | 'invalid';
                 placeholder="Tu nombre completo"
                 [attr.aria-invalid]="fullNameError() ? 'true' : null"
                 [attr.aria-describedby]="fullNameError() ? 'invite-full-name-error' : null"
-                class="fo-focus-ring block w-full rounded-xl border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted/70 transition-colors disabled:opacity-60"
-                [class.border-border]="!fullNameError()"
-                [class.border-danger]="!!fullNameError()"
+                class="fo-auth-input"
               />
               @if (fullNameError(); as err) {
-                <p id="invite-full-name-error" role="alert" class="text-xs font-medium text-danger">
+                <p id="invite-full-name-error" role="alert" class="fo-auth-error">
                   {{ err }}
                 </p>
               }
@@ -126,6 +124,7 @@ type InviteLoadState = 'loading' | 'ready' | 'invalid';
 
             <fo-button
               type="submit"
+          size="lg"
               [fullWidth]="true"
               [loading]="submitting()"
               [disabled]="submitting()"
@@ -134,10 +133,10 @@ type InviteLoadState = 'loading' | 'ready' | 'invalid';
             </fo-button>
           </form>
 
-          <p class="text-center text-sm text-muted">
+          <p class="fo-auth-foot">
             <a
               routerLink="/auth/login"
-              class="fo-focus-ring rounded-md font-medium text-accent hover:underline"
+              class="fo-auth-link fo-focus-ring"
             >
               Ir a iniciar sesión
             </a>

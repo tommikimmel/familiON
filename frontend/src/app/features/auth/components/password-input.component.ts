@@ -22,7 +22,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
   ],
   template: `
     <div class="space-y-1.5">
-      <label [for]="inputId()" class="block text-sm font-medium text-text">
+      <label [for]="inputId()" class="fo-auth-label">
         {{ label() }}
       </label>
 
@@ -38,9 +38,7 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
           [attr.aria-describedby]="describedById()"
           (input)="handleInput($event)"
           (blur)="handleBlur()"
-          class="fo-focus-ring block w-full rounded-xl border bg-surface px-3.5 py-2.5 pr-11 text-sm text-text placeholder:text-muted/70 transition-colors disabled:opacity-60"
-          [class.border-border]="!error()"
-          [class.border-danger]="!!error()"
+          class="fo-auth-input fo-auth-input--icon"
         />
 
         <button
@@ -56,11 +54,11 @@ import { IconComponent } from '../../../shared/ui/icon/icon.component';
       </div>
 
       @if (error(); as errorMsg) {
-        <p [id]="errorId()" role="alert" class="text-xs font-medium text-danger">
+        <p [id]="errorId()" role="alert" class="fo-auth-error">
           {{ errorMsg }}
         </p>
       } @else if (hint(); as hintMsg) {
-        <p [id]="hintId()" class="text-xs text-muted">
+        <p [id]="hintId()" class="fo-auth-hint">
           {{ hintMsg }}
         </p>
       }
