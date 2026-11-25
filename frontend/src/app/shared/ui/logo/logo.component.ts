@@ -16,8 +16,8 @@ import {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 190 56"
-      [attr.height]="compact() ? 28 : 36"
-      [attr.width]="compact() ? 95 : 122"
+      [attr.height]="compact() ? 32 : 38"
+      [attr.width]="compact() ? 110 : 128"
       role="img"
       aria-label="FamiliON"
       class="block select-none"
@@ -38,10 +38,10 @@ import {
         height="32"
         rx="16"
         class="fo-logo-track"
-        [attr.fill]="isOn() ? 'var(--fo-accent, #0f766e)' : 'var(--fo-border, #e4e4e7)'"
+        [attr.fill]="isOn() ? 'var(--fo-accent, #0f766e)' : 'var(--fo-off-track, #d1d5db)'"
       />
 
-      <g [attr.opacity]="isOn() ? 1 : 0.35" class="fo-logo-on-label">
+      <g [attr.opacity]="isOn() ? 1 : 0" class="fo-logo-on-label">
         <circle
           cx="127"
           cy="28"
@@ -86,16 +86,16 @@ import {
     }
 
     .fo-logo-track {
-      transition: fill 240ms ease;
+      transition: fill 0.34s var(--fo-ease-smooth, cubic-bezier(0.22, 1, 0.36, 1));
     }
 
     .fo-logo-on-label {
-      transition: opacity 240ms ease;
+      transition: opacity 0.25s ease 0.08s;
     }
 
     .fo-logo-knob {
       transform: translateX(0);
-      transition: transform 360ms var(--fo-ease-spring, cubic-bezier(0.34, 1.35, 0.64, 1));
+      transition: transform 0.38s var(--fo-ease-spring, cubic-bezier(0.34, 1.35, 0.64, 1));
     }
 
     .fo-logo-knob--on {

@@ -9,14 +9,14 @@ import {
 import { SessionStore } from '../state/session.store';
 import { ViewContextStore } from '../state/view-context.store';
 import { CurrencyChipComponent } from '../../shared/ui/currency-chip/currency-chip.component';
-import { IconComponent } from '../../shared/ui/icon/icon.component';
+import { CurrencyFlagComponent } from '../../shared/ui/currency-chip/currency-flag.component';
 
 const DEFAULT_CURRENCIES = ['ARS', 'USD'] as const;
 
 @Component({
   selector: 'fo-currency-menu',
   standalone: true,
-  imports: [CurrencyChipComponent, IconComponent],
+  imports: [CurrencyChipComponent, CurrencyFlagComponent],
   host: {
     class: 'relative inline-block',
     '(document:click)': 'onDocumentClick($event)',
@@ -30,71 +30,152 @@ const DEFAULT_CURRENCIES = ['ARS', 'USD'] as const;
       (pressed)="toggle()"
     />
 
-    @if (isOpen()) {
-      <div
-        role="menu"
-        aria-label="Opciones de divisa y lente"
-        class="absolute right-0 z-40 mt-2 w-60 rounded-[var(--fo-radius)] border border-border bg-surface p-2 shadow-lg"
-      >
-        <p class="px-2.5 py-1 text-[11px] font-semibold tracking-wider text-muted uppercase">
-          Divisa
-        </p>
-
-        <div class="flex flex-col gap-0.5">
-          @for (code of enabledCurrencies(); track code) {
-            @let isActive = code === viewContext.activeCurrency();
-            <button
-              type="button"
-              role="menuitemradio"
-              [attr.aria-checked]="isActive"
-              (click)="selectCurrency(code)"
-              class="fo-focus-ring flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-surface-2"
-              [class.font-semibold]="isActive"
-              [class.text-accent]="isActive"
-              [class.text-text]="!isActive"
-            >
-              <span class="flex items-center gap-2">
-                <span>{{ code }}</span>
-                @if (code === referenceCurrency()) {
-                  <span class="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted">
-                    Referencia
-                  </span>
-                }
-              </span>
-              @if (isActive) {
-                <fo-icon name="check" [size]="16" />
-              }
-            </button>
+    <div
+      role="menu"
+      aria-label="Opciones de divisa y lente"
+      class="fo-currency-dropdown"
+      [class.is-open]="isOpen()"
+      [attr.aria-hidden]="!isOpen()"
+      [attr.inert]="isOpen() ? null : ''"
+    >
+      @for (code of enabledCurrencies(); track code) {
+        @let isActive = code === viewContext.activeCurrency();
+        <button
+          type="button"
+          role="menuitemradio"
+          [attr.aria-checked]="isActive"
+          (click)="selectCurrency(code)"
+          class="fo-curr-opt fo-focus-ring"
+          [class.is-active]="isActive"
+        >
+          <span class="flex items-center gap-[7px]">
+            <fo-currency-flag [currency]="code" />
+            <span>{{ code }}</span>
+          </span>
+          @if (code === referenceCurrency()) {
+            <span class="fo-curr-meta">Referencia</span>
           }
-        </div>
+        </button>
+      }
 
-        <div class="my-2 border-t border-border" role="separator"></div>
+      <div class="fo-curr-divider" role="separator"></div>
 
-        <div class="flex items-center justify-between gap-3 rounded-xl px-2.5 py-2">
-          <div class="min-w-0">
-            <span id="fo-constant-base-label" class="block text-sm font-medium text-text">
-              A plata de hoy
-            </span>
-            <span class="block text-xs text-muted">Ajustado por inflación</span>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-labelledby="fo-constant-base-label"
-            [attr.aria-checked]="isConstantBase()"
-            (click)="toggleConstantBase()"
-            class="fo-focus-ring relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200"
-            [class.bg-accent]="isConstantBase()"
-            [class.bg-border]="!isConstantBase()"
-          >
-            <span
-              class="inline-block h-4 w-4 rounded-full bg-white shadow-xs transition-transform duration-200"
-              [class.translate-x-6]="isConstantBase()"
-              [class.translate-x-1]="!isConstantBase()"
-            ></span>
-          </button>
-        </div>
-      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-labelledby="fo-constant-base-label"
+        [attr.aria-checked]="isConstantBase()"
+        (click)="toggleConstantBase()"
+        class="fo-ipc-row fo-focus-ring"
+      >
+        <span id="fo-constant-base-label">A plata de hoy</span>
+        <span class="fo-mini-switch" [class.is-on]="isConstantBase()" aria-hidden="true"></span>
+      </button>
+    </div>
+  `,
+  styles: `
+    .fo-currency-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      width: 196px;
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 6px;
+      background: var(--fo-surface);
+      border: 1px solid var(--fo-border);
+      border-radius: 14px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+      opacity: 0;
+      transform: translateY(-6px) scale(0.96);
+      transform-origin: top right;
+      pointer-events: none;
+      visibility: hidden;
+      transition:
+        opacity 0.18s ease,
+        transform 0.24s var(--fo-ease-spring),
+        visibility 0s linear 0.24s;
+    }
+
+    .fo-currency-dropdown.is-open {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+      visibility: visible;
+      transition:
+        opacity 0.18s ease,
+        transform 0.24s var(--fo-ease-spring),
+        visibility 0s;
+    }
+
+    .fo-curr-opt {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: none;
+      background: transparent;
+      color: var(--fo-text);
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 7px 8px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 0.14s ease;
+    }
+
+    .fo-curr-opt:hover {
+      background: var(--fo-surface-2);
+    }
+
+    .fo-curr-opt.is-active {
+      background: var(--fo-accent-soft);
+      color: var(--fo-accent);
+    }
+
+    .fo-curr-meta {
+      font-size: 10px;
+      color: var(--fo-text-muted);
+    }
+
+    .fo-curr-divider {
+      height: 1px;
+      background: var(--fo-border);
+      margin: 4px 2px;
+    }
+
+    .fo-ipc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      border: none;
+      background: transparent;
+      padding: 6px 8px;
+      font-family: inherit;
+      font-size: 11px;
+      text-align: left;
+      color: var(--fo-text-2);
+      cursor: pointer;
+      border-radius: 8px;
+    }
+
+    @media (min-width: 1024px) {
+      .fo-currency-dropdown {
+        width: 204px;
+        border-radius: 13px;
+        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
+        transition:
+          opacity 0.16s ease,
+          transform 0.22s var(--fo-ease-spring),
+          visibility 0s linear 0.22s;
+      }
+
+      .fo-curr-opt {
+        border-radius: 8px;
+      }
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,

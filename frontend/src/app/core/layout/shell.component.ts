@@ -55,23 +55,33 @@ const GRANULARITY_OPTIONS: readonly SegmentedOption<Granularity>[] = [
 
 const MOBILE_LEFT_NAV: readonly NavItem[] = [
   { label: 'Inicio', route: '/home', icon: 'home' },
-  { label: 'Plan', route: '/plan', icon: 'calendar-range' },
+  { label: 'Plan', route: '/plan', icon: 'credit-card' },
 ];
 
 const MOBILE_RIGHT_NAV: readonly NavItem[] = [
   { label: 'Autos', route: '/vehicles', icon: 'car' },
-  { label: 'Perfil', route: '/profile', icon: 'user' },
+  { label: 'Perfil', route: '/profile', icon: 'users' },
 ];
 
 const DESKTOP_NAV: readonly NavItem[] = [
   { label: 'Inicio', route: '/home', icon: 'home' },
   { label: 'Movimientos', route: '/transactions', icon: 'arrow-left-right' },
   { label: 'Analítica', route: '/analytics', icon: 'chart-pie' },
-  { label: 'Planificación', route: '/plan', icon: 'calendar-range' },
+  { label: 'Planificación', route: '/plan', icon: 'credit-card' },
   { label: 'Vehículos', route: '/vehicles', icon: 'car' },
   { label: 'Cuentas', route: '/accounts', icon: 'wallet' },
   { label: 'Familia y Perfil', route: '/profile', icon: 'users' },
 ];
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter((part) => part.length > 0);
+  if (parts.length === 0) {
+    return '?';
+  }
+  const first = parts[0].charAt(0);
+  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : '';
+  return `${first}${last}`.toUpperCase();
+}
 
 function isEditableElement(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
@@ -106,116 +116,98 @@ function isEditableElement(target: EventTarget | null): boolean {
   },
   template: `
     @if (isDesktop()) {
-      <div class="flex min-h-dvh bg-bg text-text">
-        <aside
-          data-testid="desktop-sidebar"
-          aria-label="Barra lateral"
-          class="fixed inset-y-0 left-0 z-30 flex w-[226px] flex-col border-r border-border bg-surface px-3.5 py-4"
-        >
-          <a
-            routerLink="/home"
-            aria-label="FamiliON inicio"
-            class="fo-focus-ring mb-4 inline-flex items-center rounded-xl px-1 py-0.5"
-          >
+      <div class="fo-app-shell">
+        <aside data-testid="desktop-sidebar" aria-label="Barra lateral" class="fo-sidebar">
+          <a routerLink="/home" aria-label="FamiliON inicio" class="fo-logo-wrap fo-focus-ring">
             <fo-logo [animate]="true" />
           </a>
 
           @if (viewContext.canSeeFamily()) {
-            <div class="mb-3">
-              <fo-segmented-toggle
-                [options]="viewOptions"
-                [value]="viewContext.view()"
-                (valueChange)="viewContext.setView($event)"
-                ariaLabel="Vista personal o familiar"
-                size="sm"
-              />
-            </div>
+            <fo-segmented-toggle
+              [options]="viewOptions"
+              [value]="viewContext.view()"
+              (valueChange)="viewContext.setView($event)"
+              ariaLabel="Vista personal o familiar"
+              variant="scope"
+            />
           }
 
           <button
             type="button"
             data-testid="desktop-quick-add-btn"
             (click)="quickAdd.open()"
-            class="fo-focus-ring mb-4 flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl bg-accent px-3.5 py-2.5 text-sm font-semibold text-accent-contrast shadow-xs transition-opacity duration-150 hover:opacity-92"
+            class="fo-new-btn fo-focus-ring"
           >
-            <span class="flex items-center gap-2">
-              <fo-icon name="plus" [size]="18" />
+            <span class="inline-flex items-center gap-[7px]">
+              <fo-icon name="plus" [size]="15" [strokeWidth]="2.6" />
               <span>Nuevo movimiento</span>
             </span>
-            <kbd
-              class="rounded-md bg-black/15 px-1.5 py-0.5 font-sans text-[11px] font-medium"
-              aria-hidden="true"
-            >
-              N
-            </kbd>
+            <kbd class="fo-kbd-hint" aria-hidden="true">N</kbd>
           </button>
 
-          <nav aria-label="Navegación principal" class="flex flex-1 flex-col gap-1 overflow-y-auto">
+          <nav aria-label="Navegación principal" class="fo-nav-list">
             @for (item of desktopNav; track item.route) {
               <a
                 [routerLink]="item.route"
-                routerLinkActive="bg-accent-soft text-accent font-semibold"
+                routerLinkActive="is-active"
                 #rla="routerLinkActive"
                 [attr.aria-current]="rla.isActive ? 'page' : null"
-                class="fo-focus-ring flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted transition-colors duration-150 hover:bg-surface-2 hover:text-text"
+                class="fo-nav-btn fo-focus-ring"
               >
-                <fo-icon [name]="item.icon" [size]="18" />
+                <fo-icon [name]="item.icon" [size]="16" />
                 <span class="truncate">{{ item.label }}</span>
               </a>
             }
           </nav>
 
-          <footer class="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3">
-            <div class="min-w-0">
-              <p class="truncate text-sm font-medium text-text">{{ userDisplayName() }}</p>
-              @if (familyName(); as fam) {
-                <p class="truncate text-xs text-muted">{{ fam }}</p>
-              }
+          <footer class="fo-sidebar-footer">
+            <div class="fo-user-chip">
+              <span class="fo-avatar" aria-hidden="true">{{ userInitials() }}</span>
+              <div class="min-w-0">
+                <strong class="fo-user-name">{{ userDisplayName() }}</strong>
+                <span class="fo-user-sub">{{ userSubtitle() }}</span>
+              </div>
             </div>
             <button
               type="button"
               [attr.aria-label]="theme.isDark() ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
               [attr.aria-pressed]="theme.isDark()"
               (click)="theme.toggleDark()"
-              class="fo-focus-ring inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-border bg-surface-2 text-text transition-colors hover:border-accent"
+              class="fo-icon-btn fo-focus-ring"
             >
-              <fo-icon [name]="theme.isDark() ? 'sun' : 'moon'" [size]="18" />
+              <fo-icon [name]="theme.isDark() ? 'sun' : 'moon'" [size]="14" />
             </button>
           </footer>
         </aside>
 
-        <div class="flex min-h-dvh flex-1 flex-col pl-[226px]">
-          <header
-            data-testid="desktop-topbar"
-            class="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface/90 px-6 py-3 backdrop-blur-md"
-          >
-            <h2 class="text-lg font-semibold text-text">{{ pageTitle() }}</h2>
+        <div class="fo-main-pane">
+          <header data-testid="desktop-topbar" class="fo-main-topbar">
+            <div class="fo-top-left">
+              <h1 class="fo-page-title">{{ pageTitle() }}</h1>
 
-            <div class="flex items-center gap-3">
-              <div class="w-72">
-                <fo-segmented-toggle
-                  [options]="granularityOptions"
-                  [value]="viewContext.granularity()"
-                  (valueChange)="viewContext.setGranularity($event)"
-                  ariaLabel="Granularidad temporal"
-                  size="sm"
-                />
-              </div>
+              <fo-segmented-toggle
+                class="inline"
+                [options]="granularityOptions"
+                [value]="viewContext.granularity()"
+                (valueChange)="viewContext.setGranularity($event)"
+                ariaLabel="Granularidad temporal"
+                variant="tabs-boxed"
+              />
 
-              <div class="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 p-1">
+              <div class="fo-period-nav">
                 <button
                   type="button"
                   aria-label="Período anterior"
                   (click)="viewContext.shiftPeriod(-1)"
-                  class="fo-focus-ring inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface hover:text-text"
+                  class="fo-period-step fo-focus-ring"
                 >
-                  <fo-icon name="chevron-left" [size]="16" />
+                  <fo-icon name="chevron-left" [size]="14" />
                 </button>
                 <button
                   type="button"
                   title="Volver a hoy"
                   (click)="viewContext.resetToToday()"
-                  class="fo-focus-ring cursor-pointer rounded-full px-2.5 py-0.5 text-xs font-medium text-text tabular-nums transition-colors hover:bg-surface"
+                  class="fo-period-label fo-focus-ring"
                 >
                   {{ viewContext.anchorDate() | periodLabel: viewContext.granularity() }}
                 </button>
@@ -223,28 +215,25 @@ function isEditableElement(target: EventTarget | null): boolean {
                   type="button"
                   aria-label="Período siguiente"
                   (click)="viewContext.shiftPeriod(1)"
-                  class="fo-focus-ring inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface hover:text-text"
+                  class="fo-period-step fo-focus-ring"
                 >
-                  <fo-icon name="chevron-right" [size]="16" />
+                  <fo-icon name="chevron-right" [size]="14" />
                 </button>
               </div>
             </div>
 
-            <div class="flex items-center gap-2.5">
+            <div class="fo-top-right">
               <fo-currency-menu />
 
               <a
                 routerLink="/notifications"
-                aria-label="Notificaciones"
-                class="fo-focus-ring relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-text transition-colors hover:bg-surface-2"
+                [attr.aria-label]="notificationsLabel()"
+                class="fo-icon-btn fo-focus-ring"
               >
-                <fo-icon name="bell" [size]="18" />
+                <fo-icon name="bell" [size]="15" />
                 @if (notificationBadge.unread() > 0) {
-                  <span
-                    data-testid="notification-badge"
-                    class="absolute -top-1 -right-1 flex min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-contrast tabular-nums"
-                  >
-                    {{ badgeLabel() }}
+                  <span data-testid="notification-badge" class="fo-notif-dot">
+                    <span class="sr-only">{{ badgeLabel() }}</span>
                   </span>
                 }
               </a>
@@ -253,98 +242,84 @@ function isEditableElement(target: EventTarget | null): boolean {
 
           <fo-pwa-shell-banners />
 
-          <main class="flex-1 p-6">
+          <main class="fo-content-body">
             <router-outlet />
           </main>
         </div>
       </div>
     } @else {
-      <div class="flex min-h-dvh flex-col bg-bg text-text">
-        <header
-          data-testid="mobile-header"
-          class="sticky top-0 z-20 border-b border-border bg-surface/92 px-4 pt-3 pb-2.5 backdrop-blur-md"
-        >
-          <div class="flex items-center justify-between gap-3">
-            <a
-              routerLink="/home"
-              aria-label="FamiliON inicio"
-              class="fo-focus-ring inline-flex items-center rounded-lg"
-            >
-              <fo-logo [compact]="true" />
-            </a>
+      <div class="fo-mobile-shell">
+        <header data-testid="mobile-header" class="fo-app-header">
+          <a routerLink="/home" aria-label="FamiliON inicio" class="fo-focus-ring inline-flex rounded-lg">
+            <fo-logo [compact]="true" />
+          </a>
 
-            <fo-currency-menu />
-          </div>
-
-          @if (viewContext.canSeeFamily()) {
-            <div class="mt-2.5">
-              <fo-segmented-toggle
-                [options]="viewOptions"
-                [value]="viewContext.view()"
-                (valueChange)="viewContext.setView($event)"
-                ariaLabel="Vista personal o familiar"
-                size="sm"
-              />
-            </div>
-          }
+          <fo-currency-menu />
         </header>
 
         <fo-pwa-shell-banners />
 
-        <main class="flex-1 px-4 pt-4 pb-24">
+        <main class="fo-screen-scroll">
+          @if (viewContext.canSeeFamily()) {
+            <fo-segmented-toggle
+              data-testid="mobile-scope-bar"
+              [options]="viewOptions"
+              [value]="viewContext.view()"
+              (valueChange)="viewContext.setView($event)"
+              ariaLabel="Vista personal o familiar"
+              variant="scope"
+            />
+          }
+
           <router-outlet />
         </main>
 
-        <nav
-          data-testid="mobile-bottom-nav"
-          aria-label="Navegación principal"
-          class="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/96 px-2 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur-md"
-        >
-          <div class="mx-auto grid max-w-md grid-cols-5 items-end">
-            @for (item of mobileLeftNav; track item.route) {
-              <a
-                [routerLink]="item.route"
-                routerLinkActive="text-accent font-semibold"
-                #rla="routerLinkActive"
-                [attr.aria-current]="rla.isActive ? 'page' : null"
-                class="fo-focus-ring flex flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[11px] text-muted transition-colors"
-              >
-                <fo-icon [name]="item.icon" [size]="20" />
-                <span>{{ item.label }}</span>
-              </a>
-            }
+        <nav data-testid="mobile-bottom-nav" aria-label="Navegación principal" class="fo-bottom-nav">
+          @for (item of mobileLeftNav; track item.route) {
+            <a
+              [routerLink]="item.route"
+              routerLinkActive="is-active"
+              #rla="routerLinkActive"
+              [attr.aria-current]="rla.isActive ? 'page' : null"
+              class="fo-nav-item fo-focus-ring"
+            >
+              <fo-icon [name]="item.icon" [size]="18" />
+              <span>{{ item.label }}</span>
+            </a>
+          }
 
-            <div class="flex justify-center">
-              <button
-                type="button"
-                data-testid="mobile-quick-add-btn"
-                aria-label="Nuevo movimiento"
-                [attr.aria-expanded]="quickAdd.isOpen()"
-                (click)="quickAdd.toggle()"
-                class="fo-focus-ring fo-fab -mt-7 flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-accent text-accent-contrast shadow-lg ring-[6px] ring-bg transition-transform duration-200 active:scale-95"
-              >
-                <fo-icon
-                  name="plus"
-                  [size]="26"
-                  class="fo-fab-icon"
-                  [class.fo-fab-icon--open]="quickAdd.isOpen()"
-                />
-              </button>
-            </div>
-
-            @for (item of mobileRightNav; track item.route) {
-              <a
-                [routerLink]="item.route"
-                routerLinkActive="text-accent font-semibold"
-                #rla="routerLinkActive"
-                [attr.aria-current]="rla.isActive ? 'page' : null"
-                class="fo-focus-ring flex flex-col items-center justify-center gap-0.5 rounded-xl py-1 text-[11px] text-muted transition-colors"
-              >
-                <fo-icon [name]="item.icon" [size]="20" />
-                <span>{{ item.label }}</span>
-              </a>
-            }
+          <div class="fo-fab-slot">
+            <button
+              type="button"
+              data-testid="mobile-quick-add-btn"
+              aria-label="Nuevo movimiento"
+              title="Carga rápida"
+              [attr.aria-expanded]="quickAdd.isOpen()"
+              (click)="quickAdd.toggle()"
+              class="fo-fab-btn fo-focus-ring"
+            >
+              <fo-icon
+                name="plus"
+                [size]="24"
+                [strokeWidth]="2.6"
+                class="fo-fab-icon"
+                [class.fo-fab-icon--open]="quickAdd.isOpen()"
+              />
+            </button>
           </div>
+
+          @for (item of mobileRightNav; track item.route) {
+            <a
+              [routerLink]="item.route"
+              routerLinkActive="is-active"
+              #rla="routerLinkActive"
+              [attr.aria-current]="rla.isActive ? 'page' : null"
+              class="fo-nav-item fo-focus-ring"
+            >
+              <fo-icon [name]="item.icon" [size]="18" />
+              <span>{{ item.label }}</span>
+            </a>
+          }
         </nav>
       </div>
     }
@@ -353,15 +328,7 @@ function isEditableElement(target: EventTarget | null): boolean {
     <fo-toast />
     <fo-pwa-splash />
   `,
-  styles: `
-    .fo-fab-icon {
-      transition: transform 260ms var(--fo-ease-spring, cubic-bezier(0.34, 1.35, 0.64, 1));
-    }
-
-    .fo-fab-icon--open {
-      transform: rotate(45deg);
-    }
-  `,
+  styleUrl: './shell.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ShellComponent {
@@ -401,9 +368,21 @@ export class ShellComponent {
     () => this.session.me()?.fullName ?? 'Mi cuenta',
   );
 
-  protected readonly familyName = computed(
-    () => this.session.me()?.family.name ?? null,
-  );
+  protected readonly userInitials = computed(() => initialsOf(this.userDisplayName()));
+
+  protected readonly userSubtitle = computed(() => {
+    const me = this.session.me();
+    if (!me) {
+      return '';
+    }
+    const role = me.role === 'HIJO' ? 'Hijo/a' : 'Adulto';
+    return me.twoFactorEnabled ? `${role} · 2FA activo` : `${role} · ${me.family.name}`;
+  });
+
+  protected readonly notificationsLabel = computed(() => {
+    const count = this.notificationBadge.unread();
+    return count > 0 ? `Notificaciones (${this.badgeLabel()} sin leer)` : 'Notificaciones';
+  });
 
   protected readonly badgeLabel = computed(() => {
     const count = this.notificationBadge.unread();
