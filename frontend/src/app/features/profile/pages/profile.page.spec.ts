@@ -175,4 +175,117 @@ describe('ProfilePage', () => {
 
     expect(logoutSpy).toHaveBeenCalledTimes(1);
   });
+
+  describe('profile photo', () => {
+    function selectFile(fixture: { nativeElement: HTMLElement }, file: File): void {
+      const input = fixture.nativeElement.querySelector(
+        '[data-testid="profile-photo-input"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      input.dispatchEvent(new Event('change'));
+    }
+
+    function buttonByText(fixture: { nativeElement: HTMLElement }, text: string) {
+      const buttons = Array.from(
+        fixture.nativeElement.querySelectorAll('button'),
+      ) as HTMLButtonElement[];
+      return buttons.find((btn) => btn.textContent?.includes(text));
+    }
+
+    beforeEach(() => {
+      URL.createObjectURL = vi.fn(() => 'blob:preview');
+      URL.revokeObjectURL = vi.fn();
+    });
+
+    it('shows the initial when there is no photo and the saved photo when there is one', () => {
+      const fixture = TestBed.createComponent(ProfilePage);
+      fixture.detectChanges();
+      const avatar = fixture.nativeElement.querySelector('[data-testid="profile-avatar"]');
+      expect(avatar.textContent.trim()).toBe('A');
+      expect(buttonByText(fixture, 'Agregar foto')).toBeTruthy();
+      expect(buttonByText(fixture, 'Quitar foto')).toBeFalsy();
+
+      session.setMe(buildMe({ avatarUpdatedAt: '2026-11-25T10:00:00Z' }));
+      fixture.detectChanges();
+      const img = fixture.nativeElement.querySelector(
+        '[data-testid="profile-avatar-photo"]',
+      ) as HTMLImageElement;
+      expect(img.getAttribute('src')).toBe(
+        '/bff/api/auth/me/avatar?v=2026-11-25T10%3A00%3A00Z',
+      );
+      expect(buttonByText(fixture, 'Cambiar foto')).toBeTruthy();
+    });
+
+    it('rejects unsupported and oversized files client-side without uploading', () => {
+      const fixture = TestBed.createComponent(ProfilePage);
+      fixture.detectChanges();
+
+      selectFile(fixture, new File(['x'], 'doc.gif', { type: 'image/gif' }));
+      fixture.detectChanges();
+      const error = () =>
+        fixture.nativeElement.querySelector('[data-testid="profile-photo-error"]')?.textContent;
+      expect(error()).toContain('Formato no admitido');
+
+      const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'big.png', {
+        type: 'image/png',
+      });
+      selectFile(fixture, big);
+      fixture.detectChanges();
+      expect(error()).toContain('máximo de 2 MB');
+      httpMock.expectNone('/bff/api/auth/me/avatar');
+    });
+
+    it('previews, uploads and updates the session; maps 413 to a friendly error', async () => {
+      const fixture = TestBed.createComponent(ProfilePage);
+      fixture.detectChanges();
+
+      selectFile(fixture, new File(['png'], 'me.png', { type: 'image/png' }));
+      fixture.detectChanges();
+      const preview = fixture.nativeElement.querySelector(
+        '[data-testid="profile-avatar-photo"]',
+      ) as HTMLImageElement;
+      expect(preview.getAttribute('src')).toBe('blob:preview');
+
+      buttonByText(fixture, 'Guardar foto')?.click();
+      const failed = httpMock.expectOne('/bff/api/auth/me/avatar');
+      expect(failed.request.method).toBe('PUT');
+      expect(failed.request.body instanceof FormData).toBe(true);
+      failed.flush(null, { status: 413, statusText: 'Payload Too Large' });
+      await Promise.resolve();
+      await Promise.resolve();
+      fixture.detectChanges();
+      expect(
+        fixture.nativeElement.querySelector('[data-testid="profile-photo-error"]').textContent,
+      ).toContain('máximo de 2 MB');
+
+      buttonByText(fixture, 'Guardar foto')?.click();
+      httpMock
+        .expectOne('/bff/api/auth/me/avatar')
+        .flush(buildMe({ avatarUpdatedAt: '2026-11-25T10:00:00Z' }));
+      await Promise.resolve();
+      await Promise.resolve();
+      fixture.detectChanges();
+
+      expect(session.me()?.avatarUpdatedAt).toBe('2026-11-25T10:00:00Z');
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview');
+      expect(buttonByText(fixture, 'Quitar foto')).toBeTruthy();
+    });
+
+    it('removes the photo with DELETE and falls back to the initial', async () => {
+      session.setMe(buildMe({ avatarUpdatedAt: '2026-11-25T10:00:00Z' }));
+      const fixture = TestBed.createComponent(ProfilePage);
+      fixture.detectChanges();
+
+      buttonByText(fixture, 'Quitar foto')?.click();
+      const req = httpMock.expectOne('/bff/api/auth/me/avatar');
+      expect(req.request.method).toBe('DELETE');
+      req.flush(buildMe({ avatarUpdatedAt: null }));
+      await Promise.resolve();
+      await Promise.resolve();
+      fixture.detectChanges();
+
+      const avatar = fixture.nativeElement.querySelector('[data-testid="profile-avatar"]');
+      expect(avatar.textContent.trim()).toBe('A');
+    });
+  });
 });

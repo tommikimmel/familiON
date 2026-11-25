@@ -2,6 +2,7 @@ package com.familion.auth.infrastructure.web;
 
 import com.familion.common.security.FamilyVisibility;
 import com.familion.common.security.Role;
+import java.time.Instant;
 import java.util.UUID;
 
 public record MeResponse(
@@ -14,4 +15,5 @@ public record MeResponse(
         String accentColor,
         boolean twoFactorEnabled,
         boolean emailVerified,
+        Instant avatarUpdatedAt,
         MeFamilyResponse family) {}

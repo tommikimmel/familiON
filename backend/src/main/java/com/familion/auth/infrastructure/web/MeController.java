@@ -2,6 +2,7 @@ package com.familion.auth.infrastructure.web;
 
 import com.familion.auth.application.SecuritySettingsService;
 import com.familion.auth.application.SecuritySettingsView;
+import com.familion.common.error.NotFoundException;
 import com.familion.common.security.CurrentUser;
 import com.familion.common.security.CurrentUserProvider;
 import com.familion.family.application.api.FamilyQueryApi;
@@ -9,15 +10,21 @@ import com.familion.family.application.api.FamilySettings;
 import com.familion.family.application.api.UserProfile;
 import com.familion.family.application.api.UserProfileApi;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -60,6 +67,32 @@ public class MeController {
         return toResponse(updated, family);
     }
 
+    // Owner-only by construction: every avatar route acts on the authenticated user's id.
+    @GetMapping("/avatar")
+    public ResponseEntity<byte[]> avatar() {
+        CurrentUser currentUser = currentUserProvider.get();
+        return userProfileApi.getAvatar(currentUser.userId())
+                .map(a -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(a.contentType()))
+                        .header("X-Content-Type-Options", "nosniff")
+                        .body(a.content()))
+                .orElseThrow(() -> new NotFoundException("Avatar not found"));
+    }
+
+    @PutMapping(path = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public MeResponse uploadAvatar(@RequestParam("file") MultipartFile file) throws IOException {
+        CurrentUser currentUser = currentUserProvider.get();
+        UserProfile updated = userProfileApi.updateAvatar(currentUser.userId(), file.getBytes());
+        return toResponse(updated, familyQueryApi.getSettings(updated.familyId()));
+    }
+
+    @DeleteMapping("/avatar")
+    public MeResponse removeAvatar() {
+        CurrentUser currentUser = currentUserProvider.get();
+        UserProfile updated = userProfileApi.removeAvatar(currentUser.userId());
+        return toResponse(updated, familyQueryApi.getSettings(updated.familyId()));
+    }
+
     @GetMapping("/security")
     public SecuritySettingsResponse securitySettings() {
         CurrentUser currentUser = currentUserProvider.get();
@@ -100,6 +133,7 @@ public class MeController {
                 profile.accentColor(),
                 profile.twoFactorEnabled(),
                 profile.emailVerified(),
+                profile.avatarUpdatedAt(),
                 new MeFamilyResponse(
                         family.familyId(),
                         family.name(),
