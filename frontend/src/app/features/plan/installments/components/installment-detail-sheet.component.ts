@@ -233,7 +233,7 @@ import {
                     type="date"
                     [value]="prepayDate()"
                     (input)="onPrepayDateInput($event)"
-                    class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+                    class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
                   />
                 </div>
 

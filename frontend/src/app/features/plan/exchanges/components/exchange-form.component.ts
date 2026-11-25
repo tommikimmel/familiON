@@ -127,7 +127,7 @@ function normalizeCurrency(code: string): string {
               data-testid="exchange-source-account"
               [value]="sourceAccountId()"
               (change)="onSourceAccountChange($event)"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
             >
               @for (acc of sourceAccounts(); track acc.id) {
                 <option [value]="acc.id">
@@ -146,7 +146,7 @@ function normalizeCurrency(code: string): string {
               data-testid="exchange-target-account"
               [value]="targetAccountId()"
               (change)="onTargetAccountChange($event)"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
             >
               @for (acc of targetAccounts(); track acc.id) {
                 <option [value]="acc.id">
@@ -176,7 +176,7 @@ function normalizeCurrency(code: string): string {
               placeholder="0,00"
               [value]="sourceInput()"
               (input)="onAmountFieldInput('source', $event)"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums placeholder:text-muted"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums placeholder:text-muted"
             />
           </div>
 
@@ -198,7 +198,7 @@ function normalizeCurrency(code: string): string {
               placeholder="0,00"
               [value]="targetInput()"
               (input)="onAmountFieldInput('target', $event)"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums placeholder:text-muted"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums placeholder:text-muted"
             />
           </div>
         </div>
@@ -263,7 +263,7 @@ function normalizeCurrency(code: string): string {
               placeholder="0,00"
               [value]="feeInput()"
               (input)="onFeeInput($event)"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums placeholder:text-muted"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums placeholder:text-muted"
             />
           </div>
 
@@ -276,7 +276,7 @@ function normalizeCurrency(code: string): string {
               data-testid="exchange-fee-currency"
               [value]="feeCurrency()"
               (change)="onFeeCurrencyChange($event)"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
             >
               @for (code of feeCurrencyOptions(); track code) {
                 <option [value]="code">{{ code }}</option>
@@ -296,7 +296,7 @@ function normalizeCurrency(code: string): string {
               type="date"
               [value]="exchangeDate()"
               (input)="onDateInput($event)"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums"
             />
           </div>
 
@@ -312,7 +312,7 @@ function normalizeCurrency(code: string): string {
               placeholder="Ej. Compra MEP en broker"
               [value]="notes()"
               (input)="onNotesInput($event)"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
             />
           </div>
         </div>

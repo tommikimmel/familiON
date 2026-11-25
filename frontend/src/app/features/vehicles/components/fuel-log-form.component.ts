@@ -64,7 +64,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
       <!-- Odometer: top priority for one-handed entry at the pump -->
       <div class="space-y-1.5">
         <div class="flex items-baseline justify-between gap-2">
-          <label for="fo-fuel-odometer" class="block text-sm font-semibold text-text">
+          <label for="fo-fuel-odometer" class="block text-[11.5px] font-semibold text-text-2">
             Odómetro (km) <span class="text-danger">*</span>
           </label>
           @if (vehicle(); as v) {
@@ -83,7 +83,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
           formControlName="odometerKm"
           placeholder="Ej. 45620"
           [attr.aria-invalid]="hasError('odometerKm')"
-          class="fo-focus-ring min-h-[48px] w-full rounded-xl border border-border bg-surface px-4 py-3 text-lg font-semibold text-text tabular-nums placeholder:font-normal placeholder:text-muted"
+          class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] font-semibold focus:border-accent text-text tabular-nums placeholder:font-normal placeholder:text-muted"
         />
         @if (fieldError('odometerKm'); as err) {
           <p role="alert" data-testid="fuel-odometer-error" class="text-xs text-danger">
@@ -107,7 +107,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
               [attr.data-testid]="'fuel-type-' + fuel"
               [attr.aria-pressed]="selected"
               (click)="selectFuelType(fuel)"
-              class="fo-focus-ring min-h-[40px] cursor-pointer rounded-xl border px-3 py-2 text-xs font-semibold transition-colors"
+              class="fo-focus-ring cursor-pointer rounded-[9px] border px-2.5 py-[7px] text-[11.5px] font-semibold transition-colors"
               [class.border-accent]="selected"
               [class.bg-accent]="selected"
               [class.text-accent-contrast]="selected"
@@ -139,7 +139,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
         <div class="space-y-3">
           <div class="space-y-1">
             <div class="flex items-center justify-between gap-2">
-              <label for="fo-fuel-liters" class="text-sm font-medium text-text">Litros (L)</label>
+              <label for="fo-fuel-liters" class="text-[11.5px] font-semibold text-text-2">Litros (L)</label>
               @if (calcState().computedField === 'liters') {
                 <span
                   data-testid="fuel-computed-badge-liters"
@@ -159,7 +159,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
               (input)="onCalcInput('liters', $event)"
               placeholder="Ej. 40,5"
               [attr.aria-invalid]="amountsTouched() && !amountsComplete()"
-              class="fo-focus-ring min-h-[48px] w-full rounded-xl border px-3.5 py-2.5 text-lg font-semibold text-text tabular-nums placeholder:font-normal placeholder:text-muted"
+              class="fo-focus-ring w-full rounded-[10px] border bg-bg px-3 py-[9px] text-[13px] font-semibold focus:border-accent text-text tabular-nums placeholder:font-normal placeholder:text-muted"
               [class.border-accent/60]="calcState().computedField === 'liters'"
               [class.bg-accent-soft/40]="calcState().computedField === 'liters'"
               [class.border-border]="calcState().computedField !== 'liters'"
@@ -170,7 +170,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
           <div class="grid grid-cols-1 gap-3 min-[340px]:grid-cols-2">
             <div class="min-w-0 space-y-1">
               <div class="flex items-center justify-between gap-1">
-                <label for="fo-fuel-price" class="truncate text-sm font-medium text-text">
+                <label for="fo-fuel-price" class="truncate text-[11.5px] font-semibold text-text-2">
                   Precio / L
                 </label>
                 @if (calcState().computedField === 'pricePerLiter') {
@@ -192,7 +192,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
                 (input)="onCalcInput('pricePerLiter', $event)"
                 placeholder="Ej. 1250"
                 [attr.aria-invalid]="amountsTouched() && !amountsComplete()"
-                class="fo-focus-ring min-h-[48px] w-full rounded-xl border px-3 py-2.5 text-lg font-semibold text-text tabular-nums placeholder:font-normal placeholder:text-muted"
+                class="fo-focus-ring w-full rounded-[10px] border bg-bg px-3 py-[9px] text-[13px] font-semibold focus:border-accent text-text tabular-nums placeholder:font-normal placeholder:text-muted"
                 [class.border-accent/60]="calcState().computedField === 'pricePerLiter'"
                 [class.bg-accent-soft/40]="calcState().computedField === 'pricePerLiter'"
                 [class.border-border]="calcState().computedField !== 'pricePerLiter'"
@@ -202,7 +202,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
 
             <div class="min-w-0 space-y-1">
               <div class="flex items-center justify-between gap-1">
-                <label for="fo-fuel-total" class="truncate text-sm font-medium text-text">
+                <label for="fo-fuel-total" class="truncate text-[11.5px] font-semibold text-text-2">
                   Total
                 </label>
                 @if (calcState().computedField === 'totalAmount') {
@@ -224,7 +224,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
                 (input)="onCalcInput('totalAmount', $event)"
                 placeholder="Ej. 50000"
                 [attr.aria-invalid]="amountsTouched() && !amountsComplete()"
-                class="fo-focus-ring min-h-[48px] w-full rounded-xl border px-3 py-2.5 text-lg font-semibold text-text tabular-nums placeholder:font-normal placeholder:text-muted"
+                class="fo-focus-ring w-full rounded-[10px] border bg-bg px-3 py-[9px] text-[13px] font-semibold focus:border-accent text-text tabular-nums placeholder:font-normal placeholder:text-muted"
                 [class.border-accent/60]="calcState().computedField === 'totalAmount'"
                 [class.bg-accent-soft/40]="calcState().computedField === 'totalAmount'"
                 [class.border-border]="calcState().computedField !== 'totalAmount'"
@@ -243,7 +243,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
 
       <!-- Full tank switch -->
       <div
-        class="flex min-h-[54px] items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-2.5"
+        class="flex items-center justify-between gap-3 rounded-[11px] border border-border bg-surface px-3 py-2.5"
       >
         <div class="min-w-0">
           <span id="fo-fuel-full-tank-label" class="block text-sm font-semibold text-text">
@@ -275,7 +275,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
 
       <!-- Account selector -->
       <div class="space-y-1.5">
-        <label for="fo-fuel-account" class="block text-sm font-semibold text-text">
+        <label for="fo-fuel-account" class="block text-[11.5px] font-semibold text-text-2">
           Cuenta de pago <span class="text-danger">*</span>
         </label>
         <select
@@ -283,7 +283,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
           data-testid="fuel-account-select"
           formControlName="accountId"
           [attr.aria-invalid]="hasError('accountId')"
-          class="fo-focus-ring min-h-[48px] w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text"
+          class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
         >
           @if (accounts().length === 0) {
             <option value="">Sin cuentas disponibles</option>
@@ -304,7 +304,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
       <!-- Optional details -->
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div class="space-y-1.5">
-          <label for="fo-fuel-station" class="block text-sm font-medium text-text">
+          <label for="fo-fuel-station" class="block text-[11.5px] font-semibold text-text-2">
             Estación (opcional)
           </label>
           <input
@@ -313,23 +313,23 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
             formControlName="stationName"
             maxlength="80"
             placeholder="Ej. YPF Ruta 9, Shell"
-            class="fo-focus-ring min-h-[44px] w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
           />
         </div>
 
         <div class="space-y-1.5">
-          <label for="fo-fuel-date" class="block text-sm font-medium text-text">Fecha</label>
+          <label for="fo-fuel-date" class="block text-[11.5px] font-semibold text-text-2">Fecha</label>
           <input
             id="fo-fuel-date"
             type="date"
             formControlName="fuelDate"
-            class="fo-focus-ring min-h-[44px] w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums"
           />
         </div>
       </div>
 
       <div class="space-y-1.5">
-        <label for="fo-fuel-notes" class="block text-sm font-medium text-text">
+        <label for="fo-fuel-notes" class="block text-[11.5px] font-semibold text-text-2">
           Notas (opcional)
         </label>
         <input
@@ -338,7 +338,7 @@ function odometerValidator(control: AbstractControl): ValidationErrors | null {
           formControlName="notes"
           maxlength="240"
           placeholder="Ej. Descuento app, viaje a Córdoba"
-          class="fo-focus-ring min-h-[44px] w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+          class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
         />
       </div>
 

@@ -127,18 +127,18 @@ function parseCostValue(raw: string): number {
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div class="space-y-1.5">
-          <label for="fo-maint-date" class="block text-sm font-medium text-text">Fecha</label>
+          <label for="fo-maint-date" class="block text-[11.5px] font-semibold text-text-2">Fecha</label>
           <input
             id="fo-maint-date"
             type="date"
             formControlName="maintenanceDate"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums"
           />
         </div>
 
         <div class="space-y-1.5">
           <div class="flex items-baseline justify-between gap-2">
-            <label for="fo-maint-odometer" class="block text-sm font-medium text-text">
+            <label for="fo-maint-odometer" class="block text-[11.5px] font-semibold text-text-2">
               Odómetro (km) <span class="text-danger">*</span>
             </label>
             @if (vehicle(); as v) {
@@ -156,7 +156,7 @@ function parseCostValue(raw: string): number {
             formControlName="odometerKm"
             placeholder="Ej. 45200"
             [attr.aria-invalid]="hasError('odometerKm')"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums placeholder:text-muted"
           />
           @if (fieldError('odometerKm'); as err) {
             <p role="alert" data-testid="maintenance-odometer-error" class="text-xs text-danger">
@@ -170,7 +170,7 @@ function parseCostValue(raw: string): number {
         </div>
 
         <div class="space-y-1.5 sm:col-span-2">
-          <label for="fo-maint-description" class="block text-sm font-medium text-text">
+          <label for="fo-maint-description" class="block text-[11.5px] font-semibold text-text-2">
             Descripción <span class="text-danger">*</span>
           </label>
           <input
@@ -181,7 +181,7 @@ function parseCostValue(raw: string): number {
             maxlength="160"
             placeholder="Ej. Cambio de aceite 5W30 y filtro de aire"
             [attr.aria-invalid]="hasError('description')"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
           />
           @if (fieldError('description'); as err) {
             <p role="alert" class="text-xs text-danger">{{ err }}</p>
@@ -191,7 +191,7 @@ function parseCostValue(raw: string): number {
         </div>
 
         <div class="space-y-1.5 sm:col-span-2">
-          <label for="fo-maint-workshop" class="block text-sm font-medium text-text">
+          <label for="fo-maint-workshop" class="block text-[11.5px] font-semibold text-text-2">
             Taller o lugar (opcional)
           </label>
           <input
@@ -200,7 +200,7 @@ function parseCostValue(raw: string): number {
             formControlName="workshopName"
             maxlength="80"
             placeholder="Ej. Lubricentro Sur, Concesionario oficial"
-            class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+            class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
           />
         </div>
       </div>
@@ -211,7 +211,7 @@ function parseCostValue(raw: string): number {
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div class="space-y-1.5">
-            <label for="fo-maint-cost" class="block text-sm font-medium text-text">
+            <label for="fo-maint-cost" class="block text-[11.5px] font-semibold text-text-2">
               Costo (0 si fue sin cargo)
             </label>
             <input
@@ -222,7 +222,7 @@ function parseCostValue(raw: string): number {
               formControlName="costAmount"
               placeholder="0"
               [attr.aria-invalid]="hasError('costAmount')"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums placeholder:text-muted"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums placeholder:text-muted"
             />
             @if (fieldError('costAmount'); as err) {
               <p role="alert" class="text-xs text-danger">{{ err }}</p>
@@ -232,13 +232,13 @@ function parseCostValue(raw: string): number {
           </div>
 
           <div class="space-y-1.5">
-            <label for="fo-maint-currency" class="block text-sm font-medium text-text">
+            <label for="fo-maint-currency" class="block text-[11.5px] font-semibold text-text-2">
               Divisa
             </label>
             <select
               id="fo-maint-currency"
               formControlName="currencyCode"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
             >
               @for (currency of currencyOptions(); track currency) {
                 <option [value]="currency">{{ currency }}</option>
@@ -249,7 +249,7 @@ function parseCostValue(raw: string): number {
 
         @if (requiresAccount()) {
           <div class="space-y-1.5" data-testid="maintenance-account-group">
-            <label for="fo-maint-account" class="block text-sm font-medium text-text">
+            <label for="fo-maint-account" class="block text-[11.5px] font-semibold text-text-2">
               Cuenta de pago <span class="text-danger">*</span>
             </label>
             <select
@@ -257,7 +257,7 @@ function parseCostValue(raw: string): number {
               data-testid="maintenance-account-select"
               formControlName="accountId"
               [attr.aria-invalid]="hasError('accountId')"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
             >
               <option value="">Seleccioná una cuenta</option>
               @for (acc of accounts(); track acc.id) {
@@ -301,7 +301,7 @@ function parseCostValue(raw: string): number {
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div class="space-y-1.5">
-            <label for="fo-maint-next-km" class="block text-sm font-medium text-text">
+            <label for="fo-maint-next-km" class="block text-[11.5px] font-semibold text-text-2">
               Próximo por km
             </label>
             <input
@@ -313,7 +313,7 @@ function parseCostValue(raw: string): number {
               formControlName="nextDueKm"
               placeholder="Ej. 55200"
               [attr.aria-invalid]="hasError('nextDueKm')"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums placeholder:text-muted"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums placeholder:text-muted"
             />
             @if (isInvalid('nextDueKm')) {
               <p role="alert" class="text-xs text-danger">Ingresá un kilometraje válido mayor a 0.</p>
@@ -321,7 +321,7 @@ function parseCostValue(raw: string): number {
           </div>
 
           <div class="space-y-1.5">
-            <label for="fo-maint-next-date" class="block text-sm font-medium text-text">
+            <label for="fo-maint-next-date" class="block text-[11.5px] font-semibold text-text-2">
               Próximo por fecha
             </label>
             <input
@@ -329,14 +329,14 @@ function parseCostValue(raw: string): number {
               data-testid="maintenance-next-date-input"
               type="date"
               formControlName="nextDueDate"
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text tabular-nums"
+              class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent tabular-nums"
             />
           </div>
         </div>
       </div>
 
       <div class="space-y-1.5">
-        <label for="fo-maint-notes" class="block text-sm font-medium text-text">
+        <label for="fo-maint-notes" class="block text-[11.5px] font-semibold text-text-2">
           Notas (opcional)
         </label>
         <textarea
@@ -345,7 +345,7 @@ function parseCostValue(raw: string): number {
           formControlName="notes"
           maxlength="500"
           placeholder="Detalle de repuestos, garantía o recomendaciones del mecánico..."
-          class="fo-focus-ring w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-muted"
+          class="fo-focus-ring w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
         ></textarea>
       </div>
 

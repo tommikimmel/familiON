@@ -23,11 +23,11 @@ import { VehiclesStore } from '../data-access/vehicles.store';
     VehicleCardComponent,
   ],
   template: `
-    <section class="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
+    <section class="w-full space-y-3 lg:space-y-4">
       <header class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 class="text-2xl font-bold tracking-tight text-text">Vehículos</h1>
-          <p class="mt-0.5 text-sm text-muted">
+          <h1 class="fo-page-title text-text lg:sr-only">Vehículos</h1>
+          <p class="mt-0.5 text-[11px] text-muted">
             Combustible, services, vencimientos y costo real de cada auto.
           </p>
         </div>

@@ -45,8 +45,8 @@ function formatAxisPrice(value: number, unit: string): string {
     <fo-card padding="md">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 class="text-base font-semibold text-text">Evolución del precio por litro</h2>
-          <p class="text-xs text-muted">Historial de precio unitario en tus cargas</p>
+          <h2 class="text-[12.5px] font-bold text-text lg:text-[13px]">Evolución del precio por litro</h2>
+          <p class="mt-px text-[10.5px] text-muted">Historial de precio unitario en tus cargas</p>
         </div>
 
         @if (points().length > 1) {

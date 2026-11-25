@@ -1,10 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { FoIconName, IconComponent } from '../../../shared/ui';
-import {
-  ALERT_SEVERITY_LABEL,
-  formatIsoDateShort,
-  formatKm,
-} from '../data-access/vehicle-labels';
+import { ALERT_SEVERITY_LABEL, formatIsoDateShort, formatKm } from '../data-access/vehicle-labels';
 import { VehicleAlert } from '../data-access/vehicles.models';
 
 @Component({
@@ -12,32 +8,69 @@ import { VehicleAlert } from '../data-access/vehicles.models';
   standalone: true,
   imports: [IconComponent],
   template: `
-    <span
-      [attr.data-testid]="'vehicle-alert-' + alert().severity"
-      class="inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium"
-      [class.border-danger/30]="alert().severity === 'OVERDUE'"
-      [class.bg-danger/10]="alert().severity === 'OVERDUE'"
-      [class.text-danger]="alert().severity === 'OVERDUE'"
-      [class.border-warning/30]="alert().severity === 'WARNING'"
-      [class.bg-warning/10]="alert().severity === 'WARNING'"
-      [class.text-warning]="alert().severity === 'WARNING'"
-      [class.border-accent/30]="alert().severity === 'INFO'"
-      [class.bg-accent-soft]="alert().severity === 'INFO'"
-      [class.text-accent]="alert().severity === 'INFO'"
-    >
-      <fo-icon [name]="iconName()" [size]="13" />
-      <span class="truncate">{{ alert().title }}</span>
-      @if (dueSummary(); as due) {
-        <span class="shrink-0 opacity-85 tabular-nums">· {{ due }}</span>
-      }
-      <span class="sr-only">({{ severityLabel() }})</span>
-    </span>
+    @if (layout() === 'row') {
+      <span class="alert-row-title">
+        <fo-icon [name]="iconName()" [size]="13" />
+        <span class="truncate">{{ alert().title }}</span>
+      </span>
+      <span
+        [attr.data-testid]="'vehicle-alert-' + alert().severity"
+        class="fo-pill-tag fo-num shrink-0"
+        [class.alert-danger]="alert().severity === 'OVERDUE'"
+        [class.alert-warning]="alert().severity === 'WARNING'"
+        [class.fo-pill-accent]="alert().severity === 'INFO'"
+      >
+        {{ dueSummary() ?? severityLabel() }}
+        <span class="sr-only">({{ severityLabel() }})</span>
+      </span>
+    } @else {
+      <span
+        [attr.data-testid]="'vehicle-alert-' + alert().severity"
+        class="fo-pill-tag max-w-full gap-1"
+        [class.alert-danger]="alert().severity === 'OVERDUE'"
+        [class.alert-warning]="alert().severity === 'WARNING'"
+        [class.fo-pill-accent]="alert().severity === 'INFO'"
+      >
+        <fo-icon [name]="iconName()" [size]="11" />
+        <span class="truncate">{{ alert().title }}</span>
+        @if (dueSummary(); as due) {
+          <span class="shrink-0 opacity-85 fo-num">· {{ due }}</span>
+        }
+        <span class="sr-only">({{ severityLabel() }})</span>
+      </span>
+    }
+  `,
+  styles: `
+    :host {
+      display: inline-flex;
+      max-width: 100%;
+    }
+    :host(.vh-row) {
+      display: flex;
+    }
+    .alert-row-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      font-size: 12px;
+    }
+    .alert-danger {
+      background: color-mix(in srgb, var(--fo-danger) 12%, transparent);
+      color: var(--fo-danger);
+    }
+    .alert-warning {
+      background: color-mix(in srgb, var(--fo-warning) 14%, transparent);
+      color: var(--fo-warning);
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VehicleAlertChipComponent {
   readonly alert = input.required<VehicleAlert>();
   readonly compact = input<boolean>(false);
+  /** `row` renders a title + due pill line (mock «Desgaste y vencimientos»). */
+  readonly layout = input<'chip' | 'row'>('chip');
 
   protected readonly severityLabel = computed(() => ALERT_SEVERITY_LABEL[this.alert().severity]);
 

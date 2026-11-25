@@ -35,7 +35,7 @@ export type GoalFormSubmitPayload =
           maxlength="120"
           [(ngModel)]="name"
           placeholder="Ej: Vacaciones, Fondo de emergencia, Auto"
-          class="fo-focus-ring mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-muted"
+          class="fo-focus-ring mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
         />
       </div>
 
@@ -146,7 +146,7 @@ export type GoalFormSubmitPayload =
           name="targetDate"
           type="date"
           [(ngModel)]="targetDate"
-          class="fo-focus-ring mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-muted"
+          class="fo-focus-ring mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent placeholder:text-muted"
         />
         <p class="mt-1 text-2xs text-muted">
           Permite calcular el ahorro mensual sugerido para alcanzar la meta.
@@ -163,7 +163,7 @@ export type GoalFormSubmitPayload =
             id="goal-status"
             name="status"
             [(ngModel)]="status"
-            class="fo-focus-ring mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text"
+            class="fo-focus-ring mt-1 w-full rounded-[10px] border border-border bg-bg px-3 py-[9px] text-[13px] text-text focus:border-accent"
           >
             <option value="ACTIVE">Activa</option>
             <option value="PAUSED">Pausada</option>

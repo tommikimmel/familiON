@@ -1,21 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
-import { IconComponent } from '../../../../shared/ui';
+import { IconComponent, ProgressBarComponent } from '../../../../shared/ui';
 import { toNumber } from '../../../../shared/utils/decimal';
 import { PlanGoalItem } from '../data-access/plan-overview.models';
 import { resolveGoalDisplayUnit } from '../utils/plan-overview.formatters';
 import { PlanSectionCardComponent } from './plan-section-card.component';
-
-const RING_RADIUS = 18;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 interface GoalRingViewModel {
   id: string;
   name: string;
   progressClamped: number;
   progressRounded: number;
-  strokeDashoffset: number;
   completed: boolean;
   accumulatedLabel: string;
   targetLabel: string;
@@ -25,11 +21,10 @@ interface GoalRingViewModel {
 @Component({
   selector: 'fo-goals-summary-card',
   standalone: true,
-  imports: [IconComponent, PlanSectionCardComponent, RouterLink],
+  imports: [IconComponent, PlanSectionCardComponent, ProgressBarComponent, RouterLink],
   template: `
     <fo-plan-section-card
-      title="Metas"
-      icon="piggy-bank"
+      title="Metas en valor real"
       linkRoute="/plan/goals"
       testId="plan-goals-card"
       [degraded]="goals() === null"
@@ -38,18 +33,13 @@ interface GoalRingViewModel {
     >
       @if (goals(); as list) {
         @if (list.length === 0) {
-          <div
-            data-testid="goals-empty-state"
-            class="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface-2/40 px-4 py-6 text-center"
-          >
-            <p class="text-sm font-medium text-text">Sin metas activas</p>
-            <p class="mt-1 text-xs text-muted">
-              Definí un objetivo en pesos, dólares o UVA y seguí tu avance mes a mes.
-            </p>
+          <div data-testid="goals-empty-state" class="pl-empty">
+            <p class="fo-tx-title">Sin metas activas</p>
+            <p class="pl-sub">Definí un objetivo en pesos, dólares o UVA y seguí tu avance mes a mes.</p>
             <a
               routerLink="/plan/goals"
               data-testid="goals-empty-cta"
-              class="fo-focus-ring mt-3 inline-flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-xs font-semibold text-accent-contrast transition-opacity duration-150 hover:opacity-92"
+              class="fo-btn-primary fo-focus-ring mt-2 inline-flex items-center gap-1.5"
             >
               <fo-icon name="plus" [size]="14" />
               <span>Crear meta</span>
@@ -57,75 +47,41 @@ interface GoalRingViewModel {
           </div>
         } @else {
           <div class="flex flex-1 flex-col justify-between gap-3">
-            <ul class="space-y-3" aria-label="Primeras metas de ahorro">
+            <ul class="flex flex-col gap-3.5" aria-label="Primeras metas de ahorro">
               @for (goal of visibleGoals(); track goal.id) {
-                <li data-testid="goal-item" class="flex items-center gap-3">
-                  <div
-                    class="relative flex h-11 w-11 shrink-0 items-center justify-center"
-                    role="progressbar"
-                    [attr.aria-valuenow]="goal.progressRounded"
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                    [attr.aria-label]="'Progreso de ' + goal.name + ': ' + goal.progressRounded + '%'"
-                  >
-                    <svg viewBox="0 0 44 44" class="h-11 w-11 -rotate-90" aria-hidden="true">
-                      <circle
-                        cx="22"
-                        cy="22"
-                        [attr.r]="ringRadius"
-                        fill="none"
-                        stroke="var(--fo-surface-2)"
-                        stroke-width="4"
-                      />
-                      <circle
-                        cx="22"
-                        cy="22"
-                        [attr.r]="ringRadius"
-                        fill="none"
-                        [attr.stroke]="goal.completed ? 'var(--fo-success)' : 'var(--fo-accent)'"
-                        stroke-width="4"
-                        stroke-linecap="round"
-                        [attr.stroke-dasharray]="ringCircumference"
-                        [attr.stroke-dashoffset]="goal.strokeDashoffset"
-                      />
-                    </svg>
-                    <span
-                      class="absolute text-[10px] font-bold text-text tabular-nums"
-                      aria-hidden="true"
-                    >
-                      {{ goal.progressRounded }}%
-                    </span>
+                <li data-testid="goal-item">
+                  <div class="pl-head">
+                    <strong class="fo-tx-title min-w-0 truncate">{{ goal.name }}</strong>
+                    <span class="fo-pill-tag fo-pill-accent fo-num"> {{ goal.progressRounded }}% </span>
                   </div>
-
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-semibold text-text">{{ goal.name }}</p>
-                    <p class="mt-0.5 text-xs text-muted tabular-nums">
-                      {{ goal.accumulatedLabel }} / {{ goal.targetLabel }}
+                  <fo-progress-bar
+                    class="mt-2.5"
+                    [value]="goal.progressClamped"
+                    [color]="goal.completed ? 'var(--fo-success)' : null"
+                    [ariaLabel]="'Progreso de ' + goal.name + ': ' + goal.progressRounded + '%'"
+                  />
+                  <div class="pl-sub fo-num mt-1.5 flex justify-between gap-2">
+                    <span>
+                      {{ goal.accumulatedLabel }}
                       @if (goal.adjusted) {
-                        <span> · a plata de hoy</span>
+                        · a plata de hoy
                       }
-                    </p>
+                    </span>
+                    <span>Meta: {{ goal.targetLabel }}</span>
                   </div>
                 </li>
               }
             </ul>
 
             @if (extraCount() > 0) {
-              <p class="text-xs text-muted">
-                +{{ extraCount() }} {{ extraCount() === 1 ? 'meta más' : 'metas más' }}
-              </p>
+              <p class="pl-sub">+{{ extraCount() }} {{ extraCount() === 1 ? 'meta más' : 'metas más' }}</p>
             }
           </div>
         }
       }
     </fo-plan-section-card>
   `,
-  styles: `
-    :host {
-      display: block;
-      height: 100%;
-    }
-  `,
+  styleUrl: '../../plan-ui.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GoalsSummaryCardComponent {
@@ -135,9 +91,6 @@ export class GoalsSummaryCardComponent {
   readonly retry = output<void>();
 
   private readonly moneyPipe = new MoneyPipe();
-
-  protected readonly ringRadius = RING_RADIUS;
-  protected readonly ringCircumference = RING_CIRCUMFERENCE;
 
   protected readonly visibleGoals = computed<GoalRingViewModel[]>(() =>
     (this.goals() ?? []).slice(0, 3).map((goal) => {
@@ -151,7 +104,6 @@ export class GoalsSummaryCardComponent {
         name: goal.name,
         progressClamped,
         progressRounded,
-        strokeDashoffset: RING_CIRCUMFERENCE * (1 - progressClamped / 100),
         completed: rawPct >= 100,
         accumulatedLabel: this.moneyPipe.transform(goal.accumulatedInUnit, unit),
         targetLabel: this.moneyPipe.transform(goal.targetAmount, unit),
