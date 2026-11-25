@@ -4,10 +4,11 @@ import { Lens } from '../../../core/state/view-context.store';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import { CardComponent } from '../../../shared/ui/card/card.component';
 import { IconComponent } from '../../../shared/ui/icon/icon.component';
+import { PillTagComponent } from '../../../shared/ui/pill-tag/pill-tag.component';
+import { toNumber } from '../../../shared/utils/decimal';
 import {
-  fallbackTransactionIcon,
   formatShortIsoDate,
-  formatSignedTransactionAmount,
+  formatWholeMoney,
   resolveDisplayUnit,
   transactionTypeLabel,
 } from '../data-access/home.formatters';
@@ -24,21 +25,13 @@ function normalizeSearch(value: string): string {
 @Component({
   selector: 'fo-movements-table',
   standalone: true,
-  imports: [CardComponent, IconComponent, MoneyPipe, RouterLink],
+  imports: [CardComponent, IconComponent, MoneyPipe, PillTagComponent, RouterLink],
   template: `
-    <fo-card padding="none">
-      <div
-        class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5"
-      >
-        <div>
-          <h2 class="text-base font-semibold text-text">Últimos movimientos</h2>
-          <p class="text-xs text-muted">
-            Mostrando {{ filteredTransactions().length }} de {{ limitedTransactions().length }}
-          </p>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="relative w-72">
+    <fo-card>
+      <div class="table-head-bar">
+        <h2 class="table-title">Movimientos recientes ({{ filteredTransactions().length }})</h2>
+        <div class="flex items-center gap-2.5">
+          <div class="relative">
             <label for="home-movements-search" class="sr-only">
               Buscar en los últimos movimientos
             </label>
@@ -48,129 +41,90 @@ function normalizeSearch(value: string): string {
               type="search"
               [value]="searchQuery()"
               (input)="onSearchInput($event)"
-              placeholder="Buscar movimiento, categoría o cuenta..."
-              class="fo-focus-ring w-full rounded-xl border border-border bg-surface-2 py-1.5 pr-8 pl-3 text-sm text-text placeholder:text-muted"
+              placeholder="Buscar por nombre, categoría o persona..."
+              class="search-input"
             />
             @if (searchQuery().length > 0) {
               <button
                 type="button"
                 aria-label="Limpiar búsqueda"
                 (click)="clearSearch()"
-                class="fo-focus-ring absolute top-1/2 right-2 -translate-y-1/2 cursor-pointer rounded-md p-0.5 text-muted hover:text-text"
+                class="fo-focus-ring absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded-md p-0.5 text-muted hover:text-text"
               >
-                <fo-icon name="x" [size]="14" />
+                <fo-icon name="x" [size]="12" />
               </button>
             }
           </div>
-
-          <a
-            routerLink="/transactions"
-            class="fo-focus-ring inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent-soft"
-          >
-            <span>Ver todos</span>
-            <fo-icon name="chevron-right" [size]="14" />
-          </a>
+          <a routerLink="/transactions" class="fo-sec-link fo-focus-ring rounded-md">Ver todos</a>
         </div>
       </div>
 
       @if (filteredTransactions().length === 0) {
-        <div class="px-5 py-10 text-center">
-          <p class="text-sm text-muted">
+        <div class="px-2 py-8 text-center">
+          <p class="text-xs text-muted">
             No encontramos movimientos que coincidan con «{{ searchQuery() }}».
           </p>
-          <button
-            type="button"
-            (click)="clearSearch()"
-            class="fo-focus-ring mt-2 cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent-soft"
-          >
+          <button type="button" (click)="clearSearch()" class="fo-sec-link fo-focus-ring mt-1.5">
             Limpiar búsqueda
           </button>
         </div>
       } @else {
         <div class="overflow-x-auto">
-          <table class="w-full border-collapse text-left text-sm">
+          <table class="tx-table">
             <thead>
-              <tr class="border-b border-border bg-surface-2/50 text-xs font-medium text-muted">
-                <th scope="col" class="px-5 py-2.5">Movimiento</th>
-                <th scope="col" class="px-3 py-2.5">Categoría</th>
-                <th scope="col" class="px-3 py-2.5">Atribuido a / pagó</th>
-                <th scope="col" class="px-3 py-2.5">Cuenta / Cuota</th>
-                <th scope="col" class="px-3 py-2.5">Fecha</th>
-                <th scope="col" class="px-5 py-2.5 text-right">Monto</th>
+              <tr>
+                <th scope="col">Movimiento</th>
+                <th scope="col">Categoría</th>
+                <th scope="col">Atribuido a</th>
+                <th scope="col">Cuenta</th>
+                <th scope="col">Fecha</th>
+                <th scope="col" class="text-right">Monto</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-border/70">
+            <tbody>
               @for (tx of filteredTransactions(); track tx.id) {
-                <tr class="transition-colors hover:bg-surface-2/40">
-                  <td class="px-5 py-3">
-                    <div class="flex items-center gap-3">
-                      <span
-                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                        [style.background-color]="iconBg(tx)"
-                        [style.color]="iconColor(tx)"
-                      >
-                        <fo-icon [name]="tx.category?.icon ?? fallbackIcon(tx.type)" [size]="16" />
-                      </span>
-                      <div class="min-w-0">
-                        <p class="truncate font-medium text-text">{{ primaryTitle(tx) }}</p>
-                        @if (tx.notes) {
-                          <p class="max-w-52 truncate text-xs text-muted">{{ tx.notes }}</p>
-                        }
-                      </div>
-                    </div>
+                <tr>
+                  <td>
+                    <strong class="font-bold">{{ primaryTitle(tx) }}</strong>
+                    @if (tx.notes) {
+                      <span class="muted-note"> · {{ tx.notes }}</span>
+                    }
                   </td>
-
-                  <td class="px-3 py-3 text-text">
+                  <td>
                     @if (tx.category; as cat) {
-                      <span class="inline-flex items-center gap-1.5">
-                        <span
-                          class="h-2 w-2 shrink-0 rounded-full"
-                          [style.background-color]="cat.colorHex || 'var(--fo-accent)'"
-                          aria-hidden="true"
-                        ></span>
-                        <span class="truncate">{{ cat.name }}</span>
-                      </span>
+                      <fo-pill-tag>{{ cat.name }}</fo-pill-tag>
                     } @else {
                       <span class="text-muted">Sin categoría</span>
                     }
                   </td>
-
-                  <td class="px-3 py-3">
-                    <p class="text-text">{{ tx.attributedTo.fullName }}</p>
+                  <td>
+                    {{ tx.attributedTo.fullName }}
                     @if (tx.paidBy.id !== tx.attributedTo.id) {
-                      <p class="text-xs text-muted">Pagado por {{ tx.paidBy.fullName }}</p>
+                      <span class="muted-note">(pagó {{ tx.paidBy.fullName }})</span>
                     }
                   </td>
-
-                  <td class="px-3 py-3">
-                    <p class="text-text">{{ tx.account.name }}</p>
+                  <td class="text-muted">
+                    {{ tx.account.name }}
                     @if (tx.installment; as inst) {
-                      <span
-                        class="mt-0.5 inline-block rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent tabular-nums"
-                      >
-                        Cuota {{ inst.number }}/{{ inst.total }}
-                      </span>
+                      <span class="tabular-nums"> · {{ inst.number }}/{{ inst.total }}</span>
                     }
                   </td>
-
-                  <td class="px-3 py-3 whitespace-nowrap text-muted tabular-nums">
+                  <td class="whitespace-nowrap text-muted tabular-nums">
                     {{ formatDate(tx.transactionDate) }}
                   </td>
-
-                  <td class="px-5 py-3 text-right whitespace-nowrap">
-                    <p
-                      class="font-semibold tabular-nums"
-                      [class.text-success]="tx.type === 'INCOME'"
-                      [class.text-danger]="tx.type === 'EXPENSE'"
+                  <td class="text-right whitespace-nowrap">
+                    <span
+                      class="font-bold tabular-nums"
+                      [class.text-accent]="tx.type === 'INCOME'"
                       [class.text-muted]="tx.type === 'TRANSFER'"
                     >
                       {{ signedAmount(tx) }}
-                    </p>
+                    </span>
                     @if (showLensSubtitle(tx)) {
-                      <p class="text-xs text-muted tabular-nums">
+                      <span class="muted-note block tabular-nums">
                         {{ tx.lensApproximated ? '~' : ''
                         }}{{ tx.lensAmount | money: lensUnit(tx) }}
-                      </p>
+                      </span>
                     }
                   </td>
                 </tr>
@@ -184,6 +138,69 @@ function normalizeSearch(value: string): string {
   styles: `
     :host {
       display: block;
+    }
+    .table-head-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .table-title {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .search-input {
+      width: 210px;
+      padding: 6px 11px;
+      border: 1px solid var(--fo-border);
+      border-radius: 9px;
+      outline: none;
+      background: var(--fo-bg);
+      color: var(--fo-text);
+      font-family: inherit;
+      font-size: 12px;
+    }
+    .search-input::placeholder {
+      color: var(--fo-text-muted);
+    }
+    .search-input:focus {
+      border-color: var(--fo-accent);
+    }
+    .tx-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+    .tx-table th {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--fo-border);
+      color: var(--fo-text-muted);
+      font-size: 10.5px;
+      font-weight: 600;
+    }
+    .tx-table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--fo-border);
+      color: var(--fo-text);
+    }
+    .tx-table td.text-muted {
+      color: var(--fo-text-muted);
+    }
+    .tx-table tr:last-child td {
+      border-bottom: none;
+    }
+    .tx-table tbody tr {
+      transition: background 0.12s ease;
+    }
+    .tx-table tbody tr:hover {
+      background: var(--fo-surface-2);
+    }
+    .muted-note {
+      color: var(--fo-text-muted);
+      font-size: 10.5px;
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -236,16 +253,16 @@ export class MovementsTableComponent {
     return tx.description?.trim() || tx.category?.name || transactionTypeLabel(tx.type);
   }
 
-  protected fallbackIcon(type: TransactionItem['type']): string {
-    return fallbackTransactionIcon(type);
-  }
-
   protected formatDate(isoDate: string): string {
     return formatShortIsoDate(isoDate);
   }
 
   protected signedAmount(tx: TransactionItem): string {
-    return formatSignedTransactionAmount(tx.amount, tx.currencyCode, tx.type);
+    const formatted = formatWholeMoney(Math.abs(toNumber(tx.amount)), tx.currencyCode);
+    if (tx.type === 'INCOME') {
+      return `+${formatted}`;
+    }
+    return tx.type === 'EXPENSE' ? `-${formatted}` : formatted;
   }
 
   protected showLensSubtitle(tx: TransactionItem): boolean {
@@ -254,14 +271,5 @@ export class MovementsTableComponent {
 
   protected lensUnit(tx: TransactionItem): string {
     return resolveDisplayUnit(tx.lensUnit ?? tx.currencyCode, this.lens());
-  }
-
-  protected iconBg(tx: TransactionItem): string {
-    const color = tx.category?.colorHex;
-    return color ? `color-mix(in srgb, ${color} 14%, transparent)` : 'var(--fo-surface-2)';
-  }
-
-  protected iconColor(tx: TransactionItem): string {
-    return tx.category?.colorHex || 'var(--fo-text-muted)';
   }
 }

@@ -1,4 +1,4 @@
-import { installmentPreview } from './installment-preview';
+import { installmentPreview, installmentSummaryLines } from './installment-preview';
 
 describe('installmentPreview', () => {
   it('computes per-installment amount in TOTAL mode and rounds to 2 decimals', () => {
@@ -101,5 +101,34 @@ describe('installmentPreview', () => {
         purchaseDate: 'invalid',
       }),
     ).toBeNull();
+  });
+});
+
+describe('installmentSummaryLines', () => {
+  const preview = installmentPreview({
+    amount: '180000',
+    totalInstallments: 6,
+    amountMode: 'TOTAL',
+    purchaseDate: '2026-11-15',
+    closingDay: 20,
+    currencyCode: 'ARS',
+  })!;
+
+  it('builds the mock live summary lines', () => {
+    const lines = installmentSummaryLines(preview, { currencyCode: 'ARS', hasInterest: false, cashPrice: '' });
+    expect(lines.main).toBe('6 cuotas de $30.000 / mes');
+    expect(lines.total).toBe('$180.000');
+    expect(lines.range).toBe('Dic 2026 → May 2027');
+    expect(lines.tag).toBe('Sin interés');
+  });
+
+  it('shows the real interest over the cash price when known', () => {
+    const lines = installmentSummaryLines(preview, { currencyCode: 'ARS', hasInterest: true, cashPrice: '150000' });
+    expect(lines.tag).toBe('Interés real: +$30.000 (+20,0% sobre contado)');
+  });
+
+  it('asks for the cash price when interest has no reference', () => {
+    const lines = installmentSummaryLines(preview, { currencyCode: 'ARS', hasInterest: true, cashPrice: '' });
+    expect(lines.tag).toBe('Con interés · completá precio contado para ver el % de recargo');
   });
 });

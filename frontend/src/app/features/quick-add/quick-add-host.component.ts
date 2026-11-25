@@ -31,10 +31,8 @@ import { QuickAddLauncher } from '../../core/layout/quick-add-launcher.service';
 import { SessionStore } from '../../core/state/session.store';
 import {
   BottomSheetComponent,
-  ButtonComponent,
   IconComponent,
   SegmentedOption,
-  SegmentedToggleComponent,
   SkeletonComponent,
   ToastService,
 } from '../../shared/ui';
@@ -49,11 +47,16 @@ import {
 import { AmountKeypadComponent } from './components/amount-keypad.component';
 import { CategoryPickerComponent } from './components/category-picker.component';
 import { QuickAddAdvancedComponent } from './components/quick-add-advanced.component';
+import { QuickAddCurrencyChipComponent } from './components/quick-add-currency-chip.component';
 import {
   QuickAddFamilyMember,
   QuickAddMembersApi,
 } from './data-access/quick-add-members.api';
-import { installmentPreview } from './installment-preview';
+import {
+  InstallmentSummaryLines,
+  installmentPreview,
+  installmentSummaryLines,
+} from './installment-preview';
 import { extractQuickAddProblemMessage } from './utils/problem-message';
 import { prepareReceiptFile } from './utils/receipt-image';
 
@@ -100,11 +103,10 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
     A11yModule,
     AmountKeypadComponent,
     BottomSheetComponent,
-    ButtonComponent,
     CategoryPickerComponent,
     IconComponent,
     QuickAddAdvancedComponent,
-    SegmentedToggleComponent,
+    QuickAddCurrencyChipComponent,
     SkeletonComponent,
   ],
   host: {
@@ -117,19 +119,30 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
       (closed)="onSheetClosed()"
     >
       @if (launcher.isOpen()) {
-        <div data-testid="quick-add-sheet" class="space-y-4">
-          <header class="flex items-center justify-between gap-2">
-            <div class="max-w-[220px] flex-1">
-              <fo-segmented-toggle
-                [options]="typeOptions"
-                [value]="transactionType()"
-                (valueChange)="onTypeChange($event)"
-                ariaLabel="Tipo de movimiento"
-                size="sm"
-              />
+        <div data-testid="quick-add-sheet" class="qa-root">
+          <header class="qa-top">
+            <div
+              class="type-switch"
+              [class.type-switch--tabs]="isDesktop()"
+              role="tablist"
+              aria-label="Tipo de movimiento"
+              data-testid="quick-add-type"
+            >
+              @for (option of typeOptions; track option.value) {
+                <button
+                  type="button"
+                  role="tab"
+                  [attr.aria-selected]="transactionType() === option.value"
+                  (click)="onTypeChange(option.value)"
+                  class="fo-focus-ring"
+                  [class.is-active]="transactionType() === option.value"
+                >
+                  {{ option.label }}
+                </button>
+              }
             </div>
 
-            <div class="flex items-center gap-1">
+            <div class="flex items-center gap-1.5">
               <input
                 #receiptFileInput
                 type="file"
@@ -147,12 +160,10 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
                 aria-label="Escanear ticket"
                 data-testid="quick-add-camera-btn"
                 (click)="openReceiptPicker()"
-                class="fo-focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface-2 hover:text-text disabled:cursor-not-allowed disabled:opacity-50"
-                [class.text-accent]="receiptAttachmentId() !== null"
-                [class.bg-accent-soft]="receiptAttachmentId() !== null"
-                [class.text-muted]="receiptAttachmentId() === null"
+                class="subtle-icon-btn fo-focus-ring"
+                [class.is-on]="receiptAttachmentId() !== null"
               >
-                <fo-icon name="camera" [size]="18" />
+                <fo-icon name="camera" [size]="15" />
               </button>
 
               <button
@@ -160,32 +171,24 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
                 aria-label="Cerrar"
                 data-testid="quick-add-close-btn"
                 (click)="closeSheet()"
-                class="fo-focus-ring inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-text"
+                class="subtle-icon-btn fo-focus-ring"
               >
-                <fo-icon name="x" [size]="18" />
+                <fo-icon name="x" [size]="15" />
               </button>
             </div>
           </header>
 
           @if (!scanning() && scanWarning(); as warningText) {
-            <div
-              role="status"
-              aria-live="polite"
-              data-testid="receipt-scan-warning"
-              class="flex items-start gap-2 rounded-xl border border-warning/35 bg-warning/10 px-3 py-2 text-xs text-text"
-            >
-              <fo-icon name="alert-circle" [size]="15" class="mt-0.5 shrink-0 text-warning" />
+            <div role="status" aria-live="polite" data-testid="receipt-scan-warning" class="qa-notice">
+              <fo-icon name="alert-circle" [size]="14" class="mt-px shrink-0 text-warning" />
               <span>{{ warningText }}</span>
             </div>
           }
 
           @if (!scanning() && receiptAttachmentId()) {
-            <div
-              data-testid="receipt-attached-badge"
-              class="flex items-center justify-between gap-2 rounded-xl border border-accent/25 bg-accent-soft/60 px-3 py-1.5 text-xs text-accent"
-            >
-              <span class="flex items-center gap-1.5 font-medium">
-                <fo-icon name="file-text" [size]="14" />
+            <div data-testid="receipt-attached-badge" class="qa-attached">
+              <span class="flex items-center gap-1.5">
+                <fo-icon name="file-text" [size]="13" />
                 <span>Comprobante adjunto</span>
               </span>
               <button
@@ -200,26 +203,18 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
             </div>
           }
 
-          <div class="relative space-y-4">
+          <div class="relative">
             <div
-              class="space-y-4"
+              class="qa-root"
               [class.opacity-35]="scanning()"
               [class.pointer-events-none]="scanning()"
               [attr.aria-hidden]="scanning() ? 'true' : null"
             >
-              <section aria-label="Monto" class="space-y-2">
-                <div
-                  class="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface-2/50 px-4 py-3"
-                  [class.border-b-2]="isFieldPrefilled('amount')"
-                  [class.border-b-accent]="isFieldPrefilled('amount')"
-                >
-                  <div class="flex min-w-0 flex-1 items-baseline gap-2">
-                    <span class="shrink-0 text-xl font-semibold text-muted" aria-hidden="true">
-                      {{ activeCurrencySymbol() }}
-                    </span>
-
-                    @if (isDesktop()) {
-                      <label for="fo-quick-add-amount" class="sr-only">Monto</label>
+              @if (isDesktop()) {
+                <div class="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label for="fo-quick-add-amount" class="d-label">Monto ({{ currencyCode() }})</label>
+                    <div class="flex items-center gap-1.5">
                       <input
                         #desktopAmountInput
                         id="fo-quick-add-amount"
@@ -229,94 +224,88 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
                         type="text"
                         inputmode="decimal"
                         autocomplete="off"
-                        placeholder="0"
+                        placeholder="Ej. 20000"
                         [value]="desktopDisplayValue()"
                         (input)="onDesktopAmountInput($event)"
-                        class="fo-focus-ring w-full min-w-0 bg-transparent text-[40px] leading-none font-bold tracking-tight text-text tabular-nums placeholder:text-muted/45 focus:outline-none"
-                        [class.underline]="isFieldPrefilled('amount')"
-                        [class.decoration-accent]="isFieldPrefilled('amount')"
-                        [class.decoration-2]="isFieldPrefilled('amount')"
-                        [class.underline-offset-4]="isFieldPrefilled('amount')"
+                        class="d-input tabular-nums"
+                        [class.is-prefilled]="isFieldPrefilled('amount')"
                       />
-                    } @else {
-                      <div
-                        #mobileAmountDisplay
-                        data-testid="quick-add-amount-display"
-                        [attr.data-prefilled]="isFieldPrefilled('amount') ? 'true' : null"
-                        tabindex="0"
-                        cdkFocusInitial
-                        role="textbox"
-                        aria-readonly="true"
-                        aria-label="Monto"
-                        class="fo-focus-ring min-w-0 flex-1 truncate rounded-lg text-[40px] leading-none font-bold tracking-tight tabular-nums"
-                        [class.text-text]="rawAmount().length > 0"
-                        [class.text-muted/45]="rawAmount().length === 0"
-                        [class.fo-amount-bump-a]="bumpPhase() === 'a'"
-                        [class.fo-amount-bump-b]="bumpPhase() === 'b'"
-                        [class.underline]="isFieldPrefilled('amount')"
-                        [class.decoration-accent]="isFieldPrefilled('amount')"
-                        [class.decoration-2]="isFieldPrefilled('amount')"
-                        [class.underline-offset-4]="isFieldPrefilled('amount')"
-                      >
-                        {{ formattedMobileAmount() }}
-                      </div>
-                    }
+                      <fo-quick-add-currency-chip
+                    [currencyCode]="currencyCode()"
+                    [currencies]="enabledCurrencies()"
+                    [open]="currencyMenuOpen()"
+                    [prefilled]="isFieldPrefilled('currency')"
+                    (toggleMenu)="toggleCurrencyMenu()"
+                    (selectCurrency)="selectCurrency($event)"
+                  />
+                    </div>
                   </div>
-
-                  <div class="relative shrink-0">
-                    <button
-                      type="button"
-                      data-testid="quick-add-currency-chip"
-                      [attr.data-prefilled]="isFieldPrefilled('currency') ? 'true' : null"
-                      [disabled]="enabledCurrencies().length <= 1"
-                      [attr.aria-expanded]="enabledCurrencies().length > 1 ? currencyMenuOpen() : null"
-                      aria-label="Divisa del movimiento"
-                      (click)="toggleCurrencyMenu()"
-                      class="fo-focus-ring inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-text transition-colors hover:border-accent disabled:cursor-default disabled:hover:border-border"
-                      [class.border-b-2]="isFieldPrefilled('currency')"
-                      [class.border-b-accent]="isFieldPrefilled('currency')"
-                    >
-                      <span>{{ currencyCode() }}</span>
-                      @if (enabledCurrencies().length > 1) {
-                        <fo-icon name="chevron-down" [size]="12" />
-                      }
-                    </button>
-
-                    @if (currencyMenuOpen() && enabledCurrencies().length > 1) {
-                      <div
-                        role="listbox"
-                        aria-label="Elegir divisa"
-                        data-testid="quick-add-currency-menu"
-                        class="absolute right-0 z-20 mt-1.5 min-w-24 rounded-xl border border-border bg-surface p-1 shadow-lg"
-                      >
-                        @for (code of enabledCurrencies(); track code) {
-                          <button
-                            type="button"
-                            role="option"
-                            [attr.aria-selected]="code === currencyCode()"
-                            [attr.data-testid]="'quick-add-currency-option-' + code"
-                            (click)="selectCurrency(code)"
-                            class="fo-focus-ring flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-surface-2"
-                            [class.text-accent]="code === currencyCode()"
-                            [class.text-text]="code !== currencyCode()"
-                          >
-                            <span>{{ code }}</span>
-                            @if (code === currencyCode()) {
-                              <fo-icon name="check" [size]="12" />
-                            }
-                          </button>
-                        }
-                      </div>
-                    }
+                  <div>
+                    <label for="fo-quick-add-description" class="d-label">Nombre (opcional)</label>
+                    <input
+                      id="fo-quick-add-description"
+                      data-testid="quick-add-description"
+                      [attr.data-prefilled]="isFieldPrefilled('description') ? 'true' : null"
+                      type="text"
+                      maxlength="140"
+                      [value]="description()"
+                      (input)="onDesktopDescriptionInput($event)"
+                      (keydown.enter)="onDesktopDescriptionEnter($event)"
+                      placeholder="Ej. Café, Fiesta Sofi..."
+                      class="d-input"
+                      [class.is-prefilled]="isFieldPrefilled('description')"
+                    />
                   </div>
                 </div>
-              </section>
+              } @else {
+                <section aria-label="Monto" class="qa-amount-area">
+                  <fo-quick-add-currency-chip
+                    [currencyCode]="currencyCode()"
+                    [currencies]="enabledCurrencies()"
+                    [open]="currencyMenuOpen()"
+                    [prefilled]="isFieldPrefilled('currency')"
+                    (toggleMenu)="toggleCurrencyMenu()"
+                    (selectCurrency)="selectCurrency($event)"
+                  />
+                  <div
+                    class="qa-amount-display"
+                    [class.is-empty]="rawAmount().length === 0"
+                    [class.fo-amount-bump-a]="bumpPhase() === 'a'"
+                    [class.fo-amount-bump-b]="bumpPhase() === 'b'"
+                  >
+                    <span aria-hidden="true">{{ activeCurrencySymbol() }}</span><span
+                      #mobileAmountDisplay
+                      data-testid="quick-add-amount-display"
+                      [attr.data-prefilled]="isFieldPrefilled('amount') ? 'true' : null"
+                      tabindex="0"
+                      cdkFocusInitial
+                      role="textbox"
+                      aria-readonly="true"
+                      aria-label="Monto"
+                      class="fo-focus-ring rounded-lg"
+                      [class.is-prefilled]="isFieldPrefilled('amount')"
+                      >{{ formattedMobileAmount() }}</span
+                    >
+                  </div>
+                  <button
+                    type="button"
+                    [disabled]="saving() || scanning() || rawAmount().length === 0"
+                    data-testid="keypad-backspace"
+                    aria-label="Borrar"
+                    (click)="onKeypadPress('BACKSPACE')"
+                    class="subtle-icon-btn qa-backspace fo-focus-ring"
+                  >
+                    <span aria-hidden="true">⌫</span>
+                  </button>
+                </section>
+              }
 
               <fo-category-picker
                 [frequentCategories]="frequentCategories()"
                 [allCategories]="allCategoriesForKind()"
                 [selectedCategoryId]="selectedCategoryId()"
                 [description]="description()"
+                [showDescription]="!isDesktop()"
                 [categoryPrefilled]="isFieldPrefilled('category')"
                 [descriptionPrefilled]="isFieldPrefilled('description')"
                 (selectedCategoryIdChange)="onCategoryChange($event)"
@@ -340,7 +329,7 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
                 [amountMode]="amountMode()"
                 [hasInterest]="hasInterest()"
                 [cashPrice]="cashPrice()"
-                [installmentPreviewText]="installmentPreviewText()"
+                [installmentSummary]="installmentSummary()"
                 [summaryHint]="advancedSummaryHint()"
                 [datePrefilled]="isFieldPrefilled('date')"
                 (expandedChange)="advancedExpanded.set($event)"
@@ -361,29 +350,12 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
                 aria-live="polite"
                 aria-busy="true"
                 data-testid="receipt-scanning-state"
-                class="absolute inset-0 z-10 flex flex-col justify-between gap-3 rounded-2xl border border-accent/30 bg-surface/95 p-4 backdrop-blur-[1px]"
+                class="absolute inset-0 z-10 flex flex-col justify-between gap-3 rounded-[14px] border border-dashed border-border bg-surface/95 p-4"
               >
-                <div class="flex items-center gap-2 text-sm font-medium text-accent">
-                  <svg
-                    class="h-4 w-4 shrink-0 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                      stroke="currentColor"
-                      stroke-opacity="0.25"
-                      stroke-width="3"
-                    />
-                    <path
-                      d="M21 12a9 9 0 0 0-9-9"
-                      stroke="currentColor"
-                      stroke-width="3"
-                      stroke-linecap="round"
-                    />
+                <div class="flex items-center gap-2 text-xs font-semibold text-accent">
+                  <svg class="h-4 w-4 shrink-0 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.25" stroke-width="3" />
+                    <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
                   </svg>
                   <span>Leyendo ticket…</span>
                 </div>
@@ -403,66 +375,25 @@ function shouldIgnoreEnterTarget(target: EventTarget | null): boolean {
           </div>
 
           @if (!isDesktop()) {
-            <fo-amount-keypad
-              [disabled]="saving() || scanning()"
-              [canDelete]="rawAmount().length > 0"
-              (keyPress)="onKeypadPress($event)"
-            />
+            <fo-amount-keypad [disabled]="saving() || scanning()" (keyPress)="onKeypadPress($event)" />
           }
 
-          <div class="pt-1">
-            <fo-button
+          <div data-testid="quick-add-save-btn">
+            <button
               type="button"
-              variant="primary"
-              size="lg"
-              [fullWidth]="true"
+              class="save-btn fo-focus-ring"
               [disabled]="!canSave()"
-              [loading]="saving()"
-              data-testid="quick-add-save-btn"
+              [attr.aria-busy]="saving() ? 'true' : null"
               (click)="save()"
             >
-              Guardar
-            </fo-button>
+              {{ saving() ? 'Guardando…' : saveLabel() }}
+            </button>
           </div>
         </div>
       }
     </fo-bottom-sheet>
   `,
-  styles: `
-    @keyframes fo-amount-bump-a {
-      0% {
-        transform: scale(1);
-      }
-      45% {
-        transform: scale(1.04);
-      }
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    @keyframes fo-amount-bump-b {
-      0% {
-        transform: scale(1);
-      }
-      45% {
-        transform: scale(1.04);
-      }
-      100% {
-        transform: scale(1);
-      }
-    }
-
-    .fo-amount-bump-a {
-      transform-origin: left center;
-      animation: fo-amount-bump-a 140ms var(--fo-ease-spring, cubic-bezier(0.34, 1.35, 0.64, 1));
-    }
-
-    .fo-amount-bump-b {
-      transform-origin: left center;
-      animation: fo-amount-bump-b 140ms var(--fo-ease-spring, cubic-bezier(0.34, 1.35, 0.64, 1));
-    }
-  `,
+  styleUrl: './quick-add-host.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuickAddHostComponent {
@@ -603,7 +534,7 @@ export class QuickAddHostComponent {
     () => this.resolvedAccount()?.id ?? null,
   );
 
-  protected readonly installmentPreviewText = computed<string | null>(() => {
+  protected readonly installmentSummary = computed<InstallmentSummaryLines | null>(() => {
     if (!this.isInstallmentMode()) {
       return null;
     }
@@ -620,7 +551,30 @@ export class QuickAddHostComponent {
       closingDay: this.resolvedAccount()?.closingDay ?? null,
       currencyCode: this.currencyCode(),
     });
-    return result?.summary ?? null;
+    if (!result) {
+      return null;
+    }
+    return installmentSummaryLines(result, {
+      currencyCode: this.currencyCode(),
+      hasInterest: this.hasInterest(),
+      cashPrice: this.cashPrice(),
+    });
+  });
+
+  /** Mock CTA: `Guardar gasto`, `Guardar para Sofía`, `Guardar ingreso`. */
+  protected readonly saveLabel = computed(() => {
+    if (this.transactionType() === 'INCOME') {
+      return 'Guardar ingreso';
+    }
+    const attributed = this.attributedToUserId();
+    if (attributed && attributed !== this.currentUserId()) {
+      const member = this.members().find((m) => m.id === attributed);
+      const firstName = member?.fullName.trim().split(/\s+/)[0];
+      if (firstName) {
+        return `Guardar para ${firstName}`;
+      }
+    }
+    return 'Guardar gasto';
   });
 
   protected readonly advancedSummaryHint = computed<string>(() => {
@@ -724,6 +678,17 @@ export class QuickAddHostComponent {
   protected onDescriptionChange(value: string): void {
     this.description.set(value);
     this.clearPrefilled('description');
+  }
+
+  protected onDesktopDescriptionInput(event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    this.onDescriptionChange(target?.value ?? '');
+  }
+
+  protected onDesktopDescriptionEnter(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.save();
   }
 
   protected onTransactionDateChange(value: string): void {

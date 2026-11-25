@@ -8,7 +8,7 @@ describe('HeroBalanceComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  it('renders period label, savings chip, income/expense and animated balance in currency', () => {
+  it('renders view title, badge, income/expense and animated balance in currency', () => {
     const summary = buildDemoHomePayload({
       view: 'FAMILY',
       lens: 'NOMINAL',
@@ -18,14 +18,15 @@ describe('HeroBalanceComponent', () => {
 
     const fixture = TestBed.createComponent(HeroBalanceComponent);
     fixture.componentRef.setInput('summary', summary);
+    fixture.componentRef.setInput('view', 'FAMILY');
     fixture.componentRef.setInput('countUpDuration', 0);
     fixture.detectChanges();
 
     const host = fixture.nativeElement as HTMLElement;
     const text = host.textContent ?? '';
 
-    expect(text).toContain(summary.period.label);
-    expect(text).toContain('Ahorro 23%');
+    expect(text).toContain('Balance familiar');
+    expect(host.querySelector('[data-testid="hero-savings-chip"]')?.textContent).toContain('% real');
     expect(text).toContain('Ingresos');
     expect(text).toContain('Gastos');
     expect(host.querySelector('[data-testid="hero-balance-amount"]')?.textContent).toContain('$');

@@ -8,7 +8,8 @@ import {
 } from '../../../shared/ui/segmented-toggle/segmented-toggle.component';
 import { toNumber } from '../../../shared/utils/decimal';
 import {
-  formatMoneyValue,
+  capDonutSlices,
+  formatCompactAxisValue,
   formatSignedRealVariation,
   resolveDisplayUnit,
 } from '../data-access/home.formatters';
@@ -33,30 +34,22 @@ const MODE_OPTIONS: readonly SegmentedOption<BreakdownMode>[] = [
   standalone: true,
   imports: [CardComponent, DonutChartComponent, SegmentedToggleComponent],
   template: `
-    <fo-card padding="md" class="h-full">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-base font-semibold text-text">Distribución de gastos</h2>
-          @if (periodLabel(); as label) {
-            <p class="text-xs text-muted">{{ label }}</p>
-          }
-        </div>
-
+    <fo-card class="h-full">
+      <div class="donut-header">
+        <h2 class="donut-title">Distribución</h2>
         @if (canShowPerson()) {
-          <div class="w-48">
-            <fo-segmented-toggle
-              data-testid="breakdown-mode-toggle"
-              [options]="modeOptions"
-              [value]="effectiveMode()"
-              (valueChange)="onModeChange($event)"
-              ariaLabel="Agrupar distribución por categorías o personas"
-              size="sm"
-            />
-          </div>
+          <fo-segmented-toggle
+            data-testid="breakdown-mode-toggle"
+            [options]="modeOptions"
+            [value]="effectiveMode()"
+            (valueChange)="onModeChange($event)"
+            ariaLabel="Agrupar distribución por categorías o personas"
+            size="sm"
+          />
         }
       </div>
 
-      <div class="mt-4">
+      <div>
         @if (!hasActiveData()) {
           <p class="py-8 text-center text-sm text-muted">
             No pudimos cargar el desglose para este período.
@@ -76,15 +69,15 @@ const MODE_OPTIONS: readonly SegmentedOption<BreakdownMode>[] = [
           @if (variationChips().length > 0) {
             <div
               data-testid="category-variations"
-              class="mt-4 border-t border-border/80 pt-3"
+              class="mt-3 border-t border-border pt-2.5"
             >
-              <p class="mb-2 text-[11px] font-medium tracking-wide text-muted uppercase">
+              <p class="mb-1.5 text-[10.5px] font-medium text-muted">
                 Variación real vs. período anterior
               </p>
               <div class="flex flex-wrap gap-1.5">
                 @for (chip of variationChips(); track chip.id) {
                   <span
-                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums"
+                    class="inline-flex items-center gap-1.5 rounded-full px-[7px] py-0.5 text-[10px] font-semibold tabular-nums"
                     [class.bg-danger/10]="chip.tone === 'danger'"
                     [class.text-danger]="chip.tone === 'danger'"
                     [class.bg-success/10]="chip.tone === 'success'"
@@ -108,6 +101,22 @@ const MODE_OPTIONS: readonly SegmentedOption<BreakdownMode>[] = [
   styles: `
     :host {
       display: block;
+    }
+    .donut-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .donut-title {
+      font-size: 12px;
+      font-weight: 700;
+    }
+    @media (min-width: 1024px) {
+      .donut-title {
+        font-size: 13px;
+      }
     }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -135,13 +144,8 @@ export class BreakdownCardComponent {
     this.effectiveMode() === 'PERSON' ? this.byPerson() !== null : this.byCategory() !== null,
   );
 
-  protected readonly periodLabel = computed<string | null>(() => {
-    const active = this.effectiveMode() === 'PERSON' ? this.byPerson() : this.byCategory();
-    return active?.period.label ?? null;
-  });
-
   protected readonly centerLabel = computed(() =>
-    this.effectiveMode() === 'PERSON' ? 'Por persona' : 'Gastos',
+    this.effectiveMode() === 'PERSON' ? 'Familia' : 'Gastos',
   );
 
   protected readonly displayUnit = computed(() => {
@@ -151,7 +155,7 @@ export class BreakdownCardComponent {
 
   protected readonly valueFormatter = computed<(value: number) => string>(() => {
     const unit = this.displayUnit();
-    return (value: number) => formatMoneyValue(value, unit);
+    return (value: number) => formatCompactAxisValue(value, unit);
   });
 
   protected readonly donutSlices = computed<DonutSlice[]>(() => {
@@ -160,24 +164,26 @@ export class BreakdownCardComponent {
       if (!person) {
         return [];
       }
-      return person.slices.map((slice) => ({
-        id: slice.userId,
-        label: slice.fullName,
-        value: toNumber(slice.amount),
-        color: slice.accentColor || undefined,
-      }));
+      return capDonutSlices(
+        person.slices.map((slice) => ({
+          id: slice.userId,
+          label: slice.fullName,
+          value: toNumber(slice.amount),
+        })),
+      );
     }
 
     const category = this.byCategory();
     if (!category) {
       return [];
     }
-    return category.slices.map((slice, index) => ({
-      id: slice.categoryId ?? `uncategorized-${index}`,
-      label: slice.name,
-      value: toNumber(slice.amount),
-      color: slice.colorHex ?? undefined,
-    }));
+    return capDonutSlices(
+      category.slices.map((slice, index) => ({
+        id: slice.categoryId ?? `uncategorized-${index}`,
+        label: slice.name,
+        value: toNumber(slice.amount),
+      })),
+    );
   });
 
   protected readonly variationChips = computed<VariationChip[]>(() => {

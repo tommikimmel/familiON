@@ -41,9 +41,11 @@ describe('RecentListComponent', () => {
     // Nominal lens hides lens subtitle
     expect(host.querySelector('[data-testid="transaction-lens-amount"]')).toBeNull();
 
-    // Signed color-coded amounts
-    expect(host.querySelector('[data-testid="transaction-amount"].text-success')?.textContent).toContain('+');
-    expect(host.querySelector('[data-testid="transaction-amount"].text-danger')?.textContent).toContain('-');
+    // Signed amounts: income highlighted in accent, expenses in neutral text (mock tx-amt)
+    const amounts = Array.from(host.querySelectorAll('[data-testid="transaction-amount"]'));
+    const income = amounts.find((el) => el.classList.contains('text-accent'));
+    expect(income?.textContent).toContain('+');
+    expect(amounts.some((el) => el.textContent?.trim().startsWith('-$'))).toBe(true);
 
     const link = host.querySelector('a');
     expect(link?.textContent).toContain('Ver todos');

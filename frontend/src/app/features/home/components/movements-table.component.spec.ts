@@ -32,8 +32,8 @@ describe('MovementsTableComponent', () => {
     expect(headers).toEqual([
       'Movimiento',
       'Categoría',
-      'Atribuido a / pagó',
-      'Cuenta / Cuota',
+      'Atribuido a',
+      'Cuenta',
       'Fecha',
       'Monto',
     ]);

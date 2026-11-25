@@ -154,3 +154,53 @@ export function installmentPreview(input: InstallmentPreviewInput): InstallmentP
     summary,
   };
 }
+
+export interface InstallmentSummaryLines {
+  /** `6 cuotas de $30.000 / mes` */
+  main: string;
+  /** Formatted total to pay. */
+  total: string;
+  /** `Dic 2026 → May 2027` */
+  range: string;
+  /** Interest line (mock `sum-tag`). */
+  tag: string;
+}
+
+const MOCK_PREFIXES: Record<string, string> = { ARS: '$', USD: 'US$', EUR: '€' };
+
+/** Mock money style: prefix glued to the amount (`$30.000`), decimals only when present. */
+function formatMockMoney(value: number, currencyCode: string): string {
+  const code = currencyCode.trim().toUpperCase() || 'ARS';
+  const prefix = MOCK_PREFIXES[code];
+  if (!prefix) {
+    return formatCurrencyValue(value, code);
+  }
+  const number = new Intl.NumberFormat(LOCALE, {
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(Math.abs(value));
+  return `${value < 0 ? '-' : ''}${prefix}${number}`;
+}
+
+/** Lines of the installments live summary, mirroring the installments mock. */
+export function installmentSummaryLines(
+  preview: InstallmentPreviewResult,
+  options: { currencyCode: string; hasInterest: boolean; cashPrice: string },
+): InstallmentSummaryLines {
+  const { currencyCode, hasInterest } = options;
+  const cash = toNumber(options.cashPrice);
+  let tag = 'Sin interés';
+  if (hasInterest && cash > 0 && preview.totalAmount > cash) {
+    const diff = roundToTwoDecimals(preview.totalAmount - cash);
+    const pct = ((diff / cash) * 100).toFixed(1).replace('.', ',');
+    tag = `Interés real: +${formatMockMoney(diff, currencyCode)} (+${pct}% sobre contado)`;
+  } else if (hasInterest) {
+    tag = 'Con interés · completá precio contado para ver el % de recargo';
+  }
+  return {
+    main: `${preview.totalInstallments} cuotas de ${formatMockMoney(preview.perInstallmentAmount, currencyCode)} / mes`,
+    total: formatMockMoney(preview.totalAmount, currencyCode),
+    range: `${preview.firstMonthLabel} → ${preview.lastMonthLabel}`,
+    tag,
+  };
+}

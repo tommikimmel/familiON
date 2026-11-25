@@ -43,6 +43,15 @@ export const PAIRS: readonly VisualPair[] = [
     },
   },
   {
+    id: 'home',
+    route: '/home',
+    mocks: {
+      mobile: { file: 'mobile.html', tab: 'home' },
+      desktop: { file: 'desktop.html', tab: 'home' },
+    },
+  },
+  // quick-add (sheet/modal open) needs a click hook in capture.ts (follow-up).
+  {
     id: 'plan',
     route: '/plan',
     mocks: {

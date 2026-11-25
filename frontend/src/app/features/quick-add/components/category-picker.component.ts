@@ -7,7 +7,6 @@ import {
   signal,
 } from '@angular/core';
 import { Category } from '../../../core/finance/finance.models';
-import { IconComponent } from '../../../shared/ui';
 
 function normalizeSearch(value: string): string {
   return value
@@ -20,107 +19,12 @@ function normalizeSearch(value: string): string {
 @Component({
   selector: 'fo-category-picker',
   standalone: true,
-  imports: [IconComponent],
+
   template: `
-    <div class="space-y-2.5">
-      <div
-        class="flex flex-wrap items-center gap-1.5 transition-colors"
-        [class.border-b-2]="categoryPrefilled() && selectedCategoryId() !== null"
-        [class.border-b-accent]="categoryPrefilled() && selectedCategoryId() !== null"
-        [class.pb-1.5]="categoryPrefilled() && selectedCategoryId() !== null"
-        role="group"
-        aria-label="Categorías frecuentes"
-      >
-        @for (category of visibleChips(); track category.id) {
-          @let selected = selectedCategoryId() === category.id;
-          <button
-            type="button"
-            [attr.data-testid]="'category-chip-' + category.id"
-            [attr.data-prefilled]="selected && categoryPrefilled() ? 'true' : null"
-            [attr.aria-pressed]="selected"
-            (click)="toggleCategory(category.id)"
-            class="fo-focus-ring inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150"
-            [class.border-accent]="selected"
-            [class.bg-accent]="selected"
-            [class.text-accent-contrast]="selected"
-            [class.ring-2]="selected && categoryPrefilled()"
-            [class.ring-accent/35]="selected && categoryPrefilled()"
-            [class.border-border]="!selected"
-            [class.bg-surface-2]="!selected"
-            [class.text-text]="!selected"
-            [class.hover:border-accent]="!selected"
-          >
-            <span
-              class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
-              [style.background-color]="selected ? 'rgba(255,255,255,0.2)' : (category.colorHex || 'var(--fo-accent-soft)')"
-              [style.color]="selected ? 'currentColor' : (category.colorHex ? '#FFFFFF' : 'var(--fo-accent)')"
-            >
-              <fo-icon [name]="category.icon || 'circle-ellipsis'" [size]="11" />
-            </span>
-            <span class="truncate">{{ category.name }}</span>
-          </button>
-        }
-
-        @if (allCategories().length > 0) {
-          <button
-            type="button"
-            data-testid="category-more-btn"
-            [attr.aria-expanded]="searchOpen()"
-            (click)="toggleSearch()"
-            class="fo-focus-ring inline-flex cursor-pointer items-center gap-1 rounded-full border border-dashed border-border bg-surface px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-accent hover:text-text"
-          >
-            <span>{{ searchOpen() ? 'Cerrar' : 'Más' }}</span>
-            <fo-icon [name]="searchOpen() ? 'x' : 'chevron-down'" [size]="12" />
-          </button>
-        }
-      </div>
-
-      @if (searchOpen()) {
-        <div
-          data-testid="category-search-panel"
-          class="space-y-2 rounded-xl border border-border bg-surface-2/60 p-2.5"
-        >
-          <label for="fo-quick-add-cat-search" class="sr-only">Buscar categoría</label>
-          <input
-            id="fo-quick-add-cat-search"
-            type="search"
-            [value]="searchQuery()"
-            (input)="onSearchInput($event)"
-            placeholder="Buscar categoría..."
-            class="fo-focus-ring w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-text placeholder:text-muted"
-          />
-
-          @if (filteredCategories().length === 0) {
-            <p class="py-1 text-center text-xs text-muted">No encontramos esa categoría.</p>
-          } @else {
-            <div class="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto">
-              @for (category of filteredCategories(); track category.id) {
-                @let selected = selectedCategoryId() === category.id;
-                <button
-                  type="button"
-                  [attr.data-testid]="'category-search-item-' + category.id"
-                  [attr.aria-pressed]="selected"
-                  (click)="selectFromSearch(category.id)"
-                  class="fo-focus-ring inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors"
-                  [class.border-accent]="selected"
-                  [class.bg-accent]="selected"
-                  [class.text-accent-contrast]="selected"
-                  [class.border-border]="!selected"
-                  [class.bg-surface]="!selected"
-                  [class.text-text]="!selected"
-                  [class.hover:border-accent]="!selected"
-                >
-                  <fo-icon [name]="category.icon || 'circle-ellipsis'" [size]="12" />
-                  <span>{{ category.name }}</span>
-                </button>
-              }
-            </div>
-          }
-        </div>
-      }
-
+    <div class="flex flex-col gap-3">
+      @if (showDescription()) {
       <div>
-        <label for="fo-quick-add-description" class="sr-only">¿En qué?</label>
+        <label for="fo-quick-add-description" class="sr-only">Nombre opcional</label>
         <input
           id="fo-quick-add-description"
           data-testid="quick-add-description"
@@ -130,13 +34,119 @@ function normalizeSearch(value: string): string {
           [value]="description()"
           (input)="onDescriptionInput($event)"
           (keydown.enter)="onDescriptionEnter($event)"
-          placeholder="¿En qué?"
-          class="fo-focus-ring w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 text-sm text-text placeholder:text-muted"
-          [class.border-b-2]="descriptionPrefilled()"
-          [class.border-b-accent]="descriptionPrefilled()"
+          placeholder="Nombre opcional (ej. Café, Coto...)"
+          class="qa-input"
+          [class.is-prefilled]="descriptionPrefilled()"
         />
       </div>
+      }
+
+      <div class="cat-grid" role="group" aria-label="Categorías frecuentes">
+        @for (category of gridChips(); track category.id) {
+          @let selected = selectedCategoryId() === category.id;
+          <button
+            type="button"
+            [attr.data-testid]="'category-chip-' + category.id"
+            [attr.data-prefilled]="selected && categoryPrefilled() ? 'true' : null"
+            [attr.aria-pressed]="selected"
+            (click)="toggleCategory(category.id)"
+            class="fo-cat-pill fo-focus-ring truncate"
+            [class.is-active]="selected"
+            [class.is-prefilled]="selected && categoryPrefilled()"
+          >
+            {{ category.name }}
+          </button>
+        }
+
+        @if (allCategories().length > 0) {
+          <button
+            type="button"
+            data-testid="category-more-btn"
+            [attr.aria-expanded]="searchOpen()"
+            (click)="toggleSearch()"
+            class="fo-cat-pill fo-focus-ring"
+            [class.is-active]="searchOpen()"
+          >
+            {{ searchOpen() ? 'Cerrar' : 'Otros' }}
+          </button>
+        }
+      </div>
+
+      @if (searchOpen()) {
+        <div data-testid="category-search-panel" class="search-panel">
+          <label for="fo-quick-add-cat-search" class="sr-only">Buscar categoría</label>
+          <input
+            id="fo-quick-add-cat-search"
+            type="search"
+            [value]="searchQuery()"
+            (input)="onSearchInput($event)"
+            placeholder="Buscar categoría..."
+            class="qa-input"
+          />
+
+          @if (filteredCategories().length === 0) {
+            <p class="py-1 text-center text-[11px] text-muted">No encontramos esa categoría.</p>
+          } @else {
+            <div class="flex max-h-36 flex-wrap gap-1 overflow-y-auto">
+              @for (category of filteredCategories(); track category.id) {
+                @let selected = selectedCategoryId() === category.id;
+                <button
+                  type="button"
+                  [attr.data-testid]="'category-search-item-' + category.id"
+                  [attr.aria-pressed]="selected"
+                  (click)="selectFromSearch(category.id)"
+                  class="fo-mini-chip fo-focus-ring"
+                  [class.is-active]="selected"
+                >
+                  {{ category.name }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
     </div>
+  `,
+  styles: `
+    :host {
+      display: block;
+    }
+    .qa-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--fo-border);
+      border-radius: 12px;
+      outline: none;
+      background: var(--fo-bg);
+      color: var(--fo-text);
+      font-family: inherit;
+      font-size: 13px;
+      transition: border-color 0.18s ease;
+    }
+    .qa-input::placeholder {
+      color: var(--fo-text-muted);
+    }
+    .qa-input:focus,
+    .qa-input.is-prefilled {
+      border-color: var(--fo-accent);
+    }
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+    .fo-cat-pill.is-prefilled {
+      box-shadow: 0 0 0 2px var(--fo-accent-soft);
+    }
+    .search-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--fo-border);
+      border-radius: 12px;
+      background: var(--fo-bg);
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -147,6 +157,8 @@ export class CategoryPickerComponent {
   readonly description = input<string>('');
   readonly categoryPrefilled = input<boolean>(false);
   readonly descriptionPrefilled = input<boolean>(false);
+  /** Desktop renders the name input next to the amount (mock modal), so the picker hides it. */
+  readonly showDescription = input<boolean>(true);
 
   readonly selectedCategoryIdChange = output<string | null>();
   readonly descriptionChange = output<string>();
@@ -164,6 +176,11 @@ export class CategoryPickerComponent {
     const selectedCategory = this.allCategories().find((cat) => cat.id === selectedId);
     return selectedCategory ? [selectedCategory, ...frequent.slice(0, 7)] : frequent;
   });
+
+  /** Mock `cat-grid`: five quick pills plus the `Otros` pill (six cells, two rows of three). */
+  protected readonly gridChips = computed<readonly Category[]>(() =>
+    this.visibleChips().slice(0, this.allCategories().length > 0 ? 5 : 6),
+  );
 
   protected readonly filteredCategories = computed<readonly Category[]>(() => {
     const query = normalizeSearch(this.searchQuery());
