@@ -6,8 +6,14 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { AccountsStore } from '../../../core/finance/accounts.store';
 import { CategoriesStore } from '../../../core/finance/categories.store';
+import {
+  ExportFormat,
+  ExportsApi,
+  saveExportFile,
+} from '../../../core/finance/exports.api';
 import { FinanceEvents } from '../../../core/finance/finance-events';
 import {
   TransactionItem,
@@ -25,6 +31,7 @@ import {
   ToastService,
 } from '../../../shared/ui';
 import { TransactionDetailSheetComponent } from '../components/transaction-detail-sheet.component';
+import { TransactionsExportMenuComponent } from '../components/transactions-export-menu.component';
 import { TransactionsDayListComponent } from '../components/transactions-day-list.component';
 import { TransactionsFilterBarComponent } from '../components/transactions-filter-bar.component';
 import { TransactionsTableComponent } from '../components/transactions-table.component';
@@ -43,12 +50,20 @@ import { TransactionsStore } from '../data-access/transactions.store';
     SkeletonComponent,
     TransactionDetailSheetComponent,
     TransactionsDayListComponent,
+    TransactionsExportMenuComponent,
     TransactionsFilterBarComponent,
     TransactionsTableComponent,
   ],
   template: `
     <section class="mx-auto max-w-7xl space-y-4">
       <h1 class="sr-only">Movimientos</h1>
+
+      <div class="flex justify-end">
+        <fo-transactions-export-menu
+          [loading]="exporting()"
+          (formatSelected)="onExport($event)"
+        />
+      </div>
 
       <fo-transactions-filter-bar
         [filters]="store.filters()"
@@ -195,6 +210,7 @@ export class TransactionsPage {
   protected readonly session = inject(SessionStore);
   private readonly financeEvents = inject(FinanceEvents);
   private readonly toast = inject(ToastService);
+  private readonly exportsApi = inject(ExportsApi);
 
   protected readonly selectedTransaction = signal<TransactionItem | null>(null);
   protected readonly referenceSnapshot = signal<TransactionItem | null>(null);
@@ -202,6 +218,7 @@ export class TransactionsPage {
   protected readonly detailSaving = signal<boolean>(false);
   protected readonly detailDeleting = signal<boolean>(false);
   protected readonly detailError = signal<string | null>(null);
+  protected readonly exporting = signal<boolean>(false);
 
   private snapshotSeq = 0;
 
@@ -243,6 +260,33 @@ export class TransactionsPage {
         void this.store.loadMembers();
       }
     });
+  }
+
+  protected async onExport(format: ExportFormat): Promise<void> {
+    if (this.exporting()) {
+      return;
+    }
+    const filters = this.store.filters();
+    const fallbackRange = this.store.defaultDateRange();
+    const from = filters.from ?? fallbackRange.from;
+    const to = filters.to ?? fallbackRange.to;
+    this.exporting.set(true);
+    try {
+      const file = await firstValueFrom(
+        this.exportsApi.transactions({
+          format,
+          from,
+          to,
+          view: this.viewContext.view(),
+          lens: this.viewContext.lens(),
+        }),
+      );
+      saveExportFile(file);
+    } catch {
+      this.toast.error('No se pudieron exportar los movimientos. Intenta de nuevo.');
+    } finally {
+      this.exporting.set(false);
+    }
   }
 
   protected onSelectTransaction(tx: TransactionItem): void {
