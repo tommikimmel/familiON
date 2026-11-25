@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FamiliON — Mockup Desktop Web (Interactivo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+    background: var(--background, #f8fafc);
+    color: var(--foreground, #0f172a);
+    line-height: 1.45;
+    padding: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .num { font-variant-numeric: tabular-nums; }
+
+  .stage {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* Outer Workbench Controls */
+  .outer-bar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 11px 16px; background: var(--card, #ffffff); color: var(--card-foreground, #0f172a);
+    border: 1px solid var(--border, #e2e8f0); border-radius: 13px;
+  }
+  .outer-bar-info strong { font-size: 13.5px; display: block; }
+  .outer-bar-info span { font-size: 11.5px; color: var(--muted-foreground, #64748b); }
+  .outer-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .accent-bar {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+    background: var(--secondary, #f1f5f9); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 9px; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #64748b);
+  }
+  .accent-dot {
+    width: 16px; height: 16px; border-radius: 999px; border: 2px solid transparent; cursor: pointer;
+    transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .accent-dot:hover { transform: scale(1.18); }
+  .accent-dot.active { box-shadow: 0 0 0 2px var(--card, #fff), 0 0 0 3.5px currentColor; }
+
+  .ctrl-pill {
+    display: inline-flex; background: var(--secondary, #f1f5f9); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 9px; padding: 3px; gap: 2px;
+  }
+  .ctrl-pill button {
+    border: none; background: transparent; color: var(--muted-foreground, #64748b);
+    font-family: inherit; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  }
+  .ctrl-pill button.active {
+    background: var(--card, #ffffff); color: var(--foreground, #0f172a); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+
+  /* ===== BROWSER WINDOW SHELL ===== */
+  .browser-frame {
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid var(--border, #d8dee6);
+    box-shadow: 0 22px 54px rgba(15, 23, 42, 0.16);
+  }
+
+  .fn-surface[data-theme="light"] {
+    --fn-bg: #f8f9fb;
+    --fn-sidebar: #ffffff;
+    --fn-card: #ffffff;
+    --fn-card-alt: #f1f3f6;
+    --fn-border: #e5e7eb;
+    --fn-text: #111827;
+    --fn-text-2: #4b5563;
+    --fn-muted: #6b7280;
+    --fn-chrome: #eef0f4;
+    --fn-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    --fn-overlay: rgba(15, 23, 42, 0.36);
+    --fn-slice-4: #9ca3af;
+    --fn-slice-5: #d1d5db;
+  }
+  .fn-surface[data-theme="dark"] {
+    --fn-bg: #0b0d11;
+    --fn-sidebar: #10141b;
+    --fn-card: #141922;
+    --fn-card-alt: #1c2330;
+    --fn-border: #232c3a;
+    --fn-text: #f3f4f6;
+    --fn-text-2: #cbd5e1;
+    --fn-muted: #8b95a5;
+    --fn-chrome: #161b24;
+    --fn-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+    --fn-overlay: rgba(0, 0, 0, 0.65);
+    --fn-slice-4: #64748b;
+    --fn-slice-5: #334155;
+  }
+  .fn-surface {
+    --familion-accent: #0f766e;
+    --familion-accent-fg: #ffffff;
+    --fn-accent-soft: rgba(15, 118, 110, 0.11);
+    --fn-accent-glow: rgba(15, 118, 110, 0.20);
+    --fn-accent-mid: rgba(15, 118, 110, 0.56);
+    --fn-accent-light: rgba(15, 118, 110, 0.28);
+    --ease-spring: cubic-bezier(0.34, 1.35, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+    background: var(--fn-bg);
+    color: var(--fn-text);
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+
+  .browser-chrome {
+    height: 34px;
+    background: var(--fn-chrome);
+    border-bottom: 1px solid var(--fn-border);
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--fn-muted);
+  }
+  .win-dots { display: flex; gap: 6px; }
+  .win-dots span { width: 10px; height: 10px; border-radius: 999px; background: var(--fn-border); }
+  .url-pill {
+    background: var(--fn-card);
+    border: 1px solid var(--fn-border);
+    padding: 2px 14px;
+    border-radius: 7px;
+    font-size: 11px;
+    color: var(--fn-muted);
+  }
+
+  /* ===== DESKTOP APP LAYOUT ===== */
+  .app-shell {
+    position: relative;
+    display: grid;
+    grid-template-columns: 226px 1fr;
+    min-height: 670px;
+  }
+  @media (max-width: 780px) {
+    .app-shell { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--fn-border); }
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--fn-sidebar);
+    border-right: 1px solid var(--fn-border);
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .logo-wrap { padding: 2px 4px; cursor: pointer; }
+  .logo-anim .toggle-track { transition: fill 0.3s ease; }
+  .logo-anim .toggle-knob { transition: transform 0.34s var(--ease-spring); }
+  .logo-anim.off .toggle-knob { transform: translateX(-38px); }
+
+  /* Sliding Scope Toggle */
+  .scope-bar {
+    position: relative; display: grid; grid-template-columns: 1fr 1fr;
+    background: var(--fn-card-alt); border: 1px solid var(--fn-border);
+    border-radius: 10px; padding: 3px;
+  }
+  .scope-slider {
+    position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px);
+    border-radius: 7px; background: var(--fn-card); box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    transition: transform 0.3s var(--ease-spring), background 0.25s ease;
+    pointer-events: none;
+  }
+  .scope-bar.is-family .scope-slider { transform: translateX(100%); background: var(--familion-accent); }
+  .scope-bar button {
+    position: relative; z-index: 1; border: none; background: transparent;
+    color: var(--fn-muted); font-family: inherit; font-size: 11.5px; font-weight: 600;
+    padding: 5px 4px; cursor: pointer; transition: color 0.18s ease;
+  }
+  .scope-bar button.active { color: var(--fn-text); }
+  .scope-bar.is-family button.active { color: var(--familion-accent-fg); }
+
+  .new-btn {
+    width: 100%; border: none; background: var(--familion-accent); color: var(--familion-accent-fg);
+    font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 10px 12px;
+    border-radius: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 6px 16px var(--fn-accent-glow);
+    transition: transform 0.16s var(--ease-spring), filter 0.15s ease;
+  }
+  .new-btn:hover { transform: translateY(-1px); }
+  .new-btn:active { transform: scale(0.97); }
+  .kbd-hint {
+    font-size: 10px; font-weight: 700; opacity: 0.78;
+    padding: 1px 5px; border-radius: 5px; border: 1px solid currentColor;
+  }
+
+  .nav-list { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+  .nav-btn {
+    border: none; background: transparent; color: var(--fn-text-2); font-family: inherit;
+    font-size: 12.5px; font-weight: 500; padding: 9px 10px; border-radius: 10px;
+    cursor: pointer; display: flex; align-items: center; gap: 9px; text-align: left;
+    transition: background 0.14s ease, color 0.14s ease, transform 0.14s var(--ease-spring);
+  }
+  .nav-btn:hover { background: var(--fn-card-alt); color: var(--fn-text); }
+  .nav-btn.active {
+    background: var(--fn-accent-soft); color: var(--familion-accent); font-weight: 600;
+  }
+
+  .sidebar-footer {
+    padding-top: 12px; border-top: 1px solid var(--fn-border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .user-chip { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 999px; background: var(--familion-accent);
+    color: var(--familion-accent-fg); font-size: 11px; font-weight: 700; display: grid; place-items: center; flex-shrink: 0;
+  }
+  .user-meta strong { font-size: 12px; display: block; line-height: 1.2; }
+  .user-meta span { font-size: 10px; color: var(--fn-muted); }
+
+  /* Main Area */
+  .main-pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .main-topbar {
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--fn-border);
+    background: var(--fn-card);
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .top-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .page-title { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+
+  .gran-tabs {
+    display: inline-flex; background: var(--fn-card-alt); border: 1px solid var(--fn-border);
+    border-radius: 9px; padding: 2px; gap: 2px;
+  }
+  .gran-tabs button {
+    border: none; background: transparent; color: var(--fn-muted); font-family: inherit;
+    font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 7px; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .gran-tabs button.active { background: var(--fn-card); color: var(--fn-text); box-shadow: var(--fn-shadow); }
+
+  .top-right { display: flex; align-items: center; gap: 8px; }
+
+  /* Currency Dropdown */
+  .currency-wrap { position: relative; }
+  .currency-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--fn-border); background: var(--fn-card); color: var(--fn-text);
+    font-family: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.12s ease;
+  }
+  .currency-pill:hover { border-color: var(--familion-accent); }
+  .flag-svg { width: 16px; height: 11px; border-radius: 2px; display: block; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.14); }
+  .currency-dropdown {
+    position: absolute; top: calc(100% + 6px); right: 0; width: 204px;
+    background: var(--fn-card); border: 1px solid var(--fn-border); border-radius: 13px;
+    padding: 6px; box-shadow: 0 16px 34px rgba(0,0,0,0.18); z-index: 40;
+    opacity: 0; transform: translateY(-6px) scale(0.96); pointer-events: none;
+    transform-origin: top right; transition: opacity 0.16s ease, transform 0.22s var(--ease-spring);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .currency-dropdown.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .curr-opt {
+    border: none; background: transparent; color: var(--fn-text); font-family: inherit;
+    font-size: 11.5px; font-weight: 600; padding: 7px 8px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .curr-opt:hover { background: var(--fn-card-alt); }
+  .curr-opt.active { background: var(--fn-accent-soft); color: var(--familion-accent); }
+  .curr-divider { height: 1px; background: var(--fn-border); margin: 4px 2px; }
+  .ipc-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px; font-size: 11px; color: var(--fn-text-2); cursor: pointer; border-radius: 8px;
+  }
+  .mini-switch { width: 28px; height: 16px; border-radius: 999px; background: var(--fn-border); position: relative; transition: background 0.2s ease; }
+  .mini-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 999px; background: #fff; transition: transform 0.24s var(--ease-spring); }
+  .mini-switch.on { background: var(--familion-accent); }
+  .mini-switch.on::after { transform: translateX(12px); }
+
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--fn-border);
+    background: var(--fn-card); color: var(--fn-text-2); display: grid; place-items: center;
+    cursor: pointer; position: relative; transition: border-color 0.15s ease;
+  }
+  .icon-btn:hover { border-color: var(--familion-accent); color: var(--fn-text); }
+  .notif-dot {
+    position: absolute; top: 6px; right: 7px; width: 6px; height: 6px;
+    border-radius: 999px; background: var(--familion-accent);
+  }
+
+  /* Content Workspace */
+  .content-body {
+    padding: 18px 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+  }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .anim-in { animation: fadeSlideUp 0.3s var(--ease-smooth) backwards; }
+
+  @keyframes rowFlash {
+    0% { background: var(--fn-accent-soft); }
+    100% { background: transparent; }
+  }
+  .row-new { animation: rowFlash 1.4s ease forwards; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .charts-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 900px) {
+    .kpi-grid, .charts-grid, .two-col { grid-template-columns: 1fr; }
+  }
+
+  .fn-card {
+    position: relative; overflow: hidden;
+    background: var(--fn-card); border: 1px solid var(--fn-border);
+    border-radius: 15px; padding: 15px 16px; box-shadow: var(--fn-shadow);
+    transition: border-color 0.18s ease, background 0.25s ease;
+  }
+  .hero-glow::before {
+    content: ''; position: absolute; top: -46px; right: -40px; width: 150px; height: 150px;
+    border-radius: 999px; background: radial-gradient(circle, var(--fn-accent-glow) 0%, transparent 72%);
+    pointer-events: none;
+  }
+
+  .kpi-label { font-size: 11.5px; color: var(--fn-muted); font-weight: 500; display: flex; justify-content: space-between; align-items: center; }
+  .kpi-val { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; margin-top: 4px; }
+  .kpi-sub { font-size: 11px; color: var(--fn-muted); margin-top: 4px; }
+  .pill-tag {
+    display: inline-flex; align-items: center; font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 999px; background: var(--fn-card-alt); color: var(--fn-text-2);
+  }
+  .pill-accent { background: var(--fn-accent-soft); color: var(--familion-accent); }
+
+  .progress-track { height: 5px; border-radius: 999px; background: var(--fn-card-alt); overflow: hidden; margin-top: 10px; }
+  .progress-fill { height: 100%; border-radius: 999px; background: var(--familion-accent); transition: width 0.45s var(--ease-smooth); }
+
+  /* Bar Chart (6 Months Evolution) */
+  .bar-chart {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+    align-items: end; height: 146px; padding-top: 16px;
+  }
+  .b-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 5px; }
+  .b-val { font-size: 10px; font-weight: 600; color: var(--fn-muted); }
+  .b-rect {
+    width: 100%; max-width: 34px; border-radius: 7px 7px 3px 3px;
+    background: var(--fn-card-alt); transition: height 0.45s var(--ease-smooth), background 0.25s ease;
+  }
+  .b-rect.current { background: var(--familion-accent); }
+  .b-rect.ipc-on { background: var(--fn-accent-mid); }
+  .b-lbl { font-size: 10.5px; font-weight: 600; color: var(--fn-muted); }
+
+  /* Donut */
+  .mini-seg {
+    position: relative; display: grid; grid-template-columns: 1fr 1fr;
+    background: var(--fn-card-alt); border-radius: 8px; padding: 2px;
+  }
+  .mini-seg-slider {
+    position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px);
+    border-radius: 6px; background: var(--fn-card); box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: transform 0.28s var(--ease-spring);
+  }
+  .mini-seg.is-right .mini-seg-slider { transform: translateX(100%); }
+  .mini-seg button {
+    position: relative; z-index: 1; border: none; background: transparent; color: var(--fn-muted);
+    font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 3px 9px; cursor: pointer;
+  }
+  .mini-seg button.active { color: var(--fn-text); }
+
+  .donut-body { display: grid; grid-template-columns: 126px 1fr; gap: 14px; align-items: center; margin-top: 10px; }
+  .donut-wrap { position: relative; width: 126px; height: 126px; display: grid; place-items: center; }
+  .donut-svg { width: 126px; height: 126px; transform: rotate(-90deg); overflow: visible; }
+  .donut-slice {
+    fill: none; stroke-width: 15; cursor: pointer;
+    transition: stroke-dasharray 0.48s var(--ease-smooth), stroke-dashoffset 0.48s var(--ease-smooth), opacity 0.18s ease, stroke-width 0.22s var(--ease-spring);
+  }
+  .donut-slice.dim { opacity: 0.28; }
+  .donut-slice.focused { stroke-width: 19; }
+  .donut-center { position: absolute; text-align: center; pointer-events: none; }
+  .donut-center-k { font-size: 9.5px; color: var(--fn-muted); font-weight: 600; }
+  .donut-center-v { font-size: 13.5px; font-weight: 700; }
+  .donut-center-p { font-size: 10px; color: var(--familion-accent); font-weight: 700; }
+
+  .legend-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 4px 7px; border-radius: 8px; cursor: pointer; font-size: 11.5px;
+    transition: background 0.14s ease, transform 0.14s var(--ease-spring);
+  }
+  .legend-row:hover { background: var(--fn-card-alt); }
+  .legend-row.active { background: var(--fn-accent-soft); transform: translateX(3px); }
+
+  /* Desktop Movements Table */
+  .table-head-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .search-input {
+    border: 1px solid var(--fn-border); background: var(--fn-bg); color: var(--fn-text);
+    font-family: inherit; font-size: 12px; padding: 6px 11px; border-radius: 9px; outline: none; width: 210px;
+  }
+  .search-input:focus { border-color: var(--familion-accent); }
+
+  table.tx-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.tx-table th {
+    text-align: left; font-size: 10.5px; font-weight: 600; color: var(--fn-muted);
+    padding: 7px 10px; border-bottom: 1px solid var(--fn-border);
+  }
+  table.tx-table td {
+    padding: 9px 10px; border-bottom: 1px solid var(--fn-border); color: var(--fn-text);
+  }
+  table.tx-table tr:last-child td { border-bottom: none; }
+  table.tx-table tbody tr { transition: background 0.12s ease; }
+  table.tx-table tbody tr:hover { background: var(--fn-card-alt); }
+
+  .check-btn {
+    width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--fn-border);
+    background: transparent; color: var(--familion-accent-fg); display: grid; place-items: center; cursor: pointer;
+    transition: all 0.2s var(--ease-spring);
+  }
+  .check-btn.done { background: var(--familion-accent); border-color: var(--familion-accent); }
+
+  /* Centered Desktop Modal for Quick Add */
+  .modal-backdrop {
+    position: absolute; inset: 0; z-index: 60;
+    background: var(--fn-overlay); backdrop-filter: blur(0px);
+    display: grid; place-items: center; padding: 16px;
+    opacity: 0; pointer-events: none; transition: opacity 0.22s ease, backdrop-filter 0.24s ease;
+  }
+  .modal-backdrop.open { opacity: 1; pointer-events: auto; backdrop-filter: blur(5px); }
+  .modal-box {
+    width: 100%; max-width: 440px;
+    background: var(--fn-card); border: 1px solid var(--fn-border); border-radius: 20px;
+    padding: 18px 20px; box-shadow: 0 24px 60px rgba(0,0,0,0.28);
+    display: flex; flex-direction: column; gap: 12px;
+    transform: translateY(14px) scale(0.97); transition: transform 0.28s var(--ease-spring);
+  }
+  .modal-backdrop.open .modal-box { transform: translateY(0) scale(1); }
+
+  .d-input {
+    width: 100%; border: 1px solid var(--fn-border); background: var(--fn-bg); color: var(--fn-text);
+    font-family: inherit; font-size: 13px; padding: 9px 12px; border-radius: 10px; outline: none;
+  }
+  .d-input:focus { border-color: var(--familion-accent); }
+  .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .cat-pill {
+    border: 1px solid var(--fn-border); background: var(--fn-bg); color: var(--fn-text-2);
+    font-family: inherit; font-size: 11.5px; font-weight: 600; padding: 7px 6px; border-radius: 9px; cursor: pointer;
+  }
+  .cat-pill.active { background: var(--fn-accent-soft); border-color: var(--familion-accent); color: var(--familion-accent); }
+  .mini-chip {
+    border: 1px solid var(--fn-border); background: var(--fn-card); color: var(--fn-text-2);
+    font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 4px 8px; border-radius: 7px; cursor: pointer;
+  }
+  .mini-chip.active { background: var(--fn-accent-soft); border-color: var(--familion-accent); color: var(--familion-accent); }
+  .btn-primary {
+    width: 100%; border: none; background: var(--familion-accent); color: var(--familion-accent-fg);
+    font-family: inherit; font-size: 13px; font-weight: 700; padding: 11px; border-radius: 11px; cursor: pointer;
+  }
+
+  .toast {
+    position: absolute; bottom: 18px; right: 20px; z-index: 70;
+    background: var(--fn-text); color: var(--fn-bg); font-size: 12px; font-weight: 600;
+    padding: 8px 14px; border-radius: 999px; opacity: 0; transform: translateY(10px);
+    pointer-events: none; transition: all 0.24s var(--ease-spring);
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <!-- Outer Controls -->
+    <div class="outer-bar">
+      <div class="outer-bar-info">
+        <strong>FamiliON — Mockup Desktop Web (Responsive)</strong>
+        <span>Mismo lenguaje minimalista que mobile: sidebar limpia, toggle Personal/Familia, selector bandera + A plata de hoy, evolución 6 meses, donut y modal rápido (tecla N).</span>
+      </div>
+      <div class="outer-controls">
+        <div class="accent-bar" id="topAccentBar"></div>
+        <div class="ctrl-pill">
+          <button id="btnLight" class="active" onclick="setTheme('light')">Claro</button>
+          <button id="btnDark" onclick="setTheme('dark')">Oscuro</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop Browser Preview -->
+    <div class="browser-frame fn-surface" id="desktopSurface" data-theme="light">
+      <div class="browser-chrome">
+        <div class="win-dots"><span></span><span></span><span></span></div>
+        <div class="url-pill">app.familion.ar · PWA Instalable</div>
+        <span>v0.1.0</span>
+      </div>
+
+      <div class="app-shell">
+        <div class="toast" id="toastEl"></div>
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+          <div class="logo-wrap" onclick="flickLogo()">
+            <svg class="logo-anim" id="deskLogo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 56" width="128" height="38" role="img" aria-label="FamiliON">
+              <text x="104" y="40" text-anchor="end" style="font-family:'Inter',sans-serif;font-size:34px;font-weight:700;letter-spacing:-1.1px;fill:currentColor;">Famili</text>
+              <rect class="toggle-track" x="110" y="12" width="70" height="32" rx="16" fill="var(--familion-accent)" />
+              <circle cx="127" cy="28" r="4.5" fill="none" stroke="var(--familion-accent-fg)" stroke-width="2.2" />
+              <path d="M136.5 32.5V23.5L143.5 32.5V23.5" fill="none" stroke="var(--familion-accent-fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              <circle class="toggle-knob" cx="164" cy="28" r="11.5" fill="var(--familion-accent-fg)" />
+            </svg>
+          </div>
+
+          <div class="scope-bar" id="scopeBar">
+            <div class="scope-slider"></div>
+            <button id="scPersonal" class="active" onclick="setScope('personal')">Personal</button>
+            <button id="scFamily" onclick="setScope('family')">Familia</button>
+          </div>
+
+          <button class="new-btn" onclick="openModal()">
+            <span style="display:inline-flex;align-items:center;gap:7px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuevo movimiento
+            </span>
+            <span class="kbd-hint">N</span>
+          </button>
+
+          <nav class="nav-list">
+            <button class="nav-btn active" data-tab="home" onclick="setTab('home')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              Inicio
+            </button>
+            <button class="nav-btn" data-tab="plan" onclick="setTab('plan')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              Planificación
+            </button>
+            <button class="nav-btn" data-tab="vehicles" onclick="setTab('vehicles')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17H3v-5l2-5h10l3 5v5h-2"/></svg>
+              Vehículos
+            </button>
+            <button class="nav-btn" data-tab="profile" onclick="setTab('profile')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
+              Familia y Perfil
+            </button>
+          </nav>
+
+          <div class="sidebar-footer">
+            <div class="user-chip">
+              <div class="avatar">TK</div>
+              <div class="user-meta">
+                <strong>Tomás Kimmel</strong>
+                <span>Adulto · 2FA activo</span>
+              </div>
+            </div>
+            <button class="icon-btn" title="Cambiar tema" onclick="setTheme(state.theme==='light'?'dark':'light')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            </button>
+          </div>
+        </aside>
+
+        <!-- MAIN PANE -->
+        <div class="main-pane">
+          <header class="main-topbar">
+            <div class="top-left">
+              <h1 class="page-title" id="pageTitle">Inicio</h1>
+              <div class="gran-tabs">
+                <button class="g-btn" data-g="day" onclick="setGran('day')">Día</button>
+                <button class="g-btn" data-g="week" onclick="setGran('week')">Semana</button>
+                <button class="g-btn active" data-g="month" onclick="setGran('month')">Mes</button>
+                <button class="g-btn" data-g="year" onclick="setGran('year')">Año</button>
+              </div>
+              <span style="font-size:11.5px;color:var(--fn-muted);" id="periodLabel">Noviembre 2026</span>
+            </div>
+
+            <div class="top-right">
+              <div class="currency-wrap">
+                <button class="currency-pill" onclick="toggleCurrMenu(event)">
+                  <span id="currFlag"></span>
+                  <span id="currCode">ARS</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="currency-dropdown" id="currMenu"></div>
+              </div>
+              <button class="icon-btn" title="Notificaciones y novedades" onclick="showToast('v0.1.0 lista · 1 gasto fijo vence en 4 días')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                <span class="notif-dot"></span>
+              </button>
+            </div>
+          </header>
+
+          <main class="content-body" id="contentMount"></main>
+        </div>
+
+        <!-- CENTERED QUICK-ADD MODAL -->
+        <div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this) closeModal()">
+          <div class="modal-box" id="modalBox"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const ACCENTS = [
+    { id: 'teal',   name: 'Esmeralda', light: '#0f766e', dark: '#2dd4bf', darkFg: '#042f2e' },
+    { id: 'blue',   name: 'Azul',      light: '#2563eb', dark: '#60a5fa', darkFg: '#0b1930' },
+    { id: 'indigo', name: 'Índigo',    light: '#4f46e5', dark: '#818cf8', darkFg: '#131135' },
+    { id: 'violet', name: 'Violeta',   light: '#7c3aed', dark: '#a78bfa', darkFg: '#1e1038' },
+    { id: 'amber',  name: 'Ámbar',     light: '#b45309', dark: '#fbbf24', darkFg: '#271704' },
+    { id: 'slate',  name: 'Grafito',   light: '#334155', dark: '#cbd5e1', darkFg: '#0f172a' }
+  ];
+
+  const FLAGS = {
+    ARS: `<svg class="flag-svg" viewBox="0 0 18 12"><rect width="18" height="4" fill="#74ACDF"/><rect y="4" width="18" height="4" fill="#FFFFFF"/><rect y="8" width="18" height="4" fill="#74ACDF"/><circle cx="9" cy="6" r="1.35" fill="#F6B40E"/></svg>`,
+    USD: `<svg class="flag-svg" viewBox="0 0 18 12"><rect width="18" height="12" fill="#FFFFFF"/><rect y="0" width="18" height="1.7" fill="#B22234"/><rect y="3.4" width="18" height="1.7" fill="#B22234"/><rect y="6.8" width="18" height="1.7" fill="#B22234"/><rect y="10.2" width="18" height="1.8" fill="#B22234"/><rect width="8" height="6.8" fill="#3C3B6E"/></svg>`,
+    EUR: `<svg class="flag-svg" viewBox="0 0 18 12"><rect width="18" height="12" fill="#003399"/><circle cx="9" cy="6" r="3.4" fill="none" stroke="#FFCC00" stroke-width="1.1" stroke-dasharray="0.9 1.75"/></svg>`
+  };
+
+  const CURRENCIES = {
+    ARS: { code: 'ARS', rate: 1, prefix: '$' },
+    USD: { code: 'USD', rate: 1210, prefix: 'US$ ' },
+    EUR: { code: 'EUR', rate: 1310, prefix: '€ ' }
+  };
+
+  const state = {
+    theme: 'light',
+    accentId: 'teal',
+    tab: 'home',
+    scope: 'family',
+    currency: 'ARS',
+    realIpc: true,
+    gran: 'month',
+    chartMode: 'category',
+    selectedSlice: null,
+    search: '',
+    childVis: 'summary',
+    newestId: null,
+    modal: { type: 'expense', amount: '', name: '', category: 'Súper', attributedTo: 'Tomás', cuotas: 1, amountMode: 'total', hasInterest: false, more: false },
+    incomes: { personal: 1850000, family: 3250000 },
+    fixed: [
+      { id: 'alq', name: 'Alquiler / Expensas', rule: 'Ajusta IPC · Día 10', amount: 520000, paid: true },
+      { id: 'pre', name: 'Prepaga Familiar', rule: 'Último pago · Día 15', amount: 245000, paid: true },
+      { id: 'luz', name: 'Luz + Internet', rule: 'Vence 26 Nov', amount: 68500, paid: false }
+    ],
+    txs: [
+      { id: 1, title: 'Supermercado Coto', category: 'Súper', amount: -310000, date: '22 Nov', account: 'Visa · 3/6 s/i', paidBy: 'Tomás', attributedTo: 'Tomás' },
+      { id: 2, title: 'YPF Nafta Súper (38 L)', category: 'Auto', amount: -45600, date: '22 Nov', account: 'Mercado Pago', paidBy: 'Tomás', attributedTo: 'Tomás' },
+      { id: 3, title: 'Salida con amigas', category: 'Salidas', amount: -20000, date: '21 Nov', account: 'Efectivo', paidBy: 'Tomás', attributedTo: 'Sofi' },
+      { id: 4, title: 'Alquiler / Expensas', category: 'Casa', amount: -520000, date: '10 Nov', account: 'Banco Galicia', paidBy: 'Laura', attributedTo: 'Laura' },
+      { id: 5, title: 'Supermercado Mensual', category: 'Súper', amount: -285000, date: '12 Nov', account: 'Visa', paidBy: 'Laura', attributedTo: 'Laura' },
+      { id: 6, title: 'Prepaga Familiar', category: 'Casa', amount: -245000, date: '15 Nov', account: 'Débito', paidBy: 'Laura', attributedTo: 'Laura' },
+      { id: 7, title: 'Librería / Salida', category: 'Salidas', amount: -30000, date: '16 Nov', account: 'Mensualidad', paidBy: 'Sofi', attributedTo: 'Sofi' }
+    ]
+  };
+
+  const MONTHS_EVO = [
+    { m: 'Jun', nom: 1180000, ipc: 118 },
+    { m: 'Jul', nom: 1240000, ipc: 123 },
+    { m: 'Ago', nom: 1310000, ipc: 128 },
+    { m: 'Sep', nom: 1365000, ipc: 132 },
+    { m: 'Oct', nom: 1410000, ipc: 136 },
+    { m: 'Nov', nom: 1455600, ipc: 140 }
+  ];
+
+  const GRAN_MULT = { day: 0.08, week: 0.27, month: 1, year: 11.4 };
+  const GRAN_LABEL = { day: 'Hoy · 22 Nov 2026', week: 'Semana 47 · Nov 2026', month: 'Noviembre 2026', year: 'Año 2026' };
+
+  function hexToRgba(hex, a) {
+    const h = hex.replace('#', '');
+    return `rgba(${parseInt(h.slice(0,2),16)}, ${parseInt(h.slice(2,4),16)}, ${parseInt(h.slice(4,6),16)}, ${a})`;
+  }
+
+  function applyAccent() {
+    const acc = ACCENTS.find(a => a.id === state.accentId) || ACCENTS[0];
+    const main = state.theme === 'dark' ? acc.dark : acc.light;
+    const fg = state.theme === 'dark' ? acc.darkFg : '#ffffff';
+    const surf = document.getElementById('desktopSurface');
+    surf.style.setProperty('--familion-accent', main);
+    surf.style.setProperty('--familion-accent-fg', fg);
+    surf.style.setProperty('--fn-accent-soft', hexToRgba(main, state.theme === 'dark' ? 0.16 : 0.11));
+    surf.style.setProperty('--fn-accent-glow', hexToRgba(main, state.theme === 'dark' ? 0.26 : 0.18));
+    surf.style.setProperty('--fn-accent-mid', hexToRgba(main, 0.56));
+    surf.style.setProperty('--fn-accent-light', hexToRgba(main, 0.28));
+
+    document.getElementById('topAccentBar').innerHTML = '<span>Color de perfil:</span>' + ACCENTS.map(a => {
+      const col = state.theme === 'dark' ? a.dark : a.light;
+      return `<button class="accent-dot ${state.accentId===a.id?'active':''}" style="background:${col};color:${col};" title="${a.name}" onclick="setAccent('${a.id}')"></button>`;
+    }).join('');
+  }
+
+  function fmt(arsVal, showPlus = false) {
+    const sign = arsVal < 0 ? '-' : (showPlus && arsVal > 0 ? '+' : '');
+    const c = CURRENCIES[state.currency];
+    const v = Math.abs(arsVal) / c.rate;
+    const dec = state.currency === 'ARS' ? 0 : (v < 100 ? 1 : 0);
+    return sign + c.prefix + v.toLocaleString('es-AR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+  function fmtShort(arsVal) {
+    const c = CURRENCIES[state.currency];
+    const v = Math.abs(arsVal) / c.rate;
+    if (state.currency === 'ARS' && v >= 1000000) return '$' + (v / 1000000).toFixed(1).replace('.', ',') + 'M';
+    if (state.currency === 'ARS' && v >= 1000) return '$' + Math.round(v / 1000) + 'k';
+    return c.prefix + Math.round(v).toLocaleString('es-AR');
+  }
+
+  function renderHeaderControls() {
+    document.getElementById('currFlag').innerHTML = FLAGS[state.currency];
+    document.getElementById('currCode').textContent = state.currency;
+    document.getElementById('periodLabel').textContent = GRAN_LABEL[state.gran];
+    document.getElementById('currMenu').innerHTML = Object.values(CURRENCIES).map(c => `
+      <button class="curr-opt ${state.currency===c.code?'active':''}" onclick="setCurrency('${c.code}')">
+        <span style="display:flex;align-items:center;gap:7px;">${FLAGS[c.code]} <span>${c.code}</span></span>
+        <span style="font-size:10px;color:var(--fn-muted);">${c.code==='ARS'?'Base':'$'+c.rate}</span>
+      </button>
+    `).join('') + `
+      <div class="curr-divider"></div>
+      <div class="ipc-row" onclick="toggleIpc(event)">
+        <span>A plata de hoy (IPC)</span>
+        <span class="mini-switch ${state.realIpc?'on':''}"></span>
+      </div>
+    `;
+
+    const sb = document.getElementById('scopeBar');
+    sb.classList.toggle('is-family', state.scope === 'family');
+    document.getElementById('scPersonal').classList.toggle('active', state.scope === 'personal');
+    document.getElementById('scFamily').classList.toggle('active', state.scope === 'family');
+
+    document.querySelectorAll('.g-btn').forEach(b => b.classList.toggle('active', b.dataset.g === state.gran));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
+  }
+
+  function buildDonut(items) {
+    const total = items.reduce((s, x) => s + x.amount, 0) || 1;
+    const r = 47; const C = 2 * Math.PI * r;
+    const colors = ['var(--familion-accent)', 'var(--fn-accent-mid)', 'var(--fn-accent-light)', 'var(--fn-slice-4)', 'var(--fn-slice-5)'];
+    let offset = 0;
+    const circles = items.map((item, i) => {
+      const frac = item.amount / total;
+      const len = Math.max(0, frac * C - (items.length > 1 ? 2.5 : 0));
+      const dOff = -offset; offset += frac * C;
+      const f = state.selectedSlice === i;
+      const d = state.selectedSlice !== null && state.selectedSlice !== i;
+      return `<circle class="donut-slice ${f?'focused':''} ${d?'dim':''}" cx="63" cy="63" r="${r}" stroke="${colors[i%colors.length]}" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${dOff.toFixed(2)}" onclick="selectSlice(${i})" />`;
+    }).join('');
+    const act = (state.selectedSlice !== null && items[state.selectedSlice]) ? items[state.selectedSlice] : null;
+    return `
+      <div class="donut-body">
+        <div class="donut-wrap">
+          <svg class="donut-svg" viewBox="0 0 126 126">
+            <circle cx="63" cy="63" r="${r}" fill="none" stroke="var(--fn-card-alt)" stroke-width="15" />
+            ${circles}
+          </svg>
+          <div class="donut-center">
+            <div class="donut-center-k">${act ? act.name : (state.chartMode==='person'?'Familia':'Total')}</div>
+            <div class="donut-center-v num">${fmtShort(act ? act.amount : total)}</div>
+            <div class="donut-center-p num">${act ? Math.round((act.amount/total)*100)+'%' : '100%'}</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          ${items.map((item, i) => `
+            <div class="legend-row ${state.selectedSlice===i?'active':''}" onclick="selectSlice(${i})">
+              <span style="display:flex;align-items:center;gap:6px;min-width:0;">
+                <span style="width:8px;height:8px;border-radius:999px;background:${colors[i%colors.length]};flex-shrink:0;"></span>
+                <span style="color:var(--fn-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.name}</span>
+              </span>
+              <strong class="num">${Math.round((item.amount/total)*100)}%</strong>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderHome() {
+    document.getElementById('pageTitle').textContent = state.scope === 'family' ? 'Inicio · Familia Kimmel' : 'Inicio · Mis Finanzas';
+    const mult = GRAN_MULT[state.gran];
+    const scoped = state.scope === 'family' ? state.txs : state.txs.filter(t => t.attributedTo === 'Tomás');
+    const exp = Math.round(scoped.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0) * mult);
+    const inc = state.gran === 'day' ? 0 : Math.round((state.incomes[state.scope] + scoped.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0)) * mult);
+    const net = inc - exp;
+    const ratio = inc > 0 ? Math.min(100, Math.round((exp / inc) * 100)) : 100;
+
+    // Donut data
+    const catMap = {};
+    scoped.filter(t => t.amount < 0).forEach(t => { catMap[t.category] = (catMap[t.category] || 0) + Math.abs(t.amount) * mult; });
+    const byCat = Object.entries(catMap).map(([name, amount]) => ({ name, amount: Math.round(amount) })).sort((a,b) => b.amount - a.amount).slice(0, 5);
+
+    const pMap = {};
+    state.txs.filter(t => t.amount < 0).forEach(t => { pMap[t.attributedTo] = (pMap[t.attributedTo] || 0) + Math.abs(t.amount) * mult; });
+    const byPerson = Object.entries(pMap).map(([name, amount]) => ({ name, amount: Math.round(amount) })).sort((a,b) => b.amount - a.amount);
+
+    // 6-Month evolution bars (reacts to "A plata de hoy"!)
+    const scale = state.scope === 'family' ? 1 : 0.45;
+    const evoVals = MONTHS_EVO.map(m => {
+      const base = m.nom * scale;
+      return state.currency === 'ARS' && state.realIpc ? Math.round(base * (140 / m.ipc)) : Math.round(base);
+    });
+    const maxEvo = Math.max(...evoVals, 1);
+
+    const filteredRows = scoped.filter(t =>
+      !state.search || t.title.toLowerCase().includes(state.search.toLowerCase()) ||
+      t.category.toLowerCase().includes(state.search.toLowerCase()) ||
+      t.attributedTo.toLowerCase().includes(state.search.toLowerCase())
+    );
+
+    document.getElementById('contentMount').innerHTML = `
+      <div class="kpi-grid anim-in">
+        <div class="fn-card hero-glow">
+          <div class="kpi-label">
+            <span>${state.scope==='family' ? 'Balance familiar' : 'Mi balance'}</span>
+            ${state.currency==='ARS' && state.realIpc ? '<span class="pill-tag pill-accent">A plata de hoy</span>' : '<span class="pill-tag">Nominal</span>'}
+          </div>
+          <div class="kpi-val num">${state.gran==='day' ? fmt(-exp) : fmt(net)}</div>
+          <div class="kpi-sub">Ahorro real del período: <strong>${100 - ratio}%</strong> del ingreso</div>
+        </div>
+
+        <div class="fn-card">
+          <div class="kpi-label"><span>Gastos vs. Ingresos</span><span class="pill-tag num">${ratio}%</span></div>
+          <div class="kpi-val num">${fmt(exp)}</div>
+          <div class="progress-track"><div class="progress-fill" style="width:${ratio}%;"></div></div>
+          <div class="kpi-sub num">Ingresos: <strong>${fmt(inc)}</strong></div>
+        </div>
+
+        <div class="fn-card">
+          <div class="kpi-label"><span>Divisas y Cuotas</span><span class="pill-tag pill-accent">TC compra $1.185</span></div>
+          <div class="kpi-val num">US$ 1.450</div>
+          <div class="kpi-sub num">Cuotas mes: <strong>${fmt(116500)}</strong> (2 planes)</div>
+        </div>
+      </div>
+
+      <div class="charts-grid anim-in">
+        <div class="fn-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong style="font-size:13px;">Evolución de Gastos (6 meses)</strong>
+              <div style="font-size:11px;color:var(--fn-muted);">${state.currency==='ARS' && state.realIpc ? 'Meses pasados traídos a plata de hoy (IPC)' : 'Pesos nominales / divisa elegida'}</div>
+            </div>
+            <span class="pill-tag">${state.realIpc && state.currency==='ARS' ? 'Real: -2,8%' : 'Nominal'}</span>
+          </div>
+          <div class="bar-chart">
+            ${MONTHS_EVO.map((m, i) => {
+              const v = evoVals[i];
+              const h = Math.max(14, Math.round((v / maxEvo) * 96));
+              const isCur = i === MONTHS_EVO.length - 1;
+              return `
+                <div class="b-col">
+                  <span class="b-val num">${fmtShort(v)}</span>
+                  <div class="b-rect ${isCur ? 'current' : (state.realIpc && state.currency==='ARS' ? 'ipc-on' : '')}" style="height:${h}px;"></div>
+                  <span class="b-lbl">${m.m}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="fn-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:13px;">Distribución</strong>
+            <div class="mini-seg ${state.chartMode==='person'?'is-right':''}">
+              <div class="mini-seg-slider"></div>
+              <button class="${state.chartMode==='category'?'active':''}" onclick="setChartMode('category')">Categorías</button>
+              <button class="${state.chartMode==='person'?'active':''}" onclick="setChartMode('person')">Personas</button>
+            </div>
+          </div>
+          ${buildDonut(state.chartMode === 'person' ? byPerson : byCat)}
+        </div>
+      </div>
+
+      <div class="fn-card anim-in">
+        <div class="table-head-bar">
+          <strong style="font-size:13px;">Movimientos recientes (${filteredRows.length})</strong>
+          <input class="search-input" placeholder="Buscar por nombre, categoría o persona..." value="${state.search}" oninput="state.search=this.value;renderHome()" />
+        </div>
+        <table class="tx-table">
+          <thead>
+            <tr>
+              <th>Movimiento</th>
+              <th>Categoría</th>
+              <th>Atribuido a</th>
+              <th>Cuenta</th>
+              <th>Fecha</th>
+              <th style="text-align:right;">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredRows.map(t => `
+              <tr class="${t.id===state.newestId?'row-new':''}">
+                <td><strong>${t.title}</strong></td>
+                <td><span class="pill-tag">${t.category}</span></td>
+                <td>
+                  ${t.attributedTo}
+                  ${t.paidBy !== t.attributedTo ? `<span style="font-size:10.5px;color:var(--fn-muted);"> (pagó ${t.paidBy})</span>` : ''}
+                </td>
+                <td style="color:var(--fn-muted);">${t.account}</td>
+                <td style="color:var(--fn-muted);">${t.date}</td>
+                <td class="num" style="text-align:right;font-weight:700;${t.amount>0?'color:var(--familion-accent);':''}">${fmt(t.amount, true)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    state.newestId = null;
+  }
+
+  function renderPlan() {
+    document.getElementById('pageTitle').textContent = 'Planificación · Cuotas, Fijos, Divisas y Metas';
+    document.getElementById('contentMount').innerHTML = `
+      <div class="two-col anim-in">
+        <div class="fn-card hero-glow">
+          <div class="kpi-label"><span>Ahorro en Divisas</span><span class="pill-tag pill-accent">TC compra $1.185</span></div>
+          <div class="kpi-val num" style="margin-top:6px;">US$ 1.450,00</div>
+          <div class="kpi-sub">Cotización MEP hoy $1.210 · Diferencia positiva +2,1% sobre tu costo de compra.</div>
+        </div>
+        <div class="fn-card">
+          <div class="kpi-label"><span>Meta: Vacaciones 2027 (USD)</span><span class="pill-tag pill-accent num">62%</span></div>
+          <div class="kpi-val num" style="margin-top:6px;">US$ 1.860 / 3.000</div>
+          <div class="progress-track"><div class="progress-fill" style="width:62%;"></div></div>
+        </div>
+      </div>
+
+      <div class="two-col anim-in">
+        <div class="fn-card">
+          <strong style="font-size:13px;display:block;margin-bottom:10px;">Gastos Fijos Mensuales</strong>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${state.fixed.map(f => `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid var(--fn-border);border-radius:11px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <button class="check-btn ${f.paid?'done':''}" onclick="toggleFixed('${f.id}')">${f.paid?'✓':''}</button>
+                  <div>
+                    <strong style="font-size:12.5px;${f.paid?'text-decoration:line-through;opacity:0.6;':''}">${f.name}</strong>
+                    <div style="font-size:10.5px;color:var(--fn-muted);">${f.rule}</div>
+                  </div>
+                </div>
+                <strong class="num">${fmt(f.amount)}</strong>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="fn-card">
+          <strong style="font-size:13px;display:block;margin-bottom:10px;">Planes de Cuotas Activos</strong>
+          <table class="tx-table">
+            <thead><tr><th>Compra</th><th>Progreso</th><th>Condición</th><th style="text-align:right;">Cuota</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Supermercado / Electro</strong></td><td class="num">3 / 6</td><td><span class="pill-tag">Sin interés</span></td><td class="num" style="text-align:right;font-weight:700;">${fmt(42500)}</td></tr>
+              <tr><td><strong>Neumáticos Corolla</strong></td><td class="num">2 / 12</td><td><span class="pill-tag pill-accent">+18% recargo</span></td><td class="num" style="text-align:right;font-weight:700;">${fmt(74000)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderVehicles() {
+    document.getElementById('pageTitle').textContent = 'Vehículos · Toyota Corolla 2021 (AB 123 CD)';
+    document.getElementById('contentMount').innerHTML = `
+      <div class="kpi-grid anim-in">
+        <div class="fn-card hero-glow"><div class="kpi-label"><span>Odómetro actual</span><span class="pill-tag">Nafta</span></div><div class="kpi-val num">68.420 km</div><div class="kpi-sub">Próximo service: 70.000 km</div></div>
+        <div class="fn-card"><div class="kpi-label"><span>Consumo promedio</span></div><div class="kpi-val num">12,8 km/L</div><div class="kpi-sub">7,8 L cada 100 km</div></div>
+        <div class="fn-card"><div class="kpi-label"><span>Costo por kilómetro</span></div><div class="kpi-val num">${fmt(94)}/km</div><div class="kpi-sub">Combustible + mantenimiento</div></div>
+      </div>
+
+      <div class="two-col anim-in">
+        <div class="fn-card">
+          <strong style="font-size:13px;display:block;margin-bottom:10px;">Desgaste y Vencimientos</strong>
+          <div style="display:flex;justify-content:space-between;font-size:12px;"><span>Service Aceite y Filtros</span><span class="pill-tag pill-accent">Faltan 1.580 km</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:84%;"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--fn-border);"><span>VTV / RTO vigente</span><span class="pill-tag">Vence en 45 días</span></div>
+        </div>
+        <div class="fn-card">
+          <strong style="font-size:13px;display:block;margin-bottom:10px;">Últimas cargas de combustible</strong>
+          <table class="tx-table">
+            <thead><tr><th>Fecha</th><th>Litros</th><th>Odómetro</th><th style="text-align:right;">Total</th></tr></thead>
+            <tbody>
+              <tr><td>22 Nov · YPF Súper</td><td class="num">38,0 L</td><td class="num">68.420 km</td><td class="num" style="text-align:right;font-weight:700;">${fmt(45600)}</td></tr>
+              <tr><td>08 Nov · Shell V-Power</td><td class="num">41,2 L</td><td class="num">67.930 km</td><td class="num" style="text-align:right;font-weight:700;">${fmt(57268)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderProfile() {
+    document.getElementById('pageTitle').textContent = 'Familia, Permisos y Preferencias';
+    document.getElementById('contentMount').innerHTML = `
+      <div class="two-col anim-in">
+        <div class="fn-card">
+          <strong style="font-size:13px;display:block;margin-bottom:10px;">Seguridad y Apariencia</strong>
+          <div style="font-size:12px;color:var(--fn-muted);margin-bottom:10px;">Autenticación con cookies <code>HttpOnly</code> vía BFF + <strong>2FA por Email activo</strong>.</div>
+          <div style="font-size:11.5px;font-weight:600;margin-bottom:8px;">Color de tu perfil</div>
+          <div style="display:flex;gap:10px;">
+            ${ACCENTS.map(a => {
+              const col = state.theme === 'dark' ? a.dark : a.light;
+              return `<button class="accent-dot ${state.accentId===a.id?'active':''}" style="width:24px;height:24px;background:${col};color:${col};" onclick="setAccent('${a.id}')"></button>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="fn-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:13px;">Sofi · Hijo (Mensualidad $50.000/mes)</strong>
+            <span class="pill-tag pill-accent">Hijo</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--fn-muted);margin:8px 0 6px;">Visibilidad de gastos familiares configurada por los padres:</div>
+          <div style="display:flex;gap:6px;">
+            ${[['own','Solo suyos'],['summary','Resumen'],['full','Detalle completo']].map(([k,lbl]) =>
+              `<button class="mini-chip ${state.childVis===k?'active':''}" onclick="state.childVis='${k}';render()">${lbl}</button>`
+            ).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderModal() {
+    const m = state.modal;
+    const raw = parseFloat(m.amount) || 0;
+    const cats = m.type === 'expense' ? ['Súper','Comida','Auto','Casa','Salidas','Otros'] : ['Sueldo','Extra','Ventas','Alquiler','Reintegro','Otros'];
+    const perM = m.amountMode === 'total' ? raw / m.cuotas : raw;
+    const tot = m.amountMode === 'total' ? raw : raw * m.cuotas;
+
+    document.getElementById('modalBox').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="gran-tabs">
+          <button class="${m.type==='expense'?'active':''}" onclick="state.modal.type='expense';state.modal.category='Súper';renderModal()">Gasto</button>
+          <button class="${m.type==='income'?'active':''}" onclick="state.modal.type='income';state.modal.category='Sueldo';renderModal()">Ingreso</button>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="icon-btn" title="Escanear ticket (secundario)" onclick="showToast('Subir foto de ticket (OCR Fase 4)')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          </button>
+          <button class="icon-btn" onclick="closeModal()">✕</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div>
+          <label style="font-size:11px;color:var(--fn-muted);font-weight:600;display:block;margin-bottom:4px;">Monto (ARS)</label>
+          <input class="d-input num" id="mAmount" type="number" placeholder="Ej. 20000" value="${m.amount}" oninput="state.modal.amount=this.value;syncModalLive()" />
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--fn-muted);font-weight:600;display:block;margin-bottom:4px;">Nombre (opcional)</label>
+          <input class="d-input" placeholder="Ej. Café, Fiesta Sofi..." value="${m.name}" oninput="state.modal.name=this.value" />
+        </div>
+      </div>
+
+      <div class="cat-grid">
+        ${cats.map(c => `<button class="cat-pill ${m.category===c?'active':''}" onclick="state.modal.category='${c}';renderModal()">${c}</button>`).join('')}
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;padding-top:4px;border-top:1px solid var(--fn-border);">
+        <span style="color:var(--fn-muted);">Atribuir gasto a:</span>
+        <div style="display:flex;gap:5px;">
+          ${['Tomás','Laura','Sofi'].map(p => `<button class="mini-chip ${m.attributedTo===p?'active':''}" onclick="state.modal.attributedTo='${p}';renderModal()">${p==='Tomás'?'Yo':p}</button>`).join('')}
+        </div>
+      </div>
+
+      ${m.type==='expense' ? `
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;">
+          <span style="color:var(--fn-muted);">Cuotas:</span>
+          <div style="display:flex;gap:5px;">
+            ${[1,3,6,12].map(n => `<button class="mini-chip ${m.cuotas===n?'active':''}" onclick="state.modal.cuotas=${n};renderModal()">${n===1?'1 pago':n}</button>`).join('')}
+          </div>
+        </div>
+        ${m.cuotas>1 ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;">
+            <span style="color:var(--fn-muted);">Ese monto:</span>
+            <div style="display:flex;gap:5px;">
+              <button class="mini-chip ${m.amountMode==='total'?'active':''}" onclick="state.modal.amountMode='total';renderModal()">Es el total</button>
+              <button class="mini-chip ${m.amountMode==='each'?'active':''}" onclick="state.modal.amountMode='each';renderModal()">Es cada cuota</button>
+            </div>
+          </div>
+          <div id="mLiveSum" style="background:var(--fn-accent-soft);border:1px solid var(--familion-accent);border-radius:10px;padding:8px 10px;font-size:11.5px;" class="num">
+            <strong>${m.cuotas} cuotas de $${Math.round(perM).toLocaleString('es-AR')}/mes</strong> · Total $${Math.round(tot).toLocaleString('es-AR')}
+          </div>
+        ` : ''}
+      ` : ''}
+
+      <button class="btn-primary" onclick="saveModal()">Guardar ${m.type==='expense'?(m.attributedTo!=='Tomás'?'para '+m.attributedTo:'gasto'):'ingreso'}</button>
+    `;
+  }
+
+  function syncModalLive() {
+    const el = document.getElementById('mLiveSum');
+    if (!el) return;
+    const m = state.modal;
+    const raw = parseFloat(m.amount) || 0;
+    const perM = m.amountMode === 'total' ? raw / m.cuotas : raw;
+    const tot = m.amountMode === 'total' ? raw : raw * m.cuotas;
+    el.innerHTML = `<strong>${m.cuotas} cuotas de $${Math.round(perM).toLocaleString('es-AR')}/mes</strong> · Total $${Math.round(tot).toLocaleString('es-AR')}`;
+  }
+
+  function saveModal() {
+    const m = state.modal;
+    const raw = parseFloat(m.amount) || 0;
+    if (!raw) { showToast('Ingresá un monto'); return; }
+    const val = (m.type==='expense' && m.cuotas>1 && m.amountMode==='total') ? Math.round(raw / m.cuotas) : Math.round(raw);
+    const id = Date.now();
+    state.txs.unshift({
+      id,
+      title: m.name.trim() || m.category,
+      category: m.category,
+      amount: m.type==='expense' ? -val : val,
+      date: 'Ahora',
+      account: m.cuotas>1 ? `Visa · 1/${m.cuotas}` : 'Mercado Pago',
+      paidBy: 'Tomás',
+      attributedTo: m.attributedTo
+    });
+    state.newestId = id;
+    if (m.attributedTo !== 'Tomás') state.scope = 'family';
+    state.tab = 'home';
+    state.modal = { type:'expense', amount:'', name:'', category:'Súper', attributedTo:'Tomás', cuotas:1, amountMode:'total', hasInterest:false, more:false };
+    closeModal(); render();
+    showToast('Movimiento guardado');
+  }
+
+  function render() {
+    renderHeaderControls();
+    if (state.tab === 'home') renderHome();
+    if (state.tab === 'plan') renderPlan();
+    if (state.tab === 'vehicles') renderVehicles();
+    if (state.tab === 'profile') renderProfile();
+  }
+
+  function setTheme(t) {
+    state.theme = t;
+    document.getElementById('desktopSurface').setAttribute('data-theme', t);
+    document.getElementById('btnLight').classList.toggle('active', t === 'light');
+    document.getElementById('btnDark').classList.toggle('active', t === 'dark');
+    applyAccent(); render();
+  }
+  function setAccent(id) { state.accentId = id; applyAccent(); render(); }
+  function setScope(s) { state.scope = s; state.selectedSlice = null; render(); }
+  function setTab(t) { state.tab = t; closeCurrMenu(); render(); }
+  function setGran(g) { state.gran = g; render(); }
+  function setChartMode(m) { state.chartMode = m; state.selectedSlice = null; render(); }
+  function selectSlice(i) { state.selectedSlice = state.selectedSlice === i ? null : i; render(); }
+  function toggleFixed(id) { const f = state.fixed.find(x => x.id === id); if (f) f.paid = !f.paid; render(); }
+  function toggleCurrMenu(e) { e.stopPropagation(); document.getElementById('currMenu').classList.toggle('open'); }
+  function closeCurrMenu() { document.getElementById('currMenu').classList.remove('open'); }
+  function setCurrency(c) { state.currency = c; closeCurrMenu(); render(); }
+  function toggleIpc(e) { e.stopPropagation(); state.realIpc = !state.realIpc; render(); }
+  function openModal() { renderModal(); document.getElementById('modalBackdrop').classList.add('open'); setTimeout(()=>document.getElementById('mAmount')?.focus(), 120); }
+  function closeModal() { document.getElementById('modalBackdrop').classList.remove('open'); }
+  function flickLogo() { const l = document.getElementById('deskLogo'); l.classList.add('off'); setTimeout(()=>l.classList.remove('off'), 260); }
+
+  let tt = null;
+  function showToast(msg) {
+    const el = document.getElementById('toastEl');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(tt); tt = setTimeout(()=>el.classList.remove('show'), 2200);
+  }
+
+  document.addEventListener('click', closeCurrMenu);
+  document.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'n' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) openModal();
+    if (e.key === 'Escape') closeModal();
+  });
+
+  applyAccent();
+  render();
+</script>
+</body>
+</html>

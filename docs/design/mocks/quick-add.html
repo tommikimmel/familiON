@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FamiliON — Carga Rápida Ultra-Sencilla (v4)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+    background: var(--background, #f8fafc);
+    color: var(--foreground, #0f172a);
+    line-height: 1.45;
+    padding: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .num { font-variant-numeric: tabular-nums; }
+
+  .workbench {
+    max-width: 1060px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, #0f172a);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 14px;
+  }
+  .topbar-title h1 { font-size: 15.5px; font-weight: 700; letter-spacing: -0.02em; }
+  .topbar-title p { font-size: 12px; color: var(--muted-foreground, #64748b); margin-top: 2px; }
+
+  .topbar-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .accent-picker-bar {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+    background: var(--secondary, #f1f5f9); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #64748b);
+  }
+  .accent-dot {
+    width: 17px; height: 17px; border-radius: 999px; border: 2px solid transparent; cursor: pointer;
+  }
+  .accent-dot.active { box-shadow: 0 0 0 2px var(--card, #fff), 0 0 0 3.5px currentColor; }
+
+  .ctrl-pill {
+    display: inline-flex; background: var(--secondary, #f1f5f9); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px; padding: 3px; gap: 2px;
+  }
+  .ctrl-pill button {
+    border: none; background: transparent; color: var(--muted-foreground, #64748b);
+    font-family: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 7px; cursor: pointer;
+  }
+  .ctrl-pill button.active {
+    background: var(--card, #ffffff); color: var(--foreground, #0f172a); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+
+  .layout-grid {
+    display: grid;
+    grid-template-columns: 386px 1fr;
+    gap: 22px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout-grid { grid-template-columns: 1fr; justify-items: center; }
+    .spec-col { width: 100%; }
+  }
+
+  /* Scoped Theme */
+  .fn-surface[data-theme="light"] {
+    --fn-bg: #fafafa;
+    --fn-card: #ffffff;
+    --fn-card-alt: #f3f4f6;
+    --fn-border: #e5e7eb;
+    --fn-text: #111827;
+    --fn-text-2: #4b5563;
+    --fn-muted: #6b7280;
+    --fn-overlay: rgba(17, 24, 39, 0.36);
+    --fn-nav-bg: rgba(255, 255, 255, 0.96);
+  }
+  .fn-surface[data-theme="dark"] {
+    --fn-bg: #0c0e12;
+    --fn-card: #14181f;
+    --fn-card-alt: #1c222b;
+    --fn-border: #252d39;
+    --fn-text: #f3f4f6;
+    --fn-text-2: #cbd5e1;
+    --fn-muted: #8b95a5;
+    --fn-overlay: rgba(0, 0, 0, 0.62);
+    --fn-nav-bg: rgba(20, 24, 31, 0.96);
+  }
+  .fn-surface {
+    --familion-accent: #0f766e;
+    --familion-accent-fg: #ffffff;
+    --fn-accent-soft: rgba(15, 118, 110, 0.12);
+  }
+
+  /* Phone */
+  .phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .phone-bezel {
+    width: 374px; max-width: 100%; border-radius: 42px; padding: 10px;
+    background: #14171c; box-shadow: 0 20px 44px rgba(0, 0, 0, 0.22);
+  }
+  .phone-screen {
+    position: relative; height: 736px; border-radius: 32px; overflow: hidden;
+    background: var(--fn-bg); color: var(--fn-text); display: flex; flex-direction: column;
+  }
+  .status-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 22px 6px; font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .notch { width: 78px; height: 18px; background: #090b0e; border-radius: 11px; }
+
+  /* Background Home Screen (behind sheet) */
+  .m-header {
+    padding: 4px 16px 8px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .currency-pill {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px;
+    border-radius: 999px; border: 1px solid var(--fn-border); background: var(--fn-card);
+    color: var(--fn-text); font-size: 11px; font-weight: 700; cursor: pointer;
+  }
+  .flag-svg { width: 15px; height: 10px; border-radius: 2px; display: block; }
+
+  .m-body {
+    flex: 1; padding: 4px 16px 88px; display: flex; flex-direction: column; gap: 10px;
+    overflow-y: auto; scrollbar-width: none;
+  }
+  .m-body::-webkit-scrollbar { display: none; }
+
+  .fn-card {
+    background: var(--fn-card); border: 1px solid var(--fn-border); border-radius: 15px; padding: 13px;
+  }
+  .tx-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    background: var(--fn-card); border: 1px solid var(--fn-border); border-radius: 14px;
+  }
+  .tx-icon {
+    width: 32px; height: 32px; border-radius: 10px; background: var(--fn-card-alt);
+    color: var(--fn-text-2); display: grid; place-items: center; flex-shrink: 0;
+  }
+  .tx-body { flex: 1; min-width: 0; }
+  .tx-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 10.5px; color: var(--fn-muted); }
+  .tx-amt { font-size: 12.5px; font-weight: 700; }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 66px;
+    background: var(--fn-nav-bg); border-top: 1px solid var(--fn-border);
+    display: grid; grid-template-columns: 1fr 1fr 72px 1fr 1fr; align-items: center; padding: 0 6px 5px;
+  }
+  .nav-item {
+    color: var(--fn-muted); font-size: 9.5px; font-weight: 600;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .nav-item.active { color: var(--familion-accent); }
+  .fab-btn {
+    width: 56px; height: 56px; margin: 0 auto; border-radius: 999px;
+    border: 4px solid var(--fn-bg); background: var(--familion-accent); color: var(--familion-accent-fg);
+    display: grid; place-items: center; transform: translateY(-14px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.22); cursor: pointer;
+  }
+
+  /* ===== ULTRA-FAST QUICK ADD SHEET ===== */
+  .sheet-backdrop {
+    position: absolute; inset: 0; background: var(--fn-overlay);
+    display: none; align-items: flex-end; z-index: 30;
+  }
+  .sheet-backdrop.open { display: flex; }
+
+  .qa-sheet {
+    width: 100%;
+    background: var(--fn-card);
+    border-top-left-radius: 26px;
+    border-top-right-radius: 26px;
+    border-top: 1px solid var(--fn-border);
+    padding: 10px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 92%;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .qa-sheet::-webkit-scrollbar { display: none; }
+
+  .sheet-handle { width: 34px; height: 4px; border-radius: 999px; background: var(--fn-border); margin: 0 auto; }
+
+  /* Row 1: Gasto | Ingreso + subtle secondary camera icon */
+  .qa-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .type-switch {
+    display: inline-flex; background: var(--fn-card-alt); border: 1px solid var(--fn-border);
+    border-radius: 999px; padding: 3px; gap: 2px;
+  }
+  .type-switch button {
+    border: none; background: transparent; color: var(--fn-muted);
+    font-family: inherit; font-size: 12px; font-weight: 600; padding: 5px 14px;
+    border-radius: 999px; cursor: pointer; transition: all 0.14s ease;
+  }
+  .type-switch button.active {
+    background: var(--fn-card); color: var(--fn-text); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+
+  .qa-top-actions { display: flex; align-items: center; gap: 6px; }
+  .subtle-icon-btn {
+    width: 32px; height: 32px; border-radius: 999px; border: 1px solid var(--fn-border);
+    background: transparent; color: var(--fn-muted); display: grid; place-items: center;
+    cursor: pointer; transition: all 0.14s ease;
+  }
+  .subtle-icon-btn:hover { color: var(--fn-text); border-color: var(--fn-text-2); }
+
+  /* Row 2: Clean Hero Amount Input */
+  .qa-amount-area {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 8px 4px 4px;
+  }
+  .qa-amount-display {
+    font-size: 36px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+    color: var(--fn-text); min-width: 90px; text-align: center;
+  }
+  .qa-amount-display.empty { color: var(--fn-muted); opacity: 0.45; }
+
+  /* Row 3: Name input + quick category pills */
+  .qa-name-input {
+    width: 100%; border: 1px solid var(--fn-border); background: var(--fn-bg);
+    color: var(--fn-text); font-family: inherit; font-size: 13px;
+    padding: 10px 12px; border-radius: 12px; outline: none;
+  }
+  .qa-name-input:focus { border-color: var(--familion-accent); }
+  .qa-name-input::placeholder { color: var(--fn-muted); }
+
+  .cat-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  }
+  .cat-pill {
+    border: 1px solid var(--fn-border); background: var(--fn-bg); color: var(--fn-text-2);
+    font-family: inherit; font-size: 11.5px; font-weight: 600;
+    padding: 8px 6px; border-radius: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    transition: all 0.12s ease;
+  }
+  .cat-pill.active {
+    background: var(--fn-accent-soft); border-color: var(--familion-accent); color: var(--familion-accent);
+  }
+
+  /* Collapsible More Options */
+  .more-toggle {
+    border: none; background: transparent; color: var(--fn-muted);
+    font-family: inherit; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    cursor: pointer; padding: 2px 0; align-self: center;
+  }
+  .more-toggle:hover { color: var(--fn-text); }
+
+  .more-panel {
+    display: none; flex-direction: column; gap: 8px;
+    padding: 10px; border-radius: 12px; background: var(--fn-bg); border: 1px solid var(--fn-border);
+  }
+  .more-panel.open { display: flex; }
+  .more-row {
+    display: flex; align-items: center; justify-content: space-between; font-size: 11.5px;
+  }
+  .more-chips { display: inline-flex; gap: 4px; }
+  .mini-chip {
+    border: 1px solid var(--fn-border); background: var(--fn-card); color: var(--fn-text-2);
+    font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 7px; cursor: pointer;
+  }
+  .mini-chip.active { background: var(--fn-accent-soft); border-color: var(--familion-accent); color: var(--familion-accent); }
+
+  /* Compact Numeric Keypad */
+  .keypad {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  }
+  .key-btn {
+    border: none; background: var(--fn-card-alt); color: var(--fn-text);
+    font-family: inherit; font-size: 16px; font-weight: 600; height: 40px;
+    border-radius: 11px; cursor: pointer; display: grid; place-items: center;
+    transition: opacity 0.1s ease, transform 0.08s ease;
+  }
+  .key-btn:active { transform: scale(0.96); opacity: 0.75; }
+
+  .save-btn {
+    width: 100%; border: none; background: var(--familion-accent); color: var(--familion-accent-fg);
+    font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 13px;
+    border-radius: 14px; cursor: pointer; transition: opacity 0.15s ease;
+  }
+  .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Secondary OCR Mini-Toast / Overlay */
+  .ocr-mini {
+    display: none; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+    padding: 16px 12px; border-radius: 14px; background: var(--fn-bg); border: 1px dashed var(--fn-border);
+  }
+  .ocr-mini.open { display: flex; }
+
+  /* Toast feedback on save */
+  .toast {
+    position: absolute; top: 52px; left: 50%; transform: translateX(-50%) translateY(-10px);
+    background: var(--fn-text); color: var(--fn-bg); font-size: 11.5px; font-weight: 600;
+    padding: 7px 14px; border-radius: 999px; opacity: 0; pointer-events: none;
+    transition: all 0.2s ease; z-index: 50; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .phone-hint { font-size: 11.5px; color: var(--muted-foreground, #64748b); text-align: center; }
+
+  /* ===== RIGHT COLUMN: UX FLOW BREAKDOWN ===== */
+  .spec-col { display: flex; flex-direction: column; gap: 12px; }
+  .spec-card {
+    background: var(--card, #ffffff); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 14px; overflow: hidden;
+  }
+  .spec-head {
+    padding: 10px 14px; border-bottom: 1px solid var(--border, #e2e8f0);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .spec-head strong { font-size: 12.5px; font-weight: 700; }
+  .spec-head span { font-size: 10.5px; color: var(--muted-foreground, #64748b); }
+  .spec-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; color: var(--muted-foreground, #64748b); }
+
+  .steps-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  @media (max-width: 560px) { .steps-row { grid-template-columns: 1fr; } }
+  .step-box {
+    background: var(--fn-bg); color: var(--fn-text); border: 1px solid var(--fn-border);
+    border-radius: 12px; padding: 11px;
+  }
+  .step-num {
+    display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 999px;
+    background: var(--familion-accent); color: var(--familion-accent-fg);
+    font-size: 10.5px; font-weight: 700; margin-bottom: 6px;
+  }
+  .step-box strong { display: block; font-size: 12px; margin-bottom: 2px; }
+  .step-box p { font-size: 11px; color: var(--fn-muted); }
+
+  .rule-list { list-style: none; display: flex; flex-direction: column; gap: 7px; }
+  .rule-list li { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--foreground, #0f172a); }
+  .rule-dot {
+    width: 6px; height: 6px; border-radius: 999px; background: var(--familion-accent, #0f766e);
+    margin-top: 6px; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+  <div class="workbench">
+    <!-- Top Controls -->
+    <div class="topbar">
+      <div class="topbar-title">
+        <h1>FamiliON — Carga Rápida en 3 Toques (v4)</h1>
+        <p>Probá cargar un gasto o ingreso real en el celular: tocá los números, elegí categoría (o escribí un nombre) y guardá.</p>
+      </div>
+      <div class="topbar-controls">
+        <div class="accent-picker-bar" id="accentBar"></div>
+        <div class="ctrl-pill">
+          <button id="btnLight" class="active" onclick="setTheme('light')">Claro</button>
+          <button id="btnDark" onclick="setTheme('dark')">Oscuro</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="layout-grid">
+      <!-- LEFT: INTERACTIVE PHONE WITH QUICK ADD OPEN -->
+      <div class="phone-wrap">
+        <div class="phone-bezel">
+          <div class="phone-screen fn-surface" id="phoneScreen" data-theme="light">
+            <div class="toast" id="toastMsg">Gasto guardado</div>
+
+            <div class="status-bar">
+              <span class="num">00:10</span>
+              <div class="notch"></div>
+              <span class="num">5G · 90%</span>
+            </div>
+
+            <!-- Background Home View -->
+            <div class="m-header">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 56" width="104" height="31">
+                <text x="104" y="40" text-anchor="end" style="font-family:'Inter',sans-serif;font-size:34px;font-weight:700;letter-spacing:-1.1px;fill:currentColor;">Famili</text>
+                <rect x="110" y="12" width="70" height="32" rx="16" fill="var(--familion-accent)" />
+                <circle cx="127" cy="28" r="4.5" fill="none" stroke="var(--familion-accent-fg)" stroke-width="2.2" />
+                <path d="M136.5 32.5V23.5L143.5 32.5V23.5" fill="none" stroke="var(--familion-accent-fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="164" cy="28" r="11.5" fill="var(--familion-accent-fg)" />
+              </svg>
+              <span class="currency-pill" id="homeCurrPill"></span>
+            </div>
+
+            <div class="m-body">
+              <div class="fn-card">
+                <div style="font-size:11px;color:var(--fn-muted);">Gastos de Noviembre</div>
+                <div class="num" style="font-size:25px;font-weight:700;letter-spacing:-0.03em;margin-top:2px;" id="homeTotal">$942.000</div>
+              </div>
+
+              <div style="font-size:12px;font-weight:700;margin-top:2px;">Movimientos recientes</div>
+              <div style="display:flex;flex-direction:column;gap:7px;" id="homeTxList"></div>
+            </div>
+
+            <!-- Bottom Nav -->
+            <nav class="bottom-nav">
+              <div class="nav-item active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Inicio</div>
+              <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Plan</div>
+              <button class="fab-btn" title="Abrir carga rápida" onclick="openSheet(true)">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 17H3v-5l2-5h10l3 5v5h-2"/></svg>Autos</div>
+              <div class="nav-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>Perfil</div>
+            </nav>
+
+            <!-- QUICK ADD SHEET (open by default so user sees & tests it immediately) -->
+            <div class="sheet-backdrop open" id="quickSheet" onclick="if(event.target===this) openSheet(false)">
+              <div class="qa-sheet">
+                <div class="sheet-handle"></div>
+
+                <!-- 1. Gasto / Ingreso + discreet secondary OCR camera icon -->
+                <div class="qa-top">
+                  <div class="type-switch">
+                    <button id="btnTypeExp" class="active" onclick="setMoveType('expense')">Gasto</button>
+                    <button id="btnTypeInc" onclick="setMoveType('income')">Ingreso</button>
+                  </div>
+                  <div class="qa-top-actions">
+                    <button class="subtle-icon-btn" id="btnOcrToggle" title="Escanear ticket (secundario)" onclick="toggleOcr()">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                    </button>
+                    <button class="subtle-icon-btn" title="Cerrar" onclick="openSheet(false)">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Secondary OCR view (hidden unless camera icon tapped) -->
+                <div class="ocr-mini" id="ocrBox">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color:var(--familion-accent);"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                  <div style="font-size:12px;font-weight:600;">Escanear ticket (opcional)</div>
+                  <div style="font-size:11px;color:var(--fn-muted);">Saca una foto y pre-completa monto y comercio automáticamente.</div>
+                  <div style="display:flex;gap:8px;margin-top:2px;">
+                    <button class="mini-chip active" onclick="simulateOcr()">Simular ticket</button>
+                    <button class="mini-chip" onclick="toggleOcr()">Volver a carga manual</button>
+                  </div>
+                </div>
+
+                <!-- Manual Fast Entry Core -->
+                <div id="manualCore" style="display:flex;flex-direction:column;gap:11px;">
+                  <!-- 2. Amount + compact flag currency chip -->
+                  <div class="qa-amount-area">
+                    <button class="currency-pill" id="qaCurrBtn" onclick="cycleCurrency()" title="Cambiar divisa"></button>
+                    <div class="qa-amount-display num" id="amountDisplay">$0</div>
+                  </div>
+
+                  <!-- 3. Name OR Category -->
+                  <input class="qa-name-input" id="nameInput" type="text" placeholder="Nombre opcional (ej. Café, Coto...)" oninput="syncSaveState()" />
+
+                  <div class="cat-grid" id="catGrid"></div>
+
+                  <!-- Optional collapsed extras -->
+                  <button class="more-toggle" onclick="toggleMore()">
+                    <span id="moreLabel">Más opciones (cuenta, cuotas, fecha)</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+
+                  <div class="more-panel" id="morePanel">
+                    <div class="more-row">
+                      <span style="color:var(--fn-muted);">Cuenta</span>
+                      <div class="more-chips">
+                        <button class="mini-chip active" onclick="pickMini(this,'account','Mercado Pago')">Mercado Pago</button>
+                        <button class="mini-chip" onclick="pickMini(this,'account','Visa')">Visa</button>
+                        <button class="mini-chip" onclick="pickMini(this,'account','Efectivo')">Efectivo</button>
+                      </div>
+                    </div>
+                    <div class="more-row" id="installmentRow">
+                      <span style="color:var(--fn-muted);">Cuotas</span>
+                      <div class="more-chips">
+                        <button class="mini-chip active" onclick="pickMini(this,'cuotas','1 pago')">1 pago</button>
+                        <button class="mini-chip" onclick="pickMini(this,'cuotas','3 cuotas')">3</button>
+                        <button class="mini-chip" onclick="pickMini(this,'cuotas','6 cuotas')">6</button>
+                        <button class="mini-chip" onclick="pickMini(this,'cuotas','12 cuotas')">12</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Numeric Keypad -->
+                  <div class="keypad">
+                    <button class="key-btn num" onclick="pressKey('1')">1</button>
+                    <button class="key-btn num" onclick="pressKey('2')">2</button>
+                    <button class="key-btn num" onclick="pressKey('3')">3</button>
+                    <button class="key-btn num" onclick="pressKey('4')">4</button>
+                    <button class="key-btn num" onclick="pressKey('5')">5</button>
+                    <button class="key-btn num" onclick="pressKey('6')">6</button>
+                    <button class="key-btn num" onclick="pressKey('7')">7</button>
+                    <button class="key-btn num" onclick="pressKey('8')">8</button>
+                    <button class="key-btn num" onclick="pressKey('9')">9</button>
+                    <button class="key-btn num" onclick="pressKey('000')">000</button>
+                    <button class="key-btn num" onclick="pressKey('0')">0</button>
+                    <button class="key-btn" onclick="pressKey('back')" aria-label="Borrar">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+                    </button>
+                  </div>
+
+                  <!-- 4. Single clear CTA -->
+                  <button class="save-btn" id="saveBtn" disabled onclick="saveMovement()">Guardar gasto</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-hint">Probá teclear un monto (ej. <code>12500</code>), elegir una categoría y tocar <strong>Guardar</strong>.</div>
+      </div>
+
+      <!-- RIGHT: UX ARCHITECTURE OF QUICK ADD -->
+      <div class="spec-col">
+        <div class="spec-card">
+          <div class="spec-head">
+            <strong>Flujo en 3 Toques (&lt; 5 segundos)</strong>
+            <span>Foco total en velocidad</span>
+          </div>
+          <div class="spec-body">
+            <div class="steps-row fn-surface" data-theme="light">
+              <div class="step-box">
+                <span class="step-num">1</span>
+                <strong>Monto</strong>
+                <p>El foco cae directo en el número grande. Incluye tecla <code>000</code> muy útil para pesos argentinos y chip de bandera para cambiar divisa en 1 toque.</p>
+              </div>
+              <div class="step-box">
+                <span class="step-num">2</span>
+                <strong>Categoría o Nombre</strong>
+                <p>Elegís una categoría de las 6 frecuentes o escribís un nombre libre (no te obliga a llenar los dos).</p>
+              </div>
+              <div class="step-box">
+                <span class="step-num">3</span>
+                <strong>Guardar</strong>
+                <p>Un botón grande y listo. Fecha = hoy, cuenta = tu cuenta habitual y snapshot económico automático en segundo plano.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="spec-card">
+          <div class="spec-head">
+            <strong>Qué quedó en segundo plano (y por qué)</strong>
+            <span>Sin fricción diaria</span>
+          </div>
+          <div class="spec-body fn-surface" data-theme="light" style="background:var(--card,#fff);">
+            <ul class="rule-list">
+              <li><span class="rule-dot"></span><span><strong>Escaneo de ticket (OCR):</strong> reducido a un ícono discreto de cámara arriba a la derecha. Nunca bloquea ni compite con la carga manual rápida.</span></li>
+              <li><span class="rule-dot"></span><span><strong>Cuotas, cuenta y fecha:</strong> ocultos por defecto dentro de <em>"Más opciones"</em>. Solo los abrís cuando pagás con tarjeta en cuotas o querés cambiar la cuenta habitual.</span></li>
+              <li><span class="rule-dot"></span><span><strong>Divisas y Nafta (litros/odómetro):</strong> salen del popup diario de gastos/ingresos y viven en sus secciones (<em>Plan</em> y <em>Autos</em>) para que el botón <code>+</code> sea siempre instantáneo.</span></li>
+              <li><span class="rule-dot"></span><span><strong>Tecla <code>000</code>:</strong> en Argentina casi cualquier gasto termina en miles; ahorrar 3 toques por carga hace que registrar un café o súper sea inmediato.</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const ACCENTS = [
+    { id: 'teal',   name: 'Esmeralda', light: '#0f766e', dark: '#2dd4bf', darkFg: '#042f2e' },
+    { id: 'blue',   name: 'Azul',      light: '#2563eb', dark: '#60a5fa', darkFg: '#0b1930' },
+    { id: 'indigo', name: 'Índigo',    light: '#4f46e5', dark: '#818cf8', darkFg: '#131135' },
+    { id: 'violet', name: 'Violeta',   light: '#7c3aed', dark: '#a78bfa', darkFg: '#1e1038' },
+    { id: 'amber',  name: 'Ámbar',     light: '#b45309', dark: '#fbbf24', darkFg: '#271704' },
+    { id: 'slate',  name: 'Grafito',   light: '#334155', dark: '#cbd5e1', darkFg: '#0f172a' }
+  ];
+
+  const FLAGS = {
+    ARS: `<svg class="flag-svg" viewBox="0 0 18 12"><rect width="18" height="4" fill="#74ACDF"/><rect y="4" width="18" height="4" fill="#FFFFFF"/><rect y="8" width="18" height="4" fill="#74ACDF"/><circle cx="9" cy="6" r="1.35" fill="#F6B40E"/></svg>`,
+    USD: `<svg class="flag-svg" viewBox="0 0 18 12"><rect width="18" height="12" fill="#FFFFFF"/><rect y="0" width="18" height="1.7" fill="#B22234"/><rect y="3.4" width="18" height="1.7" fill="#B22234"/><rect y="6.8" width="18" height="1.7" fill="#B22234"/><rect y="10.2" width="18" height="1.8" fill="#B22234"/><rect width="8" height="6.8" fill="#3C3B6E"/></svg>`,
+    EUR: `<svg class="flag-svg" viewBox="0 0 18 12"><rect width="18" height="12" fill="#003399"/><circle cx="9" cy="6" r="3.4" fill="none" stroke="#FFCC00" stroke-width="1.1" stroke-dasharray="0.9 1.75"/></svg>`
+  };
+
+  const CATS = {
+    expense: ['Súper', 'Comida', 'Auto', 'Casa', 'Salidas', 'Otros'],
+    income:  ['Sueldo', 'Extra', 'Ventas', 'Alquiler', 'Reintegro', 'Otros']
+  };
+
+  const state = {
+    theme: 'light',
+    accentId: 'teal',
+    moveType: 'expense',
+    currency: 'ARS',
+    digits: '12500',
+    category: 'Súper',
+    moreOpen: false,
+    ocrOpen: false,
+    account: 'Mercado Pago',
+    cuotas: '1 pago',
+    totalExpense: 942000,
+    txs: [
+      { title: 'YPF Nafta Súper', meta: 'Hoy · Auto · Mercado Pago', amount: -45600, curr: 'ARS' },
+      { title: 'Almuerzo oficina', meta: 'Hoy · Comida · Mercado Pago', amount: -11800, curr: 'ARS' },
+      { title: 'Zapatillas', meta: 'Ayer · 3 cuotas · Visa', amount: -32500, curr: 'ARS' }
+    ]
+  };
+
+  function hexToRgba(hex, a) {
+    const h = hex.replace('#', '');
+    return `rgba(${parseInt(h.slice(0,2),16)}, ${parseInt(h.slice(2,4),16)}, ${parseInt(h.slice(4,6),16)}, ${a})`;
+  }
+
+  function applyAccent() {
+    const acc = ACCENTS.find(a => a.id === state.accentId) || ACCENTS[0];
+    const main = state.theme === 'dark' ? acc.dark : acc.light;
+    const fg = state.theme === 'dark' ? acc.darkFg : '#ffffff';
+    document.querySelectorAll('.fn-surface').forEach(el => {
+      el.style.setProperty('--familion-accent', main);
+      el.style.setProperty('--familion-accent-fg', fg);
+      el.style.setProperty('--fn-accent-soft', hexToRgba(main, state.theme === 'dark' ? 0.16 : 0.11));
+    });
+    document.getElementById('accentBar').innerHTML = '<span>Color:</span>' + ACCENTS.map(a => {
+      const col = state.theme === 'dark' ? a.dark : a.light;
+      return `<button class="accent-dot ${state.accentId===a.id?'active':''}" style="background:${col};color:${col};" title="${a.name}" onclick="setAccent('${a.id}')"></button>`;
+    }).join('');
+  }
+
+  function currPrefix(code) {
+    return code === 'USD' ? 'US$ ' : (code === 'EUR' ? '€ ' : '$');
+  }
+
+  function renderHome() {
+    document.getElementById('homeCurrPill').innerHTML = `${FLAGS.ARS} ARS`;
+    document.getElementById('homeTotal').textContent = '$' + state.totalExpense.toLocaleString('es-AR');
+    document.getElementById('homeTxList').innerHTML = state.txs.slice(0, 6).map(t => `
+      <div class="tx-row">
+        <div class="tx-icon" style="${t.amount > 0 ? 'background:var(--fn-accent-soft);color:var(--familion-accent);' : ''}">
+          ${t.amount > 0
+            ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>'
+            : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>'
+          }
+        </div>
+        <div class="tx-body">
+          <div class="tx-title">${t.title}</div>
+          <div class="tx-meta">${t.meta}</div>
+        </div>
+        <div class="tx-amt num" style="${t.amount > 0 ? 'color:var(--familion-accent);' : ''}">
+          ${t.amount > 0 ? '+' : '-'}${currPrefix(t.curr)}${Math.abs(t.amount).toLocaleString('es-AR')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderSheet() {
+    document.getElementById('btnTypeExp').classList.toggle('active', state.moveType === 'expense');
+    document.getElementById('btnTypeInc').classList.toggle('active', state.moveType === 'income');
+
+    document.getElementById('qaCurrBtn').innerHTML = `${FLAGS[state.currency]} ${state.currency}`;
+
+    const val = parseInt(state.digits || '0', 10);
+    const disp = document.getElementById('amountDisplay');
+    disp.textContent = currPrefix(state.currency) + val.toLocaleString('es-AR');
+    disp.classList.toggle('empty', val === 0);
+
+    const cats = CATS[state.moveType];
+    document.getElementById('catGrid').innerHTML = cats.map(c => `
+      <button class="cat-pill ${state.category === c ? 'active' : ''}" onclick="selectCat('${c}')">${c}</button>
+    `).join('');
+
+    document.getElementById('installmentRow').style.display = state.moveType === 'expense' ? 'flex' : 'none';
+    document.getElementById('morePanel').classList.toggle('open', state.moreOpen);
+    document.getElementById('moreLabel').textContent = state.moreOpen
+      ? 'Ocultar opciones'
+      : `Más opciones (${state.account}${state.moveType==='expense' && state.cuotas!=='1 pago' ? ' · ' + state.cuotas : ''})`;
+
+    document.getElementById('ocrBox').classList.toggle('open', state.ocrOpen);
+    document.getElementById('manualCore').style.display = state.ocrOpen ? 'none' : 'flex';
+
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.textContent = state.moveType === 'expense' ? 'Guardar gasto' : 'Guardar ingreso';
+    syncSaveState();
+  }
+
+  function syncSaveState() {
+    const val = parseInt(state.digits || '0', 10);
+    const name = document.getElementById('nameInput').value.trim();
+    document.getElementById('saveBtn').disabled = !(val > 0 && (state.category || name.length > 0));
+  }
+
+  function pressKey(k) {
+    if (k === 'back') {
+      state.digits = state.digits.slice(0, -1);
+    } else if (state.digits.length < 9) {
+      if (state.digits === '' && (k === '0' || k === '000')) return;
+      state.digits = (state.digits + k).slice(0, 9);
+    }
+    renderSheet();
+  }
+
+  function selectCat(c) {
+    state.category = (state.category === c) ? null : c;
+    renderSheet();
+  }
+
+  function setMoveType(t) {
+    state.moveType = t;
+    state.category = CATS[t][0];
+    state.ocrOpen = false;
+    renderSheet();
+  }
+
+  function cycleCurrency() {
+    const order = ['ARS', 'USD', 'EUR'];
+    state.currency = order[(order.indexOf(state.currency) + 1) % order.length];
+    renderSheet();
+  }
+
+  function toggleMore() { state.moreOpen = !state.moreOpen; renderSheet(); }
+  function toggleOcr() { state.ocrOpen = !state.ocrOpen; renderSheet(); }
+
+  function simulateOcr() {
+    state.ocrOpen = false;
+    state.moveType = 'expense';
+    state.currency = 'ARS';
+    state.digits = '34800';
+    state.category = 'Súper';
+    document.getElementById('nameInput').value = 'Supermercado Día';
+    renderSheet();
+    showToast('Ticket leído: $34.800');
+  }
+
+  function pickMini(btn, field, val) {
+    state[field] = val;
+    btn.parentElement.querySelectorAll('.mini-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderSheet();
+  }
+
+  function saveMovement() {
+    const val = parseInt(state.digits || '0', 10);
+    if (!val) return;
+    const customName = document.getElementById('nameInput').value.trim();
+    const title = customName || state.category || (state.moveType === 'expense' ? 'Gasto' : 'Ingreso');
+    const signed = state.moveType === 'expense' ? -val : val;
+    const metaParts = ['Ahora'];
+    if (state.category) metaParts.push(state.category);
+    metaParts.push(state.account);
+    if (state.moveType === 'expense' && state.cuotas !== '1 pago') metaParts.push(state.cuotas);
+
+    state.txs.unshift({ title, meta: metaParts.join(' · '), amount: signed, curr: state.currency });
+    if (state.moveType === 'expense' && state.currency === 'ARS') state.totalExpense += val;
+
+    state.digits = '';
+    document.getElementById('nameInput').value = '';
+    state.moreOpen = false;
+    openSheet(false);
+    renderHome();
+    showToast(state.moveType === 'expense' ? 'Gasto guardado' : 'Ingreso guardado');
+  }
+
+  function openSheet(open) {
+    document.getElementById('quickSheet').classList.toggle('open', open);
+    if (open) { state.ocrOpen = false; renderSheet(); }
+  }
+
+  function showToast(msg) {
+    const el = document.getElementById('toastMsg');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1800);
+  }
+
+  function setTheme(t) {
+    state.theme = t;
+    document.querySelectorAll('.fn-surface').forEach(el => el.setAttribute('data-theme', t));
+    document.getElementById('btnLight').classList.toggle('active', t === 'light');
+    document.getElementById('btnDark').classList.toggle('active', t === 'dark');
+    applyAccent();
+  }
+  function setAccent(id) { state.accentId = id; applyAccent(); }
+
+  applyAccent();
+  renderHome();
+  renderSheet();
+</script>
+</body>
+</html>

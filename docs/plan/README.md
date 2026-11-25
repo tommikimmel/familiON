@@ -114,6 +114,16 @@ Objetivo: monorepo que levanta con `docker compose up`, con CI verde, BFF y plat
 
 > `v1.0.0` = Fase 0–5 estables en uso diario por la familia. Fase 6 puede entrar como `v1.1.0` si se prioriza estabilidad.
 
+### Fase 7 — Fidelidad visual con los mocks (→ `v0.7.0`)
+Referencia: [`docs/design/`](../design/README.md).
+
+| Ola | Tarea | Capa | Rama | Resumen |
+|---|---|---|---|---|
+| 7.1 | [T42](./tareas/T42-frontend-design-foundation.md) | FE | `style/frontend-design-foundation` | Tokens, tipografía, shell mobile/desktop, UI kit y herramienta de comparación mock vs app. |
+| 7.2 | [T43](./tareas/T43-frontend-home-quickadd-visual.md) | FE | `style/frontend-home-quickadd` | Inicio y carga rápida idénticos a los mocks. |
+| 7.2 | [T44](./tareas/T44-frontend-plan-vehicles-visual.md) | FE | `style/frontend-plan-vehicles` | Plan y Autos idénticos a los mocks. |
+| 7.2 | [T45](./tareas/T45-frontend-profile-rest-visual.md) | FE | `style/frontend-profile-and-rest` | Perfil idéntico; resto de pantallas con el lenguaje de los mocks. |
+
 ---
 
 ## 3. Mapa de dependencias entre olas
