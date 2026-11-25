@@ -51,7 +51,7 @@
   color: var(--fo-text);
 }
 
-/* Collapsed rail: labels stay visually hidden as accessible names. */
+/* Collapsed rail: labels stay as sr-only names. */
 .fo-app-shell.is-collapsed {
   grid-template-columns: 64px minmax(0, 1fr);
 }
