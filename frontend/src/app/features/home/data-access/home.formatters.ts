@@ -1,5 +1,6 @@
 import { Lens } from '../../../core/state/view-context.store';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
+import { DonutSlice } from '../../../shared/ui/donut-chart/donut-chart.component';
 import { toNumber } from '../../../shared/utils/decimal';
 import { Decimal, IndexValue, TransactionType } from './home.models';
 
@@ -50,6 +51,20 @@ export function formatMoneyValue(
   unit: string,
 ): string {
   return moneyPipe.transform(value, unit);
+}
+
+const WHOLE_MONEY_PREFIXES: Record<string, string> = { ARS: '$', USD: 'US$', EUR: '€' };
+
+/** Mock money style: currency prefix glued to a whole amount (`$1.426.000`, `-$45.600`). */
+export function formatWholeMoney(value: string | number | null | undefined, unit: string): string {
+  const prefix = WHOLE_MONEY_PREFIXES[unit.trim().toUpperCase()];
+  if (!prefix) {
+    return moneyPipe.transform(value, unit);
+  }
+  const num = typeof value === 'number' ? value : toNumber(value);
+  const safe = Number.isFinite(num) ? Math.round(num) : 0;
+  const sign = safe < 0 ? '-' : '';
+  return `${sign}${prefix}${integerFormatter.format(Math.abs(safe))}`;
 }
 
 export function formatPercentValue(value: Decimal | number | null | undefined): string {
@@ -177,4 +192,41 @@ export function formatSignedTransactionAmount(
     return `-${formatted}`;
   }
   return formatted;
+}
+
+const MAX_DONUT_SLICES = 5;
+
+/** Sorts slices by value and groups everything past the fourth into a single `Otros` slice. */
+export function capDonutSlices(slices: readonly DonutSlice[]): DonutSlice[] {
+  const sorted = [...slices].sort((a, b) => b.value - a.value);
+  if (sorted.length <= MAX_DONUT_SLICES) {
+    return sorted;
+  }
+  const kept = sorted.slice(0, MAX_DONUT_SLICES - 1);
+  const rest = sorted.slice(MAX_DONUT_SLICES - 1).reduce((sum, s) => sum + s.value, 0);
+  return [...kept, { id: 'others', label: 'Otros', value: rest }];
+}
+
+/** `Hoy` / `Ayer` for recent dates (mock `tx-meta`), short date otherwise. */
+export function formatRelativeIsoDate(isoDate: string, now: Date = new Date()): string {
+  const parts = isoDate.split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
+    return isoDate;
+  }
+  const day = Date.UTC(parts[0], parts[1] - 1, parts[2]);
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((today - day) / 86_400_000);
+  if (diffDays === 0) {
+    return 'Hoy';
+  }
+  if (diffDays === 1) {
+    return 'Ayer';
+  }
+  return formatShortIsoDate(isoDate);
+}
+
+/** Two-letter badge used by the mock transaction icon (`Tomás` → `TO`). */
+export function initialsOf(fullName: string): string {
+  const first = fullName.trim().split(/\s+/)[0] ?? '';
+  return first.length > 0 ? first.slice(0, 2).toUpperCase() : '?';
 }
