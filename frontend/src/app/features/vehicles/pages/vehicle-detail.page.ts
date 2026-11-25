@@ -74,13 +74,13 @@ import { parseProblemError } from '../utils/problem-errors';
                 · {{ fuelLabel[vehicle.primaryFuelType] }}
               </p>
             </div>
-          } @else if (store.loading()) {
-            <div class="space-y-1.5">
-              <fo-skeleton width="180px" height="24px" />
-              <fo-skeleton width="240px" height="14px" />
-            </div>
           } @else {
-            <h1 class="text-xl font-bold tracking-tight text-text">Detalle del vehículo</h1>
+            <div class="min-w-0 space-y-1">
+              <h1 class="text-xl font-bold tracking-tight text-text">Detalle del vehículo</h1>
+              @if (store.loading()) {
+                <fo-skeleton width="220px" height="14px" />
+              }
+            </div>
           }
         </div>
 

@@ -36,14 +36,12 @@ import { parseProblemError } from '../utils/problem-errors';
         </button>
 
         <div class="min-w-0 flex-1">
-          <h1 class="truncate text-xl font-bold tracking-tight text-text">
-            {{ isEditMode() ? 'Editar vehículo' : 'Nuevo vehículo' }}
-          </h1>
+          <h1 class="truncate text-xl font-bold tracking-tight text-text">Vehículo</h1>
           <p class="text-xs text-muted">
             {{
               isEditMode()
-                ? 'Actualizá los datos, vencimientos u odómetro del vehículo.'
-                : 'Completá los datos del auto para seguir consumo y mantenimiento.'
+                ? 'Editar vehículo · Actualizá los datos, vencimientos u odómetro.'
+                : 'Nuevo vehículo · Completá los datos del auto para seguir consumo y mantenimiento.'
             }}
           </p>
         </div>
