@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FamiliON — Mockup Mobile con Animaciones y Micro-Interacciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+    background: var(--background, #f8fafc);
+    color: var(--foreground, #0f172a);
+    line-height: 1.45;
+    padding: 18px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .num { font-variant-numeric: tabular-nums; }
+
+  .stage {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* Outer Workbench Bar */
+  .outer-bar {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    background: var(--card, #ffffff);
+    color: var(--card-foreground, #0f172a);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 14px;
+  }
+  .outer-bar-info strong { font-size: 14px; display: block; letter-spacing: -0.01em; }
+  .outer-bar-info span { font-size: 11.5px; color: var(--muted-foreground, #64748b); }
+  .outer-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .accent-bar {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+    background: var(--secondary, #f1f5f9); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground, #64748b);
+  }
+  .accent-dot {
+    width: 17px; height: 17px; border-radius: 999px; border: 2px solid transparent; cursor: pointer;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .accent-dot:hover { transform: scale(1.18); }
+  .accent-dot.active { box-shadow: 0 0 0 2px var(--card, #fff), 0 0 0 3.5px currentColor; transform: scale(1.06); }
+
+  .ctrl-pill {
+    display: inline-flex; background: var(--secondary, #f1f5f9); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 10px; padding: 3px; gap: 2px;
+  }
+  .ctrl-pill button {
+    border: none; background: transparent; color: var(--muted-foreground, #64748b);
+    font-family: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 7px; cursor: pointer;
+    transition: all 0.16s ease;
+  }
+  .ctrl-pill button.active {
+    background: var(--card, #ffffff); color: var(--foreground, #0f172a); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  }
+
+  .splash-btn {
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--card, #ffffff);
+    color: var(--foreground, #0f172a);
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.15s ease;
+  }
+  .splash-btn:active { transform: scale(0.95); }
+
+  .main-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 394px 1fr;
+    gap: 22px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .main-grid { grid-template-columns: 1fr; justify-items: center; }
+    .motion-col { width: 100%; }
+  }
+
+  /* ===== PHONE SHELL ===== */
+  .phone-bezel {
+    width: 386px; max-width: 100%; border-radius: 44px; padding: 10px;
+    background: linear-gradient(145deg, #1b2028, #0f1217);
+    box-shadow: 0 28px 60px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255,255,255,0.09) inset;
+  }
+
+  .fn-surface[data-theme="light"] {
+    --fn-bg: #f8f9fb;
+    --fn-card: #ffffff;
+    --fn-card-alt: #f1f3f6;
+    --fn-border: #e5e7eb;
+    --fn-text: #111827;
+    --fn-text-2: #4b5563;
+    --fn-muted: #6b7280;
+    --fn-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    --fn-nav-bg: rgba(255, 255, 255, 0.86);
+    --fn-overlay: rgba(15, 23, 42, 0.38);
+    --fn-off-track: #d1d5db;
+    --fn-slice-4: #9ca3af;
+    --fn-slice-5: #d1d5db;
+  }
+  .fn-surface[data-theme="dark"] {
+    --fn-bg: #0b0d11;
+    --fn-card: #13171e;
+    --fn-card-alt: #1b212b;
+    --fn-border: #242c38;
+    --fn-text: #f3f4f6;
+    --fn-text-2: #cbd5e1;
+    --fn-muted: #8b95a5;
+    --fn-shadow: 0 4px 14px rgba(0, 0, 0, 0.32);
+    --fn-nav-bg: rgba(19, 23, 30, 0.86);
+    --fn-overlay: rgba(0, 0, 0, 0.62);
+    --fn-off-track: #334155;
+    --fn-slice-4: #64748b;
+    --fn-slice-5: #334155;
+  }
+  .fn-surface {
+    --familion-accent: #0f766e;
+    --familion-accent-fg: #ffffff;
+    --fn-accent-soft: rgba(15, 118, 110, 0.11);
+    --fn-accent-glow: rgba(15, 118, 110, 0.22);
+    --fn-accent-mid: rgba(15, 118, 110, 0.56);
+    --fn-accent-light: rgba(15, 118, 110, 0.28);
+    --ease-spring: cubic-bezier(0.34, 1.35, 0.64, 1);
+    --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .phone-screen {
+    position: relative; height: 764px; border-radius: 34px; overflow: hidden;
+    background: var(--fn-bg); color: var(--fn-text); display: flex; flex-direction: column;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+
+  /* ===== SPLASH OVERLAY (Logo ON Turn-On Animation) ===== */
+  .splash-overlay {
+    position: absolute; inset: 0; z-index: 80;
+    background: var(--fn-bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.42s var(--ease-smooth);
+  }
+  .splash-overlay.active { opacity: 1; pointer-events: auto; }
+  .splash-sub {
+    font-size: 12px; color: var(--fn-muted); font-weight: 500;
+    opacity: 0; transform: translateY(6px);
+    transition: all 0.35s var(--ease-smooth) 0.25s;
+  }
+  .splash-overlay.lit .splash-sub { opacity: 1; transform: translateY(0); }
+
+  /* Animated SVG Logo Toggle */
+  .logo-anim .toggle-track { transition: fill 0.34s var(--ease-smooth); }
+  .logo-anim .toggle-knob { transition: transform 0.38s var(--ease-spring); }
+  .logo-anim .toggle-on-text { transition: opacity 0.25s ease 0.08s; }
+  .logo-anim.off .toggle-track { fill: var(--fn-off-track); }
+  .logo-anim.off .toggle-knob { transform: translateX(-38px); }
+  .logo-anim.off .toggle-on-text { opacity: 0; }
+
+  .status-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 22px 6px; font-size: 11.5px; font-weight: 600; flex-shrink: 0;
+  }
+  .notch { width: 82px; height: 19px; background: #090b0e; border-radius: 12px; }
+
+  /* Dynamic-Island Style Animated Toast */
+  .toast {
+    position: absolute; top: 44px; left: 50%;
+    transform: translateX(-50%) translateY(-16px) scale(0.9);
+    background: var(--fn-text); color: var(--fn-bg);
+    font-size: 11.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 6px;
+    opacity: 0; pointer-events: none; z-index: 70; white-space: nowrap;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+    transition: opacity 0.22s ease, transform 0.34s var(--ease-spring);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  .toast-check {
+    stroke-dasharray: 24; stroke-dashoffset: 24;
+    transition: stroke-dashoffset 0.35s var(--ease-smooth) 0.1s;
+  }
+  .toast.show .toast-check { stroke-dashoffset: 0; }
+
+  /* Header */
+  .app-header {
+    padding: 4px 16px 8px; display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0; position: relative; z-index: 20;
+  }
+  .currency-wrap { position: relative; }
+  .currency-pill {
+    display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 999px;
+    border: 1px solid var(--fn-border); background: var(--fn-card); color: var(--fn-text);
+    font-family: inherit; font-size: 11px; font-weight: 700; cursor: pointer;
+    box-shadow: var(--fn-shadow);
+    transition: transform 0.14s var(--ease-spring), border-color 0.18s ease;
+  }
+  .currency-pill:active { transform: scale(0.94); }
+  .currency-pill:hover { border-color: var(--familion-accent); }
+  .currency-pill .chev { transition: transform 0.22s var(--ease-smooth); }
+  .currency-pill.open .chev { transform: rotate(180deg); }
+  .flag-svg { width: 16px; height: 11px; border-radius: 2px; display: block; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.14); }
+
+  .currency-dropdown {
+    position: absolute; top: calc(100% + 6px); right: 0; width: 196px;
+    background: var(--fn-card); border: 1px solid var(--fn-border); border-radius: 14px;
+    padding: 6px; box-shadow: 0 16px 36px rgba(0,0,0,0.18); z-index: 40;
+    display: flex; flex-direction: column; gap: 2px;
+    opacity: 0; transform: translateY(-6px) scale(0.96); pointer-events: none;
+    transform-origin: top right;
+    transition: opacity 0.18s ease, transform 0.24s var(--ease-spring);
+  }
+  .currency-dropdown.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .curr-opt {
+    border: none; background: transparent; color: var(--fn-text); font-family: inherit;
+    font-size: 11.5px; font-weight: 600; padding: 7px 8px; border-radius: 9px;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    transition: background 0.14s ease;
+  }
+  .curr-opt:hover { background: var(--fn-card-alt); }
+  .curr-opt.active { background: var(--fn-accent-soft); color: var(--familion-accent); }
+  .curr-divider { height: 1px; background: var(--fn-border); margin: 4px 2px; }
+  .ipc-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px; font-size: 11px; color: var(--fn-text-2); cursor: pointer; border-radius: 8px;
+  }
+  .mini-switch {
+    width: 28px; height: 16px; border-radius: 999px; background: var(--fn-border);
+    position: relative; transition: background 0.22s ease; flex-shrink: 0;
+  }
+  .mini-switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px;
+    border-radius: 999px; background: #ffffff;
+    transition: transform 0.26s var(--ease-spring);
+  }
+  .mini-switch.on { background: var(--familion-accent); }
+  .mini-switch.on::after { transform: translateX(12px); }
+
+  /* Scroll Body */
+  .screen-scroll {
+    flex: 1; overflow-y: auto; padding: 2px 16px 96px;
+    display: flex; flex-direction: column; gap: 11px; scrollbar-width: none;
+  }
+  .screen-scroll::-webkit-scrollbar { display: none; }
+
+  /* Staggered Entrance Animation */
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .anim-in {
+    animation: fadeSlideUp 0.34s var(--ease-smooth) backwards;
+  }
+  .stagger-1 { animation-delay: 0.02s; }
+  .stagger-2 { animation-delay: 0.06s; }
+  .stagger-3 { animation-delay: 0.10s; }
+  .stagger-4 { animation-delay: 0.14s; }
+
+  @keyframes newTxHighlight {
+    0%   { background: var(--fn-accent-soft); border-color: var(--familion-accent); transform: translateY(-6px) scale(0.98); opacity: 0; }
+    35%  { background: var(--fn-accent-soft); border-color: var(--familion-accent); transform: translateY(0) scale(1); opacity: 1; }
+    100% { background: var(--fn-card); border-color: var(--fn-border); }
+  }
+  .tx-new { animation: newTxHighlight 1.35s var(--ease-smooth) forwards; }
+
+  /* Sliding Pill Control (Personal | Familia) */
+  .scope-bar {
+    position: relative; display: grid; grid-template-columns: 1fr 1fr;
+    background: var(--fn-card-alt); border: 1px solid var(--fn-border);
+    border-radius: 12px; padding: 3px;
+  }
+  .scope-slider {
+    position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px);
+    border-radius: 9px; background: var(--fn-card);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: transform 0.32s var(--ease-spring), background 0.25s ease;
+    pointer-events: none;
+  }
+  .scope-bar.is-family .scope-slider {
+    transform: translateX(100%);
+    background: var(--familion-accent);
+  }
+  .scope-bar button {
+    position: relative; z-index: 1; border: none; background: transparent;
+    color: var(--fn-muted); font-family: inherit; font-size: 11.5px; font-weight: 600;
+    padding: 6px; border-radius: 9px; cursor: pointer;
+    transition: color 0.2s ease;
+  }
+  .scope-bar button.active { color: var(--fn-text); }
+  .scope-bar.is-family button.active { color: var(--familion-accent-fg); }
+
+  /* Granularity */
+  .gran-row { display: flex; align-items: center; justify-content: space-between; }
+  .gran-tabs { display: inline-flex; gap: 2px; }
+  .gran-tabs button {
+    border: none; background: transparent; color: var(--fn-muted); font-family: inherit;
+    font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 7px; cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .gran-tabs button.active { background: var(--fn-accent-soft); color: var(--familion-accent); }
+  .period-label { font-size: 11px; color: var(--fn-muted); font-weight: 500; }
+
+  /* Cards with subtle Ambient Glow on Hero */
+  .fn-card {
+    position: relative; overflow: hidden;
+    background: var(--fn-card); border: 1px solid var(--fn-border);
+    border-radius: 16px; padding: 14px; box-shadow: var(--fn-shadow);
+    transition: transform 0.18s var(--ease-smooth), border-color 0.2s ease, background 0.25s ease;
+  }
+  .hero-card::before {
+    content: '';
+    position: absolute; top: -48px; right: -42px; width: 160px; height: 160px;
+    border-radius: 999px;
+    background: radial-gradient(circle, var(--fn-accent-glow) 0%, transparent 72%);
+    pointer-events: none;
+    transition: background 0.35s ease;
+  }
+
+  .hero-label { font-size: 11px; color: var(--fn-muted); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .hero-amount { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; margin-top: 2px; line-height: 1.12; }
+  .pill-tag {
+    display: inline-flex; align-items: center; font-size: 10px; font-weight: 600;
+    padding: 2px 7px; border-radius: 999px; background: var(--fn-card-alt); color: var(--fn-text-2);
+  }
+  .pill-accent { background: var(--fn-accent-soft); color: var(--familion-accent); }
+
+  .progress-track { height: 5px; border-radius: 999px; background: var(--fn-card-alt); overflow: hidden; margin-top: 10px; }
+  .progress-fill {
+    height: 100%; border-radius: 999px; background: var(--familion-accent);
+    transition: width 0.55s var(--ease-smooth), background 0.25s ease;
+  }
+
+  .hero-metrics {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--fn-border);
+  }
+  .mini-stat-label { font-size: 10.5px; color: var(--fn-muted); }
+  .mini-stat-val { font-size: 13.5px; font-weight: 700; margin-top: 1px; }
+
+  /* Donut Chart with Smooth Slice Transitions */
+  .donut-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .mini-seg {
+    position: relative; display: grid; grid-template-columns: 1fr 1fr;
+    background: var(--fn-card-alt); border-radius: 8px; padding: 2px;
+  }
+  .mini-seg-slider {
+    position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px);
+    border-radius: 6px; background: var(--fn-card); box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    transition: transform 0.28s var(--ease-spring);
+  }
+  .mini-seg.is-right .mini-seg-slider { transform: translateX(100%); }
+  .mini-seg button {
+    position: relative; z-index: 1; border: none; background: transparent; color: var(--fn-muted);
+    font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 3px 9px; cursor: pointer;
+    transition: color 0.18s ease;
+  }
+  .mini-seg button.active { color: var(--fn-text); }
+
+  .donut-body { display: grid; grid-template-columns: 124px 1fr; gap: 12px; align-items: center; }
+  .donut-wrap { position: relative; width: 124px; height: 124px; display: grid; place-items: center; }
+  .donut-svg { width: 124px; height: 124px; transform: rotate(-90deg); overflow: visible; }
+  .donut-slice {
+    fill: none; stroke-width: 15; cursor: pointer;
+    transition: stroke-dasharray 0.52s var(--ease-smooth), stroke-dashoffset 0.52s var(--ease-smooth),
+                opacity 0.2s ease, stroke-width 0.24s var(--ease-spring), filter 0.24s ease;
+  }
+  .donut-slice.dim { opacity: 0.28; }
+  .donut-slice.focused { stroke-width: 19; filter: drop-shadow(0 0 6px var(--fn-accent-glow)); }
+  .donut-center {
+    position: absolute; text-align: center; pointer-events: none; padding: 0 6px;
+    transition: transform 0.22s var(--ease-spring);
+  }
+  .donut-center-k { font-size: 9.5px; color: var(--fn-muted); font-weight: 600; max-width: 78px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .donut-center-v { font-size: 13px; font-weight: 700; margin-top: 1px; }
+  .donut-center-p { font-size: 10px; color: var(--familion-accent); font-weight: 700; }
+
+  .donut-legend { display: flex; flex-direction: column; gap: 4px; }
+  .legend-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 4px 6px; border-radius: 8px; cursor: pointer; font-size: 11px;
+    transition: background 0.15s ease, transform 0.15s var(--ease-spring);
+  }
+  .legend-row:hover { background: var(--fn-card-alt); }
+  .legend-row.active { background: var(--fn-accent-soft); transform: translateX(3px); }
+  .legend-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; }
+  .legend-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fn-text-2); font-weight: 500; }
+  .legend-val { font-weight: 700; color: var(--fn-text); flex-shrink: 0; }
+
+  /* Lists & Interactive Rows */
+  .sec-head { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }
+  .sec-title { font-size: 12px; font-weight: 700; }
+  .sec-link { font-size: 11px; font-weight: 600; color: var(--familion-accent); background: none; border: none; cursor: pointer; font-family: inherit; }
+
+  .tx-list { display: flex; flex-direction: column; gap: 7px; }
+  .tx-row {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    background: var(--fn-card); border: 1px solid var(--fn-border); border-radius: 14px;
+    transition: transform 0.16s var(--ease-spring), border-color 0.18s ease, background 0.2s ease;
+  }
+  .tx-row:hover { border-color: var(--familion-accent); transform: translateY(-1px); }
+  .tx-icon {
+    width: 32px; height: 32px; border-radius: 10px; background: var(--fn-card-alt);
+    color: var(--fn-text-2); display: grid; place-items: center; flex-shrink: 0; font-size: 11px; font-weight: 700;
+  }
+  .tx-body { flex: 1; min-width: 0; }
+  .tx-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tx-meta { font-size: 10.5px; color: var(--fn-muted); margin-top: 1px; }
+  .tx-amt { font-size: 12.5px; font-weight: 700; }
+  .tx-amt-sub { font-size: 10px; color: var(--fn-muted); margin-top: 1px; }
+
+  .check-circle {
+    width: 22px; height: 22px; border-radius: 7px; border: 1.5px solid var(--fn-border);
+    background: transparent; color: var(--familion-accent-fg); display: grid; place-items: center;
+    cursor: pointer; flex-shrink: 0;
+    transition: all 0.22s var(--ease-spring);
+  }
+  .check-circle:active { transform: scale(0.84); }
+  .check-circle.done { background: var(--familion-accent); border-color: var(--familion-accent); }
+
+  .veh-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .veh-stat-box { background: var(--fn-card-alt); border-radius: 11px; padding: 8px; text-align: center; }
+  .veh-stat-v { font-size: 13px; font-weight: 700; }
+  .veh-stat-k { font-size: 9.5px; color: var(--fn-muted); margin-top: 2px; }
+  .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn-primary {
+    border: none; background: var(--familion-accent); color: var(--familion-accent-fg);
+    font-family: inherit; font-size: 12px; font-weight: 600; padding: 10px 12px; border-radius: 12px; cursor: pointer;
+    transition: transform 0.14s var(--ease-spring), filter 0.15s ease;
+  }
+  .btn-primary:active { transform: scale(0.96); }
+  .btn-soft {
+    border: 1px solid var(--fn-border); background: var(--fn-card); color: var(--fn-text);
+    font-family: inherit; font-size: 12px; font-weight: 600; padding: 10px 12px; border-radius: 12px; cursor: pointer;
+    transition: transform 0.14s var(--ease-spring), border-color 0.15s ease;
+  }
+  .btn-soft:active { transform: scale(0.96); }
+
+  .vis-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 8px; }
+  .vis-btn {
+    border: 1px solid var(--fn-border); background: var(--fn-card-alt); color: var(--fn-muted);
+    font-family: inherit; font-size: 10px; font-weight: 600; padding: 6px 4px; border-radius: 8px; cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .vis-btn.active { background: var(--fn-accent-soft); border-color: var(--familion-accent); color: var(--familion-accent); }
+  .avatar-circle {
+    width: 36px; height: 36px; border-radius: 999px; background: var(--familion-accent);
+    color: var(--familion-accent-fg); font-size: 12px; font-weight: 700; display: grid; place-items: center; flex-shrink: 0;
+  }
+
+  /* ===== BOTTOM NAV + SPRING FAB ===== */
+  .bottom-nav {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 68px;
+    background: var(--fn-nav-bg); backdrop-filter: blur(14px);
+    border-top: 1px solid var(--fn-border);
+    display: grid; grid-template-columns: 1fr 1fr 74px 1fr 1fr; align-items: center; padding: 0 6px 6px;
+    z-index: 30;
+  }
+  .nav-item {
+    border: none; background: transparent; color: var(--fn-muted); font-family: inherit;
+    font-size: 10px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    cursor: pointer; padding: 6px 2px;
+    transition: color 0.18s ease, transform 0.2s var(--ease-spring);
+  }
+  .nav-item:active { transform: scale(0.9); }
+  .nav-item.active { color: var(--familion-accent); }
+  .nav-item.active svg { transform: translateY(-1px); transition: transform 0.22s var(--ease-spring); }
+
+  .fab-slot { display: flex; justify-content: center; align-items: center; height: 100%; }
+  .fab-btn {
+    width: 56px; height: 56px; border-radius: 999px; border: 4px solid var(--fn-bg);
+    background: var(--familion-accent); color: var(--familion-accent-fg);
+    display: grid; place-items: center; cursor: pointer; transform: translateY(-14px);
+    box-shadow: 0 10px 24px var(--fn-accent-glow), 0 4px 10px rgba(0, 0, 0, 0.16);
+    transition: transform 0.28s var(--ease-spring), box-shadow 0.25s ease, background 0.25s ease;
+  }
+  .fab-btn svg { transition: transform 0.28s var(--ease-spring); }
+  .fab-btn:hover { transform: translateY(-17px) scale(1.05); }
+  .fab-btn:active { transform: translateY(-13px) scale(0.92); }
+  .fab-btn.rotated svg { transform: rotate(45deg); }
+
+  /* ===== SMOOTH ANIMATED BOTTOM SHEET ===== */
+  .sheet-backdrop {
+    position: absolute; inset: 0; z-index: 50;
+    background: var(--fn-overlay);
+    backdrop-filter: blur(0px);
+    display: flex; align-items: flex-end;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.24s ease, backdrop-filter 0.28s ease;
+  }
+  .sheet-backdrop.open {
+    opacity: 1; pointer-events: auto; backdrop-filter: blur(5px);
+  }
+  .sheet {
+    width: 100%; max-height: 92%; overflow-y: auto; scrollbar-width: none;
+    background: var(--fn-card); border-top-left-radius: 26px; border-top-right-radius: 26px;
+    border-top: 1px solid var(--fn-border); padding: 10px 16px 16px;
+    display: flex; flex-direction: column; gap: 11px;
+    transform: translateY(100%);
+    transition: transform 0.36s var(--ease-smooth);
+  }
+  .sheet-backdrop.open .sheet { transform: translateY(0); }
+  .sheet::-webkit-scrollbar { display: none; }
+  .sheet-handle { width: 34px; height: 4px; border-radius: 999px; background: var(--fn-border); margin: 0 auto; }
+
+  .qa-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .type-switch {
+    display: inline-flex; background: var(--fn-card-alt); border: 1px solid var(--fn-border);
+    border-radius: 999px; padding: 3px; gap: 2px;
+  }
+  .type-switch button {
+    border: none; background: transparent; color: var(--fn-muted); font-family: inherit;
+    font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 999px; cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .type-switch button.active { background: var(--fn-card); color: var(--fn-text); box-shadow: var(--fn-shadow); }
+
+  .subtle-icon-btn {
+    width: 31px; height: 31px; border-radius: 999px; border: 1px solid var(--fn-border);
+    background: transparent; color: var(--fn-muted); display: grid; place-items: center; cursor: pointer;
+    transition: transform 0.14s var(--ease-spring), color 0.15s ease;
+  }
+  .subtle-icon-btn:active { transform: scale(0.88); }
+
+  .qa-amount-area { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 0; }
+  .qa-amount-display {
+    font-size: 34px; font-weight: 700; letter-spacing: -0.03em; min-width: 84px; text-align: center;
+    transition: transform 0.12s var(--ease-spring);
+  }
+  .qa-amount-display.bump { transform: scale(1.06); }
+  .qa-amount-display.empty { color: var(--fn-muted); opacity: 0.45; }
+
+  .qa-input {
+    width: 100%; border: 1px solid var(--fn-border); background: var(--fn-bg); color: var(--fn-text);
+    font-family: inherit; font-size: 13px; padding: 9px 12px; border-radius: 12px; outline: none;
+    transition: border-color 0.18s ease;
+  }
+  .qa-input:focus { border-color: var(--familion-accent); }
+  .qa-input::placeholder { color: var(--fn-muted); }
+
+  .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .cat-pill {
+    border: 1px solid var(--fn-border); background: var(--fn-bg); color: var(--fn-text-2);
+    font-family: inherit; font-size: 11.5px; font-weight: 600; padding: 7px 6px; border-radius: 10px; cursor: pointer;
+    transition: all 0.16s var(--ease-spring);
+  }
+  .cat-pill:active { transform: scale(0.94); }
+  .cat-pill.active { background: var(--fn-accent-soft); border-color: var(--familion-accent); color: var(--familion-accent); }
+
+  .more-toggle {
+    border: none; background: transparent; color: var(--fn-muted); font-family: inherit;
+    font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; align-self: center;
+  }
+  .more-panel {
+    display: none; flex-direction: column; gap: 9px; padding: 10px;
+    border-radius: 13px; background: var(--fn-bg); border: 1px solid var(--fn-border);
+    animation: fadeSlideUp 0.22s var(--ease-smooth);
+  }
+  .more-panel.open { display: flex; }
+  .more-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; }
+  .more-chips { display: inline-flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .mini-chip {
+    border: 1px solid var(--fn-border); background: var(--fn-card); color: var(--fn-text-2);
+    font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 4px 8px; border-radius: 7px; cursor: pointer;
+    transition: all 0.14s ease;
+  }
+  .mini-chip.active { background: var(--fn-accent-soft); border-color: var(--familion-accent); color: var(--familion-accent); }
+  .live-summary {
+    background: var(--fn-accent-soft); border: 1px solid var(--familion-accent);
+    border-radius: 10px; padding: 8px 10px; font-size: 11px;
+  }
+  .live-summary strong { font-size: 12px; display: block; color: var(--fn-text); }
+
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .key-btn {
+    border: none; background: var(--fn-card-alt); color: var(--fn-text); font-family: inherit;
+    font-size: 15.5px; font-weight: 600; height: 38px; border-radius: 10px; cursor: pointer; display: grid; place-items: center;
+    transition: transform 0.1s var(--ease-spring), background 0.12s ease;
+  }
+  .key-btn:active { transform: scale(0.92); background: var(--fn-accent-soft); color: var(--familion-accent); }
+
+  .save-btn {
+    width: 100%; border: none; background: var(--familion-accent); color: var(--familion-accent-fg);
+    font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 12px; border-radius: 13px; cursor: pointer;
+    transition: transform 0.15s var(--ease-spring), opacity 0.18s ease;
+  }
+  .save-btn:active:not(:disabled) { transform: scale(0.97); }
+  .save-btn:disabled { opacity: 0.38; cursor: not-allowed; }
+
+  /* ===== RIGHT COLUMN: MOTION SPEC ===== */
+  .motion-col { display: flex; flex-direction: column; gap: 12px; }
+  .m-card {
+    background: var(--card, #ffffff); border: 1px solid var(--border, #e2e8f0);
+    border-radius: 14px; overflow: hidden;
+  }
+  .m-head {
+    padding: 10px 14px; border-bottom: 1px solid var(--border, #e2e8f0);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .m-head strong { font-size: 12.5px; font-weight: 700; }
+  .m-head span { font-size: 10.5px; color: var(--muted-foreground, #64748b); }
+  .m-list { padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; }
+  .m-item { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; }
+  .m-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+    background: var(--secondary, #f1f5f9); color: var(--foreground, #0f172a);
+    white-space: nowrap; margin-top: 2px;
+  }
+  .m-item p { color: var(--muted-foreground, #64748b); font-size: 11.5px; margin-top: 1px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <!-- Top Bar -->
+    <div class="outer-bar">
+      <div class="outer-bar-info">
+        <strong>FamiliON — Mockup con Animaciones y Micro-Interacciones</strong>
+        <span>Física spring sutil, números animados, deslizadores, bottom sheet con blur y splash de encendido del toggle ON.</span>
+      </div>
+      <div class="outer-controls">
+        <button class="splash-btn" onclick="playSplash()">▶ Ver Splash ON</button>
+        <div class="accent-bar" id="topAccentBar"></div>
+        <div class="ctrl-pill">
+          <button id="btnLight" class="active" onclick="setTheme('light')">Claro</button>
+          <button id="btnDark" onclick="setTheme('dark')">Oscuro</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <!-- PHONE -->
+      <div class="phone-bezel">
+        <div class="phone-screen fn-surface" id="phoneScreen" data-theme="light">
+          <!-- Splash Overlay -->
+          <div class="splash-overlay" id="splashOverlay">
+            <svg class="logo-anim off" id="splashLogo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 56" width="210" height="62">
+              <text x="104" y="40" text-anchor="end" style="font-family:'Inter',sans-serif;font-size:34px;font-weight:700;letter-spacing:-1.1px;fill:currentColor;">Famili</text>
+              <rect class="toggle-track" x="110" y="12" width="70" height="32" rx="16" fill="var(--familion-accent)" />
+              <g class="toggle-on-text">
+                <circle cx="127" cy="28" r="4.5" fill="none" stroke="var(--familion-accent-fg)" stroke-width="2.2" />
+                <path d="M136.5 32.5V23.5L143.5 32.5V23.5" fill="none" stroke="var(--familion-accent-fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              </g>
+              <circle class="toggle-knob" cx="164" cy="28" r="11.5" fill="var(--familion-accent-fg)" />
+            </svg>
+            <div class="splash-sub">Finanzas familiares claras</div>
+          </div>
+
+          <!-- Animated Toast -->
+          <div class="toast" id="toastMsg">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline class="toast-check" points="20 6 9 17 4 12" />
+            </svg>
+            <span id="toastText">Guardado</span>
+          </div>
+
+          <!-- Status Bar -->
+          <div class="status-bar">
+            <span class="num">00:32</span>
+            <div class="notch"></div>
+            <span class="num">5G · 92%</span>
+          </div>
+
+          <!-- Header -->
+          <header class="app-header">
+            <svg class="logo-anim" id="headerLogo" onclick="flickHeaderLogo()" style="cursor:pointer;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 190 56" width="110" height="32" role="img" aria-label="FamiliON">
+              <text x="104" y="40" text-anchor="end" style="font-family:'Inter',sans-serif;font-size:34px;font-weight:700;letter-spacing:-1.1px;fill:currentColor;">Famili</text>
+              <rect class="toggle-track" x="110" y="12" width="70" height="32" rx="16" fill="var(--familion-accent)" />
+              <g class="toggle-on-text">
+                <circle cx="127" cy="28" r="4.5" fill="none" stroke="var(--familion-accent-fg)" stroke-width="2.2" />
+                <path d="M136.5 32.5V23.5L143.5 32.5V23.5" fill="none" stroke="var(--familion-accent-fg)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              </g>
+              <circle class="toggle-knob" cx="164" cy="28" r="11.5" fill="var(--familion-accent-fg)" />
+            </svg>
+
+            <div class="currency-wrap">
+              <button class="currency-pill" id="currTrigger" onclick="toggleCurrMenu(event)">
+                <span id="currFlagMount"></span>
+                <span id="currCodeText">ARS</span>
+                <svg class="chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="currency-dropdown" id="currencyDropdown"></div>
+            </div>
+          </header>
+
+          <!-- Screen Body -->
+          <main class="screen-scroll" id="screenBody"></main>
+
+          <!-- Bottom Navigation -->
+          <nav class="bottom-nav">
+            <button class="nav-item active" data-tab="home" onclick="setTab('home')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              Inicio
+            </button>
+            <button class="nav-item" data-tab="plan" onclick="setTab('plan')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              Plan
+            </button>
+            <div class="fab-slot">
+              <button class="fab-btn" id="fabBtn" title="Carga rápida" onclick="toggleQuickSheet()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
+            <button class="nav-item" data-tab="vehicles" onclick="setTab('vehicles')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+              Autos
+            </button>
+            <button class="nav-item" data-tab="profile" onclick="setTab('profile')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Perfil
+            </button>
+          </nav>
+
+          <!-- Smooth Bottom Sheet -->
+          <div class="sheet-backdrop" id="sheetBackdrop" onclick="if(event.target===this) closeSheet()">
+            <div class="sheet" id="sheetMount"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MOTION GUIDE -->
+      <div class="motion-col">
+        <div class="m-card">
+          <div class="m-head">
+            <strong>Sistema de Animaciones (Motion Design)</strong>
+            <span>Fluido, nunca lento</span>
+          </div>
+          <div class="m-list">
+            <div class="m-item">
+              <span class="m-badge">Splash ON</span>
+              <div>
+                <strong>Encendido de marca FamiliON</strong>
+                <p>Al abrir la PWA (tocá <em>«▶ Ver Splash ON»</em> arriba o el logo en el header), el toggle pasa de OFF → ON con curva spring.</p>
+              </div>
+            </div>
+            <div class="m-item">
+              <span class="m-badge">Spring Pill</span>
+              <div>
+                <strong>Deslizadores físicos</strong>
+                <p>Las cápsulas de <em>Personal | Familia</em> y <em>Categorías | Personas</em> se deslizan con rebote suave en vez de saltar en seco.</p>
+              </div>
+            </div>
+            <div class="m-item">
+              <span class="m-badge">Count-Up</span>
+              <div>
+                <strong>Números interpolados en vivo</strong>
+                <p>Al cambiar de vista, divisa (`ARS`/`USD`/`EUR`) o período (`Día`/`Mes`/`Año`), el balance se anima suavemente en ~280ms.</p>
+              </div>
+            </div>
+            <div class="m-item">
+              <span class="m-badge">Donut Glow</span>
+              <div>
+                <strong>Torta reactiva con foco</strong>
+                <p>Las porciones se reacomodan suavemente al alternar Categorías/Personas y hacen <em>pop-out</em> con glow sutil al tocarlas.</p>
+              </div>
+            </div>
+            <div class="m-item">
+              <span class="m-badge">Sheet + Blur</span>
+              <div>
+                <strong>Carga rápida fluida + highlight</strong>
+                <p>El botón <code>+</code> rota 45° con rebote, el bottom sheet sube sobre fondo difuminado, el monto hace micro-bump al teclear y el gasto guardado entra iluminado en la lista.</p>
+              </div>
+            </div>
+            <div class="m-item">
+              <span class="m-badge">A11y</span>
+              <div>
+                <strong><code>prefers-reduced-motion</code></strong>
+                <p>Respeta automáticamente la configuración del celular de usuarios que desactivan animaciones.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const ACCENTS = [
+    { id: 'teal',   name: 'Esmeralda', light: '#0f766e', dark: '#2dd4bf', darkFg: '#042f2e' },
+    { id: 'blue',   name: 'Azul',      light: '#2563eb', dark: '#60a5fa', darkFg: '#0b1930' },
+    { id: 'indigo', name: 'Índigo',    light: '#4f46e5', dark: '#818cf8', darkFg: '#131135' },
+    { id: 'violet', name: 'Violeta',   light: '#7c3aed', dark: '#a78bfa', darkFg: '#1e1038' },
+    { id: 'amber',  name: 'Ámbar',     light: '#b45309', dark: '#fbbf24', darkFg: '#271704' },
+    { id: 'slate',  name: 'Grafito',   light: '#334155', dark: '#cbd5e1', darkFg: '#0f172a' }
+  ];
+
+  const FLAGS = {
+    ARS: `<svg class="flag-svg" viewBox="0 0 18 12"><rect width="18" height="4" fill="#74ACDF"/><rect y="4" width="18" height="4" fill="#FFFFFF"/><rect y="8" width="18" height="4" fill="#74ACDF"/><circle cx="9" cy="6" r="1.35" fill="#F6B40E"/></svg>`,
+    USD: `<svg class="flag-svg" viewBox="0 0 18 12"><rect width="18" height="12" fill="#FFFFFF"/><rect y="0" width="18" height="1.7" fill="#B22234"/><rect y="3.4" width="18" height="1.7" fill="#B22234"/><rect y="6.8" width="18" height="1.7" fill="#B22234"/><rect y="10.2" width="18" height="1.8" fill="#B22234"/><rect width="8" height="6.8" fill="#3C3B6E"/></svg>`,
+    EUR: `<svg class="flag-svg" viewBox="0 0 18 12"><rect width="18" height="12" fill="#003399"/><circle cx="9" cy="6" r="3.4" fill="none" stroke="#FFCC00" stroke-width="1.1" stroke-dasharray="0.9 1.75"/></svg>`
+  };
+
+  const CURRENCIES = {
+    ARS: { code: 'ARS', rate: 1, prefix: '$' },
+    USD: { code: 'USD', rate: 1210, prefix: 'US$ ' },
+    EUR: { code: 'EUR', rate: 1310, prefix: '€ ' }
+  };
+
+  const CATS = {
+    expense: ['Súper', 'Comida', 'Auto', 'Casa', 'Salidas', 'Otros'],
+    income:  ['Sueldo', 'Extra', 'Ventas', 'Alquiler', 'Reintegro', 'Otros']
+  };
+
+  const state = {
+    theme: 'light',
+    accentId: 'teal',
+    tab: 'home',
+    scope: 'personal',
+    currency: 'ARS',
+    realIpc: false,
+    gran: 'month',
+    chartMode: 'category',
+    selectedSlice: null,
+    childVis: 'summary',
+    sheetOpen: false,
+    lastBalanceVal: 0,
+    newestTxId: null,
+    qa: { type: 'expense', currency: 'ARS', digits: '', name: '', category: 'Súper', moreOpen: false, attributedTo: 'Tomás', account: 'Mercado Pago', cuotas: 1, amountMode: 'total', hasInterest: false },
+    incomes: { personal: 1850000, family: 3250000 },
+    fixedExpenses: [
+      { id: 'alq', name: 'Alquiler / Expensas', meta: 'Ajuste inflación · Día 10', amount: 520000, paid: true },
+      { id: 'pre', name: 'Prepaga Familiar', meta: 'Último pago · Día 15', amount: 245000, paid: true },
+      { id: 'luz', name: 'Luz + Internet', meta: 'Vence 26 Nov', amount: 68500, paid: false }
+    ],
+    txs: [
+      { id: 1, title: 'Supermercado Coto', category: 'Súper', amount: -310000, date: 'Hoy', attributedTo: 'Tomás', note: '' },
+      { id: 2, title: 'YPF Nafta Súper', category: 'Auto', amount: -45600, date: 'Hoy', attributedTo: 'Tomás', note: '38 L' },
+      { id: 3, title: 'Almuerzo y Cafés', category: 'Comida', amount: -68400, date: 'Ayer', attributedTo: 'Tomás', note: '' },
+      { id: 4, title: 'Salida con amigas', category: 'Salidas', amount: -20000, date: 'Ayer', attributedTo: 'Sofi', note: 'Pagado por Tomás' },
+      { id: 5, title: 'Alquiler / Expensas', category: 'Casa', amount: -520000, date: '10 Nov', attributedTo: 'Laura', note: 'Fijo' },
+      { id: 6, title: 'Supermercado Mensual', category: 'Súper', amount: -285000, date: '12 Nov', attributedTo: 'Laura', note: '' },
+      { id: 7, title: 'Librería / Salida', category: 'Salidas', amount: -30000, date: '16 Nov', attributedTo: 'Sofi', note: '' }
+    ]
+  };
+
+  const GRAN_MULT = { day: 0.08, week: 0.27, month: 1, year: 11.4 };
+  const GRAN_LABEL = { day: 'Hoy · 22 Nov', week: 'Sem 47 · Nov', month: 'Noviembre 2026', year: 'Año 2026' };
+
+  function hexToRgba(hex, a) {
+    const h = hex.replace('#', '');
+    return `rgba(${parseInt(h.slice(0,2),16)}, ${parseInt(h.slice(2,4),16)}, ${parseInt(h.slice(4,6),16)}, ${a})`;
+  }
+
+  function applyAccent() {
+    const acc = ACCENTS.find(a => a.id === state.accentId) || ACCENTS[0];
+    const main = state.theme === 'dark' ? acc.dark : acc.light;
+    const fg = state.theme === 'dark' ? acc.darkFg : '#ffffff';
+    document.querySelectorAll('.fn-surface').forEach(el => {
+      el.style.setProperty('--familion-accent', main);
+      el.style.setProperty('--familion-accent-fg', fg);
+      el.style.setProperty('--fn-accent-soft', hexToRgba(main, state.theme === 'dark' ? 0.16 : 0.11));
+      el.style.setProperty('--fn-accent-glow', hexToRgba(main, state.theme === 'dark' ? 0.28 : 0.20));
+      el.style.setProperty('--fn-accent-mid', hexToRgba(main, 0.56));
+      el.style.setProperty('--fn-accent-light', hexToRgba(main, 0.28));
+    });
+    document.getElementById('topAccentBar').innerHTML = '<span>Color:</span>' + ACCENTS.map(a => {
+      const col = state.theme === 'dark' ? a.dark : a.light;
+      return `<button class="accent-dot ${state.accentId===a.id?'active':''}" style="background:${col};color:${col};" title="${a.name}" onclick="setAccent('${a.id}')"></button>`;
+    }).join('');
+  }
+
+  function convertNum(arsVal) {
+    let abs = Math.abs(arsVal);
+    if (state.currency === 'ARS' && state.realIpc && state.gran === 'year') abs *= 1.18;
+    const v = abs / CURRENCIES[state.currency].rate;
+    return arsVal < 0 ? -v : v;
+  }
+
+  function formatConverted(val, showPlus = false) {
+    const sign = val < 0 ? '-' : (showPlus && val > 0 ? '+' : '');
+    const abs = Math.abs(val);
+    const c = CURRENCIES[state.currency];
+    const dec = state.currency === 'ARS' ? 0 : (abs < 100 ? 1 : 0);
+    return sign + c.prefix + abs.toLocaleString('es-AR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+
+  function fmt(arsVal, showPlus = false) { return formatConverted(convertNum(arsVal), showPlus); }
+
+  function fmtShort(arsVal) {
+    const v = Math.abs(convertNum(arsVal));
+    if (state.currency === 'ARS' && v >= 1000000) return '$' + (v / 1000000).toFixed(1).replace('.', ',') + 'M';
+    if (state.currency === 'ARS' && v >= 1000) return '$' + Math.round(v / 1000) + 'k';
+    return CURRENCIES[state.currency].prefix + Math.round(v).toLocaleString('es-AR');
+  }
+
+  function animateValue(el, fromVal, toVal, duration = 280) {
+    if (!el) return;
+    const start = performance.now();
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const ease = 1 - Math.pow(1 - t, 3);
+      const cur = fromVal + (toVal - fromVal) * ease;
+      el.textContent = formatConverted(cur);
+      if (t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function renderCurrencyHeader() {
+    document.getElementById('currFlagMount').innerHTML = FLAGS[state.currency];
+    document.getElementById('currCodeText').textContent = state.currency;
+    document.getElementById('currencyDropdown').innerHTML = Object.values(CURRENCIES).map(c => `
+      <button class="curr-opt ${state.currency===c.code?'active':''}" onclick="setCurrency('${c.code}')">
+        <span style="display:flex;align-items:center;gap:7px;">${FLAGS[c.code]} <span>${c.code}</span></span>
+        <span style="font-size:10px;color:var(--fn-muted);">${c.code==='ARS' ? 'Base' : '$' + c.rate}</span>
+      </button>
+    `).join('') + `
+      <div class="curr-divider"></div>
+      <div class="ipc-row" onclick="toggleIpc(event)">
+        <span>A plata de hoy</span>
+        <span class="mini-switch ${state.realIpc?'on':''}"></span>
+      </div>
+    `;
+  }
+
+  function computeAnalytics() {
+    const mult = GRAN_MULT[state.gran];
+    const scopedTxs = state.scope === 'family' ? state.txs : state.txs.filter(t => t.attributedTo === 'Tomás');
+    const expTxs = scopedTxs.filter(t => t.amount < 0);
+    const incExtra = scopedTxs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+    const totalExp = Math.round(expTxs.reduce((s, t) => s + Math.abs(t.amount), 0) * mult);
+    const totalInc = state.gran === 'day' ? 0 : Math.round((state.incomes[state.scope] + incExtra) * mult);
+
+    const catMap = {};
+    expTxs.forEach(t => { catMap[t.category] = (catMap[t.category] || 0) + Math.abs(t.amount) * mult; });
+    const byCategory = Object.entries(catMap).map(([name, amount]) => ({ name, amount: Math.round(amount) })).sort((a,b) => b.amount - a.amount).slice(0, 5);
+
+    const pMap = {};
+    state.txs.filter(t => t.amount < 0).forEach(t => { pMap[t.attributedTo] = (pMap[t.attributedTo] || 0) + Math.abs(t.amount) * mult; });
+    const byPerson = Object.entries(pMap).map(([name, amount]) => ({ name, amount: Math.round(amount) })).sort((a,b) => b.amount - a.amount);
+
+    return { scopedTxs, totalExp, totalInc, byCategory, byPerson };
+  }
+
+  function buildDonut(items) {
+    const total = items.reduce((s, x) => s + x.amount, 0) || 1;
+    const r = 46;
+    const C = 2 * Math.PI * r;
+    const colors = ['var(--familion-accent)', 'var(--fn-accent-mid)', 'var(--fn-accent-light)', 'var(--fn-slice-4)', 'var(--fn-slice-5)'];
+    let offset = 0;
+
+    const circles = items.map((item, i) => {
+      const frac = item.amount / total;
+      const len = Math.max(0, frac * C - (items.length > 1 ? 2.5 : 0));
+      const dOff = -offset;
+      offset += frac * C;
+      const focused = state.selectedSlice === i;
+      const dim = state.selectedSlice !== null && state.selectedSlice !== i;
+      return `<circle class="donut-slice ${focused?'focused':''} ${dim?'dim':''}" cx="62" cy="62" r="${r}"
+        stroke="${colors[i % colors.length]}" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}"
+        stroke-dashoffset="${dOff.toFixed(2)}" onclick="selectSlice(${i})" />`;
+    }).join('');
+
+    const active = (state.selectedSlice !== null && items[state.selectedSlice]) ? items[state.selectedSlice] : null;
+    return `
+      <div class="donut-body">
+        <div class="donut-wrap">
+          <svg class="donut-svg" viewBox="0 0 124 124">
+            <circle cx="62" cy="62" r="${r}" fill="none" stroke="var(--fn-card-alt)" stroke-width="15" />
+            ${circles}
+          </svg>
+          <div class="donut-center">
+            <div class="donut-center-k">${active ? active.name : (state.chartMode==='person'?'Familia':'Gastos')}</div>
+            <div class="donut-center-v num">${fmtShort(active ? active.amount : total)}</div>
+            <div class="donut-center-p num">${active ? Math.round((active.amount/total)*100)+'%' : '100%'}</div>
+          </div>
+        </div>
+        <div class="donut-legend">
+          ${items.map((item, i) => `
+            <div class="legend-row ${state.selectedSlice===i?'active':''}" onclick="selectSlice(${i})">
+              <div class="legend-left">
+                <span class="legend-dot" style="background:${colors[i % colors.length]}"></span>
+                <span class="legend-name">${item.name}</span>
+              </div>
+              <span class="legend-val num">${Math.round((item.amount/total)*100)}%</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderHome(animateEnter = false) {
+    const { scopedTxs, totalExp, totalInc, byCategory, byPerson } = computeAnalytics();
+    const net = totalInc - totalExp;
+    const heroTarget = convertNum(state.gran === 'day' ? -totalExp : net);
+    const ratio = totalInc > 0 ? Math.min(100, Math.round((totalExp / totalInc) * 100)) : 100;
+    const donutItems = state.chartMode === 'person' ? byPerson : byCategory;
+    const anim = animateEnter ? 'anim-in' : '';
+
+    document.getElementById('screenBody').innerHTML = `
+      <div class="scope-bar ${state.scope==='family'?'is-family':''}">
+        <div class="scope-slider"></div>
+        <button class="${state.scope==='personal'?'active':''}" onclick="setScope('personal')">Personal</button>
+        <button class="${state.scope==='family'?'active':''}" onclick="setScope('family')">Familia</button>
+      </div>
+
+      <div class="gran-row">
+        <div class="gran-tabs">
+          <button class="${state.gran==='day'?'active':''}" onclick="setGran('day')">Día</button>
+          <button class="${state.gran==='week'?'active':''}" onclick="setGran('week')">Sem</button>
+          <button class="${state.gran==='month'?'active':''}" onclick="setGran('month')">Mes</button>
+          <button class="${state.gran==='year'?'active':''}" onclick="setGran('year')">Año</button>
+        </div>
+        <span class="period-label">${GRAN_LABEL[state.gran]}</span>
+      </div>
+
+      <div class="fn-card hero-card ${anim} stagger-1">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="hero-label">
+              ${state.scope==='family' ? 'Balance familiar' : 'Mi balance'}
+              ${state.currency==='ARS' && state.realIpc ? '<span class="pill-tag pill-accent">A plata de hoy</span>' : ''}
+            </div>
+            <div class="hero-amount num" id="heroAmountEl">${formatConverted(heroTarget)}</div>
+          </div>
+          <span class="pill-tag num">${state.scope==='family' ? '-3% real' : '-5% real'}</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${ratio}%;"></div></div>
+        <div class="hero-metrics">
+          <div><div class="mini-stat-label">Ingresos</div><div class="mini-stat-val num">${fmt(totalInc)}</div></div>
+          <div><div class="mini-stat-label">Gastos (${ratio}% ingr.)</div><div class="mini-stat-val num">${fmt(totalExp)}</div></div>
+        </div>
+      </div>
+
+      <div class="fn-card ${anim} stagger-2">
+        <div class="donut-header">
+          <strong class="sec-title">Distribución</strong>
+          <div class="mini-seg ${state.chartMode==='person'?'is-right':''}">
+            <div class="mini-seg-slider"></div>
+            <button class="${state.chartMode==='category'?'active':''}" onclick="setChartMode('category')">Categorías</button>
+            <button class="${state.chartMode==='person'?'active':''}" onclick="setChartMode('person')">Personas</button>
+          </div>
+        </div>
+        ${buildDonut(donutItems)}
+      </div>
+
+      <div class="sec-head ${anim} stagger-3">
+        <span class="sec-title">${state.scope==='family' ? 'Movimientos de la familia' : 'Mis movimientos'}</span>
+        <button class="sec-link" onclick="toggleQuickSheet()">+ Cargar</button>
+      </div>
+      <div class="tx-list ${anim} stagger-4">
+        ${scopedTxs.slice(0, 6).map(t => {
+          const isNew = t.id === state.newestTxId;
+          const meta = [t.date, t.category, state.scope==='family'?t.attributedTo:null, t.note||null].filter(Boolean).join(' · ');
+          return `
+            <div class="tx-row ${isNew?'tx-new':''}">
+              <div class="tx-icon">${t.attributedTo.slice(0,2).toUpperCase()}</div>
+              <div class="tx-body">
+                <div class="tx-title">${t.title}</div>
+                <div class="tx-meta">${meta}</div>
+              </div>
+              <div class="tx-amt num" style="${t.amount>0?'color:var(--familion-accent);':''}">${fmt(t.amount, true)}</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    const el = document.getElementById('heroAmountEl');
+    if (state.lastBalanceVal !== heroTarget) {
+      animateValue(el, state.lastBalanceVal, heroTarget, 300);
+      state.lastBalanceVal = heroTarget;
+    }
+    state.newestTxId = null;
+  }
+
+  function renderPlan() {
+    document.getElementById('screenBody').innerHTML = `
+      <div class="fn-card hero-card anim-in stagger-1">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:7px;">${FLAGS.USD}<strong style="font-size:12.5px;">Ahorro USD</strong></div>
+          <span class="pill-tag pill-accent num">TC compra $1.185</span>
+        </div>
+        <div class="num" style="font-size:22px;font-weight:700;margin-top:5px;">US$ 1.450,00</div>
+        <div class="num" style="font-size:10.5px;color:var(--fn-muted);margin-top:2px;">Hoy $1.210 · Dif. +2,1% vs compra</div>
+      </div>
+
+      <div class="sec-head anim-in stagger-2"><span class="sec-title">Gastos Fijos del Mes</span></div>
+      <div class="tx-list anim-in stagger-2">
+        ${state.fixedExpenses.map(f => `
+          <div class="tx-row">
+            <button class="check-circle ${f.paid?'done':''}" onclick="toggleFixed('${f.id}')">
+              ${f.paid ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+            </button>
+            <div class="tx-body">
+              <div class="tx-title" style="${f.paid?'text-decoration:line-through;opacity:0.6;':''}">${f.name}</div>
+              <div class="tx-meta">${f.meta}</div>
+            </div>
+            <div class="tx-amt num">${fmt(f.amount)}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="sec-head anim-in stagger-3"><span class="sec-title">Metas en Valor Real</span></div>
+      <div class="fn-card anim-in stagger-3">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:12.5px;">Vacaciones 2027 (USD)</strong>
+          <span class="pill-tag pill-accent num">62%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:62%;"></div></div>
+        <div class="num" style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--fn-muted);margin-top:6px;">
+          <span>US$ 1.860</span><span>Meta: US$ 3.000</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderVehicles() {
+    document.getElementById('screenBody').innerHTML = `
+      <div class="fn-card hero-card anim-in stagger-1">
+        <div class="hero-label">AB 123 CD · Nafta</div>
+        <div style="font-size:16px;font-weight:700;margin-top:2px;">Toyota Corolla 2021</div>
+        <div class="num" style="font-size:11.5px;color:var(--fn-muted);margin-top:2px;">Odómetro: <strong>68.420 km</strong></div>
+        <div class="veh-stats">
+          <div class="veh-stat-box"><div class="veh-stat-v num">12,8</div><div class="veh-stat-k">km / L</div></div>
+          <div class="veh-stat-box"><div class="veh-stat-v num">${fmt(94)}</div><div class="veh-stat-k">por km</div></div>
+          <div class="veh-stat-box"><div class="veh-stat-v num">${fmt(102868)}</div><div class="veh-stat-k">nafta mes</div></div>
+        </div>
+      </div>
+
+      <div class="fn-card anim-in stagger-2">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:12px;">Service Aceite y Filtros</strong>
+          <span class="pill-tag pill-accent num">En 1.580 km</span>
+        </div>
+        <div class="progress-track" style="margin-top:7px;"><div class="progress-fill" style="width:84%;"></div></div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--fn-border);display:flex;justify-content:space-between;font-size:11.5px;">
+          <span>VTV vigente</span><span class="pill-tag">45 días</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderProfile() {
+    document.getElementById('screenBody').innerHTML = `
+      <div class="fn-card hero-card anim-in stagger-1">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="avatar-circle">TK</div>
+            <div><strong style="font-size:13px;">Tomás Kimmel</strong><div style="font-size:10.5px;color:var(--fn-muted);">Adulto · 2FA por Mail activo</div></div>
+          </div>
+          <button class="btn-soft" style="padding:5px 10px;font-size:11px;" onclick="setTheme(state.theme==='light'?'dark':'light')">${state.theme==='light'?'Oscuro':'Claro'}</button>
+        </div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--fn-border);">
+          <div style="font-size:11px;font-weight:600;margin-bottom:8px;">Color de tu perfil</div>
+          <div style="display:flex;gap:10px;">
+            ${ACCENTS.map(a => {
+              const col = state.theme === 'dark' ? a.dark : a.light;
+              return `<button class="accent-dot ${state.accentId===a.id?'active':''}" style="width:23px;height:23px;background:${col};color:${col};" onclick="setAccent('${a.id}')"></button>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="fn-card anim-in stagger-2">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong style="font-size:12.5px;">Sofi · Visibilidad familiar</strong>
+          <span class="pill-tag pill-accent">Hijo</span>
+        </div>
+        <div class="vis-group">
+          <button class="vis-btn ${state.childVis==='own'?'active':''}" onclick="state.childVis='own';render(false)">Solo suyos</button>
+          <button class="vis-btn ${state.childVis==='summary'?'active':''}" onclick="state.childVis='summary';render(false)">Resumen</button>
+          <button class="vis-btn ${state.childVis==='full'?'active':''}" onclick="state.childVis='full';render(false)">Detalle</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderSheet() {
+    const q = state.qa;
+    const raw = parseInt(q.digits || '0', 10);
+    const pref = CURRENCIES[q.currency].prefix;
+    const cats = CATS[q.type];
+    const canSave = raw > 0 && (q.category || q.name.trim().length > 0);
+
+    document.getElementById('sheetMount').innerHTML = `
+      <div class="sheet-handle"></div>
+      <div class="qa-top">
+        <div class="type-switch">
+          <button class="${q.type==='expense'?'active':''}" onclick="state.qa.type='expense';state.qa.category='Súper';renderSheet()">Gasto</button>
+          <button class="${q.type==='income'?'active':''}" onclick="state.qa.type='income';state.qa.category='Sueldo';renderSheet()">Ingreso</button>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="subtle-icon-btn" title="Escanear ticket (secundario)" onclick="showToast('Escaneo OCR (Fase 4)')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          </button>
+          <button class="subtle-icon-btn" onclick="closeSheet()">✕</button>
+        </div>
+      </div>
+
+      <div class="qa-amount-area">
+        <button class="currency-pill" onclick="cycleQaCurr()">${FLAGS[q.currency]} ${q.currency}</button>
+        <div class="qa-amount-display num ${raw===0?'empty':''}" id="qaAmtDisp">${pref}${raw.toLocaleString('es-AR')}</div>
+      </div>
+
+      <input class="qa-input" placeholder="Nombre opcional (ej. Café, Fiesta Sofi...)" value="${q.name}" oninput="state.qa.name=this.value;syncQaBtn()" />
+
+      <div class="cat-grid">
+        ${cats.map(c => `<button class="cat-pill ${q.category===c?'active':''}" onclick="state.qa.category=state.qa.category==='${c}'?null:'${c}';renderSheet()">${c}</button>`).join('')}
+      </div>
+
+      <button class="more-toggle" onclick="state.qa.moreOpen=!state.qa.moreOpen;renderSheet()">
+        ${q.moreOpen ? 'Ocultar opciones' : 'Más opciones (Para ' + (q.attributedTo==='Tomás'?'Yo':q.attributedTo) + (q.cuotas>1 ? ' · '+q.cuotas+' cuotas' : '') + ')'}
+      </button>
+
+      <div class="more-panel ${q.moreOpen?'open':''}">
+        <div class="more-row">
+          <span style="color:var(--fn-muted);">Para</span>
+          <div class="more-chips">
+            ${['Tomás','Laura','Sofi'].map(p => `<button class="mini-chip ${q.attributedTo===p?'active':''}" onclick="state.qa.attributedTo='${p}';renderSheet()">${p==='Tomás'?'Yo':p}</button>`).join('')}
+          </div>
+        </div>
+        ${q.type==='expense' ? `
+          <div class="more-row">
+            <span style="color:var(--fn-muted);">Cuotas</span>
+            <div class="more-chips">
+              ${[1,3,6,12].map(n => `<button class="mini-chip ${q.cuotas===n?'active':''}" onclick="state.qa.cuotas=${n};renderSheet()">${n===1?'1 pago':n}</button>`).join('')}
+            </div>
+          </div>
+          ${q.cuotas>1 ? `
+            <div class="more-row">
+              <span style="color:var(--fn-muted);">Monto</span>
+              <div class="more-chips">
+                <button class="mini-chip ${q.amountMode==='total'?'active':''}" onclick="state.qa.amountMode='total';renderSheet()">Es el total</button>
+                <button class="mini-chip ${q.amountMode==='each'?'active':''}" onclick="state.qa.amountMode='each';renderSheet()">Es cada cuota</button>
+              </div>
+            </div>
+            ${raw>0 ? `<div class="live-summary num"><strong>${q.cuotas} cuotas de ${pref}${Math.round(q.amountMode==='total'?raw/q.cuotas:raw).toLocaleString('es-AR')}/mes</strong><span>Total: ${pref}${Math.round(q.amountMode==='total'?raw:raw*q.cuotas).toLocaleString('es-AR')}</span></div>` : ''}
+          ` : ''}
+        ` : ''}
+      </div>
+
+      <div class="keypad">
+        ${['1','2','3','4','5','6','7','8','9','000','0','back'].map(k => `<button class="key-btn num" onclick="pressQaKey('${k}')">${k==='back'?'⌫':k}</button>`).join('')}
+      </div>
+
+      <button class="save-btn" id="qaSaveBtn" ${canSave?'':'disabled'} onclick="submitQuickAdd()">
+        ${q.type==='expense' ? (q.attributedTo!=='Tomás' ? 'Guardar para ' + q.attributedTo : 'Guardar gasto') : 'Guardar ingreso'}
+      </button>
+    `;
+  }
+
+  function render(animateEnter = false) {
+    renderCurrencyHeader();
+    if (state.tab === 'home') renderHome(animateEnter);
+    if (state.tab === 'plan') renderPlan();
+    if (state.tab === 'vehicles') renderVehicles();
+    if (state.tab === 'profile') renderProfile();
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
+  }
+
+  /* Interactions & Animations */
+  function playSplash() {
+    const ov = document.getElementById('splashOverlay');
+    const logo = document.getElementById('splashLogo');
+    ov.classList.remove('lit');
+    logo.classList.add('off');
+    ov.classList.add('active');
+    setTimeout(() => { logo.classList.remove('off'); ov.classList.add('lit'); }, 280);
+    setTimeout(() => { ov.classList.remove('active'); }, 1350);
+  }
+
+  function flickHeaderLogo() {
+    const el = document.getElementById('headerLogo');
+    el.classList.add('off');
+    setTimeout(() => el.classList.remove('off'), 260);
+  }
+
+  function setTheme(t) {
+    state.theme = t;
+    document.querySelectorAll('.fn-surface').forEach(el => el.setAttribute('data-theme', t));
+    document.getElementById('btnLight').classList.toggle('active', t === 'light');
+    document.getElementById('btnDark').classList.toggle('active', t === 'dark');
+    applyAccent(); render(false);
+  }
+  function setAccent(id) { state.accentId = id; applyAccent(); render(false); }
+  function setTab(t) { state.tab = t; closeCurrMenu(); render(true); }
+  function setScope(s) { state.scope = s; state.selectedSlice = null; render(false); }
+  function setGran(g) { state.gran = g; render(false); }
+  function setChartMode(m) { state.chartMode = m; state.selectedSlice = null; render(false); }
+  function selectSlice(i) { state.selectedSlice = state.selectedSlice === i ? null : i; render(false); }
+
+  function toggleFixed(id) {
+    const f = state.fixedExpenses.find(x => x.id === id);
+    if (f) { f.paid = !f.paid; showToast(f.paid ? `${f.name} marcado pago` : 'Pendiente'); render(false); }
+  }
+
+  function toggleCurrMenu(e) {
+    e.stopPropagation();
+    const dd = document.getElementById('currencyDropdown');
+    const tr = document.getElementById('currTrigger');
+    const open = dd.classList.toggle('open');
+    tr.classList.toggle('open', open);
+  }
+  function closeCurrMenu() {
+    document.getElementById('currencyDropdown').classList.remove('open');
+    document.getElementById('currTrigger').classList.remove('open');
+  }
+  function setCurrency(c) { state.currency = c; closeCurrMenu(); render(false); }
+  function toggleIpc(e) { e.stopPropagation(); state.realIpc = !state.realIpc; render(false); }
+
+  function toggleQuickSheet() {
+    state.sheetOpen ? closeSheet() : openSheet();
+  }
+  function openSheet() {
+    closeCurrMenu();
+    state.sheetOpen = true;
+    renderSheet();
+    document.getElementById('sheetBackdrop').classList.add('open');
+    document.getElementById('fabBtn').classList.add('rotated');
+  }
+  function closeSheet() {
+    state.sheetOpen = false;
+    document.getElementById('sheetBackdrop').classList.remove('open');
+    document.getElementById('fabBtn').classList.remove('rotated');
+  }
+
+  function cycleQaCurr() {
+    const ord = ['ARS','USD','EUR'];
+    state.qa.currency = ord[(ord.indexOf(state.qa.currency) + 1) % ord.length];
+    renderSheet();
+  }
+  function pressQaKey(k) {
+    if (k === 'back') state.qa.digits = state.qa.digits.slice(0, -1);
+    else if (state.qa.digits.length < 9) {
+      if (state.qa.digits === '' && (k === '0' || k === '000')) return;
+      state.qa.digits = (state.qa.digits + k).slice(0, 9);
+    }
+    renderSheet();
+    const d = document.getElementById('qaAmtDisp');
+    if (d) { d.classList.add('bump'); setTimeout(() => d.classList.remove('bump'), 90); }
+  }
+  function syncQaBtn() {
+    const btn = document.getElementById('qaSaveBtn');
+    const raw = parseInt(state.qa.digits || '0', 10);
+    if (btn) btn.disabled = !(raw > 0 && (state.qa.category || state.qa.name.trim().length > 0));
+  }
+  function submitQuickAdd() {
+    const q = state.qa;
+    const raw = parseInt(q.digits || '0', 10);
+    if (!raw) return;
+    const arsRaw = Math.round(raw * CURRENCIES[q.currency].rate);
+    const val = (q.type === 'expense' && q.cuotas > 1 && q.amountMode === 'total') ? Math.round(arsRaw / q.cuotas) : arsRaw;
+    const id = Date.now();
+    state.txs.unshift({
+      id,
+      title: q.name.trim() || q.category || 'Movimiento',
+      category: q.category || 'Otros',
+      amount: q.type === 'expense' ? -val : val,
+      date: 'Ahora',
+      attributedTo: q.attributedTo,
+      note: [q.cuotas > 1 ? `1/${q.cuotas}` : null, q.attributedTo !== 'Tomás' ? 'Pagado por Tomás' : null].filter(Boolean).join(' · ')
+    });
+    state.newestTxId = id;
+    if (q.attributedTo !== 'Tomás') state.scope = 'family';
+    state.tab = 'home';
+    state.qa.digits = ''; state.qa.name = ''; state.qa.cuotas = 1; state.qa.attributedTo = 'Tomás'; state.qa.moreOpen = false;
+    closeSheet();
+    render(false);
+    showToast(q.attributedTo !== 'Tomás' ? `Atribuido a ${q.attributedTo}` : (q.type==='expense'?'Gasto guardado':'Ingreso guardado'));
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    const el = document.getElementById('toastMsg');
+    document.getElementById('toastText').textContent = msg;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2100);
+  }
+
+  document.addEventListener('click', closeCurrMenu);
+  applyAccent();
+  render(true);
+  setTimeout(playSplash, 200);
+</script>
+</body>
+</html>
