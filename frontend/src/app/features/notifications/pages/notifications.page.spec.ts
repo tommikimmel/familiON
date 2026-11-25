@@ -3,6 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { SwPush } from '@angular/service-worker';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotificationBadgeService } from '../../../core/layout/notification-badge.service';
 import { NotificationBadgePollerService } from '../../../core/pwa/notification-badge-poller.service';
@@ -139,5 +141,65 @@ describe('NotificationsPage', () => {
 
     expect(badge.unread()).toBe(0);
     expect(host.querySelector('[data-testid="notifications-unread-empty"]')).not.toBeNull();
+  });
+
+  it('hides push opt-in card when SwPush is not available and shows it when enabled with publicKey', async () => {
+    const fixture = TestBed.createComponent(NotificationsPage);
+    fixture.detectChanges();
+
+    httpMock
+      .expectOne((req) => req.url === '/bff/api/notifications')
+      .flush({ content: [], page: { size: 20, number: 0, totalElements: 0, totalPages: 0 } });
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="push-opt-in-card"]'),
+    ).toBeNull();
+
+    // Re-configure with enabled SwPush
+    httpMock.verify();
+    TestBed.resetTestingModule();
+
+    const mockSwPush = {
+      isEnabled: true,
+      subscription: new BehaviorSubject<PushSubscription | null>(null),
+      notificationClicks: new Subject(),
+      requestSubscription: vi.fn(),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
+    };
+
+    TestBed.configureTestingModule({
+      imports: [NotificationsPage],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: SwPush, useValue: mockSwPush },
+        {
+          provide: NotificationBadgePollerService,
+          useValue: { refresh: vi.fn().mockResolvedValue(0) },
+        },
+      ],
+    });
+    httpMock = TestBed.inject(HttpTestingController);
+
+    const enabledFixture = TestBed.createComponent(NotificationsPage);
+    enabledFixture.detectChanges();
+
+    httpMock
+      .expectOne((req) => req.url === '/bff/api/notifications')
+      .flush({ content: [], page: { size: 20, number: 0, totalElements: 0, totalPages: 0 } });
+    httpMock
+      .expectOne('/bff/api/notifications/push-config')
+      .flush({ publicKey: 'VAPID-PUBLIC-KEY' });
+
+    await enabledFixture.whenStable();
+    enabledFixture.detectChanges();
+
+    const card = (enabledFixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="push-opt-in-card"]',
+    );
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain('Avisos en este dispositivo');
   });
 });

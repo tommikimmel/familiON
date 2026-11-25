@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { PushNotificationsService } from '../../../core/pwa/push-notifications.service';
 import {
   ButtonComponent,
   CardComponent,
@@ -9,6 +10,7 @@ import {
   ToastService,
 } from '../../../shared/ui';
 import { NotificationListComponent } from '../components/notification-list.component';
+import { PushOptInCardComponent } from '../components/push-opt-in-card.component';
 import { sanitizeInternalLink } from '../data-access/notifications.grouping';
 import { NotificationItem } from '../data-access/notifications.models';
 import { NotificationsStore } from '../data-access/notifications.store';
@@ -23,6 +25,7 @@ import { NotificationsStore } from '../data-access/notifications.store';
     EmptyStateComponent,
     IconComponent,
     NotificationListComponent,
+    PushOptInCardComponent,
     SkeletonComponent,
   ],
   template: `
@@ -72,6 +75,16 @@ import { NotificationsStore } from '../data-access/notifications.store';
           </fo-button>
         </div>
       </header>
+
+      @if (push.isAvailable()) {
+        <fo-push-opt-in-card
+          [subscribed]="push.isSubscribed()"
+          [busy]="push.busy()"
+          [permissionDenied]="push.permissionDenied()"
+          [errorMessage]="push.error()"
+          (togglePush)="onTogglePush()"
+        />
+      }
 
       @if (store.loading()) {
         <div data-testid="notifications-loading-skeleton" class="space-y-4" aria-busy="true">
@@ -141,11 +154,25 @@ import { NotificationsStore } from '../data-access/notifications.store';
 })
 export class NotificationsPage {
   protected readonly store = inject(NotificationsStore);
+  protected readonly push = inject(PushNotificationsService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
 
   constructor() {
     this.store.load();
+    void this.push.loadConfig();
+  }
+
+  protected async onTogglePush(): Promise<void> {
+    const wasSubscribed = this.push.isSubscribed();
+    const ok = await this.push.toggle();
+    if (ok) {
+      this.toast.success(
+        wasSubscribed
+          ? 'Avisos desactivados en este dispositivo'
+          : 'Avisos activados en este dispositivo',
+      );
+    }
   }
 
   protected async onSelectNotification(item: NotificationItem): Promise<void> {
