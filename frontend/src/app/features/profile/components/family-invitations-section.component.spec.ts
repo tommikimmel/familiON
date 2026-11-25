@@ -17,6 +17,7 @@ import { FamilyInvitationsSectionComponent } from './family-invitations-section.
       [canShare]="canShare()"
       (createInvitation)="createdRequests.push($event)"
       (revokeInvitation)="revokedIds.push($event)"
+      (resendInvitation)="resentIds.push($event.id)"
       (copyLink)="copiedUrls.push($event)"
       (shareLink)="sharedItems.push($event)"
     />
@@ -39,6 +40,7 @@ class TestHostComponent {
 
   readonly createdRequests: CreateInvitationRequest[] = [];
   readonly revokedIds: string[] = [];
+  readonly resentIds: string[] = [];
   readonly copiedUrls: string[] = [];
   readonly sharedItems: InvitationCreated[] = [];
 }
@@ -53,6 +55,9 @@ describe('FamilyInvitationsSectionComponent', () => {
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[data-testid="invitation-form"]')).toBeNull();
+    (el.querySelector('[data-testid="open-invite-form-btn"] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
     expect(el.querySelector('[data-testid="invite-visibility-field"]')).toBeNull();
 
     const roleSelect = el.querySelector('#invite-role') as HTMLSelectElement;
@@ -121,7 +126,17 @@ describe('FamilyInvitationsSectionComponent', () => {
       '[data-testid="revoke-invitation-btn"] button',
     ) as HTMLButtonElement;
     revokeBtn.click();
+    fixture.detectChanges();
+    // Cancelling needs an explicit confirmation.
+    expect(fixture.componentInstance.revokedIds).toEqual([]);
+    (
+      el.querySelector('[data-testid="confirm-revoke-invitation-btn"] button') as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
     expect(fixture.componentInstance.revokedIds).toEqual(['inv-1']);
+
+    (el.querySelector('[data-testid="resend-invitation-btn"] button') as HTMLButtonElement).click();
+    expect(fixture.componentInstance.resentIds).toEqual(['inv-1']);
 
     fixture.componentInstance.canShare.set(false);
     fixture.detectChanges();

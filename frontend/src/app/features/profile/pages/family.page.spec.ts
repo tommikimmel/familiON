@@ -122,10 +122,36 @@ describe('FamilyPage', () => {
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
+    const click = (testId: string): void => {
+      (el.querySelector(`[data-testid="${testId}"] button`) as HTMLButtonElement).click();
+      fixture.detectChanges();
+    };
+
+    // Read-only by default, even for adults.
+    expect(el.querySelector('[data-testid="family-settings-form"]')).toBeNull();
+    expect(el.querySelector('[data-testid="family-settings-readonly"]')).toBeTruthy();
+    expect(el.querySelector('[data-testid="open-add-currency-btn"]')).toBeNull();
+    expect(el.querySelectorAll('[data-testid="member-visibility-select"]').length).toBe(0);
+
+    // Invitations live inside the unified members card.
+    const members = el.querySelector('[data-testid="members-section"]') as HTMLElement;
+    expect(members.querySelector('[data-testid="invitations-section"]')).toBeTruthy();
+
+    click('edit-family-settings-btn');
+    click('edit-currencies-btn');
+    click('edit-members-btn');
+
     expect(el.querySelector('[data-testid="family-settings-form"]')).toBeTruthy();
     expect(el.querySelector('[data-testid="open-add-currency-btn"]')).toBeTruthy();
     expect(el.querySelectorAll('[data-testid="member-visibility-select"]').length).toBe(1);
-    expect(el.querySelector('[data-testid="invitations-section"]')).toBeTruthy();
+
+    // Visibility change waits for confirmation before hitting the API.
+    const select = el.querySelector('[data-testid="member-visibility-select"]') as HTMLSelectElement;
+    select.value = 'FAMILY_FULL';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    httpMock.expectNone('/bff/api/family/members/user-child/visibility');
+    expect(el.querySelector('[data-testid="visibility-confirm"]')).toBeTruthy();
 
     const arsSwitch = el.querySelector(
       '[data-testid="currency-toggle-switch"][data-currency="ARS"]',
@@ -136,5 +162,42 @@ describe('FamilyPage', () => {
 
     expect(arsSwitch.disabled).toBe(true);
     expect(usdSwitch.disabled).toBe(false);
+  });
+
+  it('asks for confirmation before changing the base currency', async () => {
+    session.setMe(buildMe('ADULTO'));
+    const fixture = TestBed.createComponent(FamilyPage);
+    fixture.detectChanges();
+
+    httpMock.expectOne('/bff/api/family').flush(SAMPLE_FAMILY);
+    httpMock.expectOne('/bff/api/family/members').flush(SAMPLE_MEMBERS);
+    httpMock.expectOne('/bff/api/family/invitations').flush([]);
+    await flushMicrotasks();
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    (el.querySelector('[data-testid="edit-family-settings-btn"] button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const base = el.querySelector('#family-base-currency') as HTMLSelectElement;
+    base.value = 'USD';
+    base.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    (el.querySelector('[data-testid="family-settings-form"]') as HTMLFormElement).dispatchEvent(
+      new Event('submit'),
+    );
+    fixture.detectChanges();
+
+    httpMock.expectNone('/bff/api/family/settings');
+    expect(el.querySelector('[data-testid="family-settings-confirm"]')).toBeTruthy();
+
+    (el.querySelector('[data-testid="confirm-family-settings-btn"] button') as HTMLButtonElement).click();
+    const req = httpMock.expectOne('/bff/api/family/settings');
+    expect(req.request.body).toEqual({ baseCurrency: 'USD' });
+    req.flush({ ...SAMPLE_FAMILY, baseCurrency: 'USD' });
+    await flushMicrotasks();
+    // Background /me reload after saving.
+    httpMock.match(() => true).forEach((r) => r.flush(buildMe('ADULTO')));
+    await flushMicrotasks();
   });
 });
