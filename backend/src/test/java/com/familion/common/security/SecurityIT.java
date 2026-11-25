@@ -147,7 +147,7 @@ class SecurityIT extends IntegrationTestBase {
                 .toEntity(JsonNode.class);
 
         assertThat(response.getStatusCode()).isNotEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
