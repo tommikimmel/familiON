@@ -1,0 +1,84 @@
+/* Vehicles feature primitives mirroring mobile.html / desktop.html (Autos tab). Shared via styleUrl. */
+:host {
+  display: block;
+}
+.vh-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.vh-two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 11px;
+}
+.vh-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.vh-title {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.vh-sub {
+  font-size: 10.5px;
+  color: var(--fo-text-muted);
+}
+.vh-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--fo-border);
+}
+.vh-row:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+.vh-row:last-child {
+  padding-bottom: 0;
+}
+.vh-input {
+  width: 100%;
+  border: 1px solid var(--fo-border);
+  background: var(--fo-bg);
+  color: var(--fo-text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  outline: none;
+}
+.vh-input:focus {
+  border-color: var(--fo-accent);
+}
+.vh-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fo-text-2);
+  margin-bottom: 4px;
+}
+.vh-pill-danger {
+  background: color-mix(in srgb, var(--fo-danger) 12%, transparent);
+  color: var(--fo-danger);
+}
+.vh-pill-warning {
+  background: color-mix(in srgb, var(--fo-warning) 14%, transparent);
+  color: var(--fo-warning);
+}
+@media (min-width: 1024px) {
+  .vh-stack {
+    gap: 16px;
+  }
+  .vh-two-col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .vh-title {
+    font-size: 13px;
+  }
+}

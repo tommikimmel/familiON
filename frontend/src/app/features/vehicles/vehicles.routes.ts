@@ -14,7 +14,7 @@ const routes: Routes = [
   {
     path: ':id',
     loadComponent: () => import('./pages/vehicle-detail.page').then((m) => m.VehicleDetailPage),
-    data: { title: 'Detalle del vehículo' },
+    data: { title: 'Vehículos' },
   },
   {
     path: ':id/edit',

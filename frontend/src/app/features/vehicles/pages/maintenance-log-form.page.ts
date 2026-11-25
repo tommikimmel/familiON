@@ -17,7 +17,7 @@ import { parseProblemError } from '../utils/problem-errors';
   standalone: true,
   imports: [CardComponent, IconComponent, MaintenanceLogFormComponent, SkeletonComponent],
   template: `
-    <section class="mx-auto max-w-2xl space-y-4 p-4 sm:p-6">
+    <section class="mx-auto w-full max-w-2xl space-y-3 lg:space-y-4">
       <header class="flex items-center gap-3">
         <button
           type="button"
@@ -29,9 +29,9 @@ import { parseProblemError } from '../utils/problem-errors';
         </button>
 
         <div class="min-w-0 flex-1">
-          <h1 class="truncate text-xl font-bold tracking-tight text-text">Registrar mantenimiento</h1>
+          <h1 class="fo-page-title truncate text-text lg:sr-only">Registrar mantenimiento</h1>
           @if (vehicle(); as v) {
-            <p class="truncate text-xs text-muted">
+            <p class="truncate mt-0.5 text-[11px] text-muted">
               {{ v.nickname }} · {{ v.licensePlate }}
             </p>
           }

@@ -1,29 +1,22 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SessionStore } from '../../../core/state/session.store';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 import {
   ButtonComponent,
-  CardComponent,
   EmptyStateComponent,
   IconComponent,
   SkeletonComponent,
   ToastService,
 } from '../../../shared/ui';
-import { toNumber } from '../../../shared/utils/decimal';
 import { VehicleAlertChipComponent } from '../components/vehicle-alert-chip.component';
 import { VehicleFuelLogsComponent } from '../components/vehicle-fuel-logs.component';
 import { VehicleMaintenanceLogsComponent } from '../components/vehicle-maintenance-logs.component';
 import { VehicleMonthlyChartComponent } from '../components/vehicle-monthly-chart.component';
 import { VehiclePriceTrendChartComponent } from '../components/vehicle-price-trend-chart.component';
 import { VehicleDashboardStore } from '../data-access/vehicle-dashboard.store';
-import {
-  FUEL_TYPE_LABEL,
-  formatDecimal,
-  formatIsoDateShort,
-  formatKm,
-} from '../data-access/vehicle-labels';
+import { FUEL_TYPE_LABEL, formatDecimal, formatIsoDateShort, formatKm } from '../data-access/vehicle-labels';
 import { parseProblemError } from '../utils/problem-errors';
 
 @Component({
@@ -32,7 +25,6 @@ import { parseProblemError } from '../utils/problem-errors';
   providers: [VehicleDashboardStore],
   imports: [
     ButtonComponent,
-    CardComponent,
     EmptyStateComponent,
     IconComponent,
     MoneyPipe,
@@ -44,55 +36,9 @@ import { parseProblemError } from '../utils/problem-errors';
     VehiclePriceTrendChartComponent,
   ],
   template: `
-    <section class="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
-      <header class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            aria-label="Volver a vehículos"
-            (click)="goToList()"
-            class="fo-focus-ring flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-border bg-surface text-text transition-colors hover:bg-surface-2"
-          >
-            <fo-icon name="chevron-left" [size]="20" />
-          </button>
-
-          @if (store.vehicle(); as vehicle) {
-            <div class="min-w-0">
-              <div class="flex flex-wrap items-center gap-2">
-                <h1 class="truncate text-xl font-bold tracking-tight text-text sm:text-2xl">
-                  {{ vehicle.nickname }}
-                </h1>
-                <span
-                  class="rounded-md border border-border bg-surface-2 px-2 py-0.5 font-mono text-xs font-semibold tracking-wider text-text uppercase"
-                >
-                  {{ vehicle.licensePlate }}
-                </span>
-              </div>
-              <p class="mt-0.5 text-xs text-muted sm:text-sm">
-                {{ vehicle.brand }} {{ vehicle.model }} · {{ vehicle.modelYear }} ·
-                <span class="font-medium text-text tabular-nums">{{ formatOdometer(vehicle.currentOdometerKm) }}</span>
-                · {{ fuelLabel[vehicle.primaryFuelType] }}
-              </p>
-            </div>
-          } @else {
-            <div class="min-w-0 space-y-1">
-              <h1 class="text-xl font-bold tracking-tight text-text">Detalle del vehículo</h1>
-              @if (store.loading()) {
-                <fo-skeleton width="220px" height="14px" />
-              }
-            </div>
-          }
-        </div>
-
-        @if (isAdult() && store.vehicleId(); as id) {
-          <fo-button variant="ghost" size="sm" data-testid="vehicle-detail-edit" (click)="goToEdit(id)">
-            <fo-icon name="pencil" [size]="15" />
-            <span>Editar</span>
-          </fo-button>
-        }
-      </header>
-
+    <section class="vh-stack">
       @if (store.notFound()) {
+        <h1 class="sr-only">Detalle del vehículo</h1>
         <fo-empty-state
           icon="car"
           title="No encontramos este vehículo"
@@ -102,198 +48,297 @@ import { parseProblemError } from '../utils/problem-errors';
         </fo-empty-state>
       } @else {
         @if (store.error(); as error) {
-          <fo-card padding="md">
-            <div class="flex flex-wrap items-center justify-between gap-3" role="alert">
-              <div class="flex items-center gap-2 text-sm text-danger">
-                <fo-icon name="alert-circle" [size]="18" />
-                <span>{{ error }}</span>
-              </div>
-              <fo-button variant="ghost" size="sm" (click)="store.reload()">Reintentar</fo-button>
+          <div class="fo-card flex flex-wrap items-center justify-between gap-3" role="alert">
+            <div class="flex items-center gap-2 text-xs text-danger">
+              <fo-icon name="alert-circle" [size]="16" />
+              <span>{{ error }}</span>
             </div>
-          </fo-card>
+            <fo-button variant="ghost" size="sm" (click)="store.reload()">Reintentar</fo-button>
+          </div>
         }
 
-        @if (store.alerts(); as alerts) {
-          @if (alerts.length > 0) {
-            <section aria-label="Alertas activas" data-testid="vehicle-alerts-banner">
-              <fo-card padding="sm">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-text">
-                    <fo-icon name="bell" [size]="14" />
-                    Alertas
-                  </span>
-                  @for (alert of alerts; track alert.kind + '-' + alert.title) {
-                    <fo-vehicle-alert-chip [alert]="alert" />
+        <div class="veh-top fo-card fo-hero-glow" aria-label="Indicadores del período">
+          <div class="veh-id">
+            @if (store.vehicle(); as vehicle) {
+              <div class="vh-head">
+                <p class="fo-hero-label fo-num truncate">
+                  {{ vehicle.licensePlate }} · {{ fuelLabel[vehicle.primaryFuelType] }}
+                </p>
+                <div class="flex shrink-0 items-center gap-2.5">
+                  <button
+                    type="button"
+                    aria-label="Volver a vehículos"
+                    (click)="goToList()"
+                    class="fo-sec-link fo-focus-ring rounded-md"
+                  >
+                    Todos
+                  </button>
+                  @if (isAdult() && store.vehicleId(); as id) {
+                    <button
+                      type="button"
+                      data-testid="vehicle-detail-edit"
+                      class="fo-sec-link fo-focus-ring rounded-md"
+                      (click)="goToEdit(id)"
+                    >
+                      Editar
+                    </button>
                   }
                 </div>
-              </fo-card>
-            </section>
+              </div>
+              <h1 class="veh-name">{{ vehicle.brand }} {{ vehicle.model }} {{ vehicle.modelYear }}</h1>
+              <p class="veh-odo fo-num">
+                Odómetro: <strong>{{ formatOdometer(vehicle.currentOdometerKm) }}</strong>
+                @if (vehicle.nickname) {
+                  · {{ vehicle.nickname }}
+                }
+              </p>
+            } @else {
+              <h1 class="veh-name">Detalle del vehículo</h1>
+              @if (store.loading()) {
+                <fo-skeleton width="180px" height="12px" />
+              }
+            }
+          </div>
+
+          @if (store.summary(); as summary) {
+            <div class="veh-stat">
+              <p data-testid="kpi-km-per-liter" class="veh-stat-v">
+                {{ formatConsumption(summary.avgKmPerLiter, 'km/L') }}
+              </p>
+              <p class="veh-stat-k">Consumo promedio</p>
+              <p data-testid="kpi-liters-per-100" class="veh-stat-sub">
+                {{ formatConsumption(summary.avgLitersPer100Km, 'L cada 100 km') }}
+              </p>
+            </div>
+            <div class="veh-stat">
+              <p data-testid="kpi-cost-per-km" class="veh-stat-v">
+                @if (summary.costPerKm !== null) {
+                  {{ summary.costPerKm | money: summary.unit }}/km
+                } @else {
+                  —
+                }
+              </p>
+              <p class="veh-stat-k">Costo por km</p>
+              <p class="veh-stat-sub">Combustible + mantenimiento</p>
+            </div>
+            <div class="veh-stat">
+              <p data-testid="kpi-total-cost" class="veh-stat-v">
+                {{ summary.fuelCost | money: summary.unit }}
+              </p>
+              <p class="veh-stat-k">Combustible del período</p>
+              <p class="veh-stat-sub">
+                Total {{ summary.totalCost | money: summary.unit }} ·
+                {{ formatOdometer(summary.distanceKm) }}
+              </p>
+            </div>
+          } @else if (store.loading() && !store.dashboard()) {
+            @for (item of [1, 2, 3]; track item) {
+              <div class="veh-stat" aria-busy="true">
+                <fo-skeleton width="60%" height="14px" />
+              </div>
+            }
           }
-        }
+        </div>
 
         @if (store.vehicleId(); as id) {
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <fo-button
-              variant="primary"
-              size="lg"
-              [fullWidth]="true"
+          <div class="veh-actions">
+            <button
+              type="button"
               data-testid="vehicle-action-fuel"
+              class="fo-btn-primary fo-focus-ring inline-flex items-center justify-center gap-1.5"
               (click)="goToFuelNew(id)"
             >
-              <fo-icon name="fuel" [size]="20" />
+              <fo-icon name="fuel" [size]="15" />
               <span>Cargar combustible</span>
-            </fo-button>
-
+            </button>
             <button
               type="button"
               data-testid="vehicle-action-maintenance"
+              class="fo-btn-soft fo-focus-ring inline-flex items-center justify-center gap-1.5"
               (click)="goToMaintenanceNew(id)"
-              class="fo-focus-ring inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-accent bg-surface px-5 py-3 text-base font-medium text-accent transition-all duration-150 hover:bg-accent-soft active:scale-[0.98]"
             >
-              <fo-icon name="wrench" [size]="20" />
+              <fo-icon name="wrench" [size]="15" />
               <span>Registrar service</span>
             </button>
           </div>
         }
 
         @if (store.lensForcedNominal() || store.summary()?.lensApproximated) {
-          <div class="flex flex-wrap items-center gap-2 text-xs text-muted">
+          <div class="flex flex-wrap items-center gap-2">
             @if (store.lensForcedNominal()) {
-              <span
-                data-testid="vehicle-lens-forced-badge"
-                class="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1"
-              >
-                <fo-icon name="alert-circle" [size]="13" />
+              <span data-testid="vehicle-lens-forced-badge" class="fo-pill-tag gap-1">
+                <fo-icon name="alert-circle" [size]="11" />
                 La lente «% de ingresos» no aplica a vehículos: mostrando valores nominales.
               </span>
             }
             @if (store.summary()?.lensApproximated) {
-              <span class="inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning/10 px-3 py-1 text-warning">
-                <fo-icon name="alert-circle" [size]="13" />
+              <span class="fo-pill-tag vh-pill-warning gap-1">
+                <fo-icon name="alert-circle" [size]="11" />
                 Algunos índices económicos son aproximados para el período.
               </span>
             }
           </div>
         }
 
-        @if (store.loading() && !store.dashboard()) {
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3" aria-busy="true">
-            @for (item of [1, 2, 3]; track item) {
-              <fo-card padding="md">
-                <div class="space-y-2">
-                  <fo-skeleton width="45%" height="14px" />
-                  <fo-skeleton width="70%" height="28px" />
-                  <fo-skeleton width="60%" height="14px" />
-                </div>
-              </fo-card>
-            }
+        @if (!store.summary() && store.dashboard()) {
+          <div data-testid="vehicle-summary-degraded" class="fo-card flex flex-wrap items-center justify-between gap-3">
+            <div class="vh-sub flex items-center gap-2">
+              <fo-icon name="alert-circle" [size]="16" />
+              <span>No pudimos cargar las métricas de consumo y costos en este momento.</span>
+            </div>
+            <fo-button variant="ghost" size="sm" (click)="store.reload()">Reintentar</fo-button>
           </div>
-        } @else {
-          @if (store.summary(); as summary) {
-            <section class="grid grid-cols-1 gap-4 sm:grid-cols-3" aria-label="Indicadores del período">
-              <fo-card padding="md">
-                <p class="text-xs font-medium text-muted">Rendimiento</p>
-                <p data-testid="kpi-km-per-liter" class="mt-1.5 text-2xl font-bold text-text tabular-nums">
-                  {{ formatConsumption(summary.avgKmPerLiter, 'km/L') }}
-                </p>
-                <p data-testid="kpi-liters-per-100" class="mt-1 text-xs text-muted tabular-nums">
-                  {{ formatConsumption(summary.avgLitersPer100Km, 'L/100 km') }} ·
-                  {{ formatConsumption(summary.totalLiters, 'L') }} cargados
-                </p>
-              </fo-card>
+        }
 
-              <fo-card padding="md">
-                <p class="text-xs font-medium text-muted">Costo por km</p>
-                <p data-testid="kpi-cost-per-km" class="mt-1.5 text-2xl font-bold text-text tabular-nums">
-                  @if (summary.costPerKm !== null) {
-                    {{ summary.costPerKm | money: summary.unit }}
-                    <span class="text-sm font-medium text-muted">/ km</span>
-                  } @else {
-                    —
-                  }
-                </p>
-                <p class="mt-1 text-xs text-muted tabular-nums">
-                  {{ formatOdometer(summary.distanceKm) }} recorridos
-                  ({{ formatDate(summary.from) }} – {{ formatDate(summary.to) }})
-                </p>
-              </fo-card>
-
-              <fo-card padding="md">
-                <p class="text-xs font-medium text-muted">Costo total del período</p>
-                <p data-testid="kpi-total-cost" class="mt-1.5 text-2xl font-bold text-text tabular-nums">
-                  {{ summary.totalCost | money: summary.unit }}
-                </p>
-
-                <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
-                  <div class="flex h-full w-full">
-                    <div
-                      class="h-full bg-accent transition-all duration-300"
-                      [style.width.%]="fuelSharePct()"
-                    ></div>
-                    <div
-                      class="h-full bg-warning transition-all duration-300"
-                      [style.width.%]="maintenanceSharePct()"
-                    ></div>
+        @if (!store.loading() || store.dashboard()) {
+          <div class="vh-two-col">
+            <section
+              class="fo-card"
+              aria-label="Alertas activas"
+              [attr.data-testid]="(store.alerts()?.length ?? 0) > 0 ? 'vehicle-alerts-banner' : null"
+            >
+              <h2 class="vh-title mb-2.5">Desgaste y vencimientos</h2>
+              @if (store.alerts(); as alerts) {
+                @if (alerts.length > 0) {
+                  <div>
+                    @for (alert of alerts; track alert.kind + '-' + alert.title) {
+                      <fo-vehicle-alert-chip class="vh-row" layout="row" [alert]="alert" />
+                    }
                   </div>
-                </div>
-
-                <div class="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted tabular-nums">
-                  <span>
-                    Combustible:
-                    <strong class="font-semibold text-accent">
-                      {{ summary.fuelCost | money: summary.unit }}
-                    </strong>
-                  </span>
-                  <span>
-                    Service:
-                    <strong class="font-semibold text-warning">
-                      {{ summary.maintenanceCost | money: summary.unit }}
-                    </strong>
-                  </span>
-                </div>
-              </fo-card>
+                } @else {
+                  <p class="vh-sub">Sin vencimientos próximos. Todo al día.</p>
+                }
+              } @else {
+                <p class="vh-sub">No pudimos cargar las alertas.</p>
+              }
             </section>
 
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <fo-vehicle-monthly-chart [monthly]="summary.monthly" [unit]="summary.unit" />
-              <fo-vehicle-price-trend-chart
-                [trend]="summary.pricePerLiterTrend"
-                [unit]="summary.unit"
-              />
-            </div>
-          } @else if (store.dashboard()) {
-            <fo-card padding="md">
-              <div
-                data-testid="vehicle-summary-degraded"
-                class="flex flex-wrap items-center justify-between gap-3"
-              >
-                <div class="flex items-center gap-2 text-sm text-muted">
-                  <fo-icon name="alert-circle" [size]="18" />
-                  <span>No pudimos cargar las métricas de consumo y costos en este momento.</span>
-                </div>
-                <fo-button variant="ghost" size="sm" (click)="store.reload()">Reintentar</fo-button>
-              </div>
-            </fo-card>
-          }
-
-          <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <fo-vehicle-fuel-logs
               [logs]="store.recentFuelLogs()"
               [deletingId]="store.deletingFuelId()"
               (deleteRequested)="handleDeleteFuelLog($event)"
               (addRequested)="goToFuelNew(store.vehicleId()!)"
             />
-
-            <fo-vehicle-maintenance-logs
-              [logs]="store.recentMaintenance()"
-              [deletingId]="store.deletingMaintenanceId()"
-              (deleteRequested)="handleDeleteMaintenanceLog($event)"
-              (addRequested)="goToMaintenanceNew(store.vehicleId()!)"
-            />
           </div>
+
+          @if (store.summary(); as summary) {
+            <div class="vh-two-col">
+              <fo-vehicle-monthly-chart [monthly]="summary.monthly" [unit]="summary.unit" />
+              <fo-vehicle-price-trend-chart [trend]="summary.pricePerLiterTrend" [unit]="summary.unit" />
+            </div>
+          }
+
+          <fo-vehicle-maintenance-logs
+            [logs]="store.recentMaintenance()"
+            [deletingId]="store.deletingMaintenanceId()"
+            (deleteRequested)="handleDeleteMaintenanceLog($event)"
+            (addRequested)="goToMaintenanceNew(store.vehicleId()!)"
+          />
         }
       }
     </section>
+  `,
+  styleUrl: '../vehicles-ui.css',
+  styles: `
+    .veh-top {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .veh-id {
+      grid-column: 1 / -1;
+      min-width: 0;
+    }
+    .veh-name {
+      font-size: 16px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .veh-odo {
+      font-size: 11.5px;
+      color: var(--fo-text-muted);
+      margin: 2px 0 2px;
+    }
+    .veh-odo strong {
+      color: var(--fo-text);
+    }
+    .veh-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 0;
+      padding: 8px;
+      border-radius: 11px;
+      background: var(--fo-surface-2);
+      text-align: center;
+    }
+    .veh-stat-v {
+      font-size: 13px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .veh-stat-k {
+      font-size: 9.5px;
+      color: var(--fo-text-muted);
+      margin-top: 2px;
+    }
+    .veh-stat-sub {
+      display: none;
+    }
+    .veh-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    @media (min-width: 1024px) {
+      .veh-top {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
+      }
+      .veh-top::before {
+        display: none;
+      }
+      .veh-id,
+      .veh-stat {
+        grid-column: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        position: relative;
+        padding: 15px 16px;
+        border: 1px solid var(--fo-border);
+        border-radius: var(--fo-radius);
+        background: var(--fo-surface);
+        box-shadow: var(--fo-shadow);
+        text-align: left;
+      }
+      .veh-stat-k {
+        order: -1;
+        font-size: 11.5px;
+        font-weight: 500;
+        margin: 0;
+      }
+      .veh-stat-v {
+        font-size: 24px;
+        letter-spacing: -0.03em;
+        margin-top: 4px;
+      }
+      .veh-stat-sub {
+        display: block;
+        font-size: 11px;
+        color: var(--fo-text-muted);
+        margin-top: 4px;
+      }
+      .veh-actions {
+        display: flex;
+        justify-content: flex-end;
+      }
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -306,28 +351,6 @@ export class VehicleDetailPage {
 
   protected readonly isAdult = this.session.isAdult;
   protected readonly fuelLabel = FUEL_TYPE_LABEL;
-
-  protected readonly fuelSharePct = computed(() => {
-    const summary = this.store.summary();
-    if (!summary) {
-      return 0;
-    }
-    const fuel = Math.max(0, toNumber(summary.fuelCost));
-    const maintenance = Math.max(0, toNumber(summary.maintenanceCost));
-    const total = fuel + maintenance;
-    return total > 0 ? Math.round((fuel / total) * 100) : 0;
-  });
-
-  protected readonly maintenanceSharePct = computed(() => {
-    const summary = this.store.summary();
-    if (!summary) {
-      return 0;
-    }
-    const fuel = Math.max(0, toNumber(summary.fuelCost));
-    const maintenance = Math.max(0, toNumber(summary.maintenanceCost));
-    const total = fuel + maintenance;
-    return total > 0 ? Math.max(0, 100 - this.fuelSharePct()) : 0;
-  });
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {

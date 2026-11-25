@@ -37,4 +37,21 @@ export const PAIRS: readonly VisualPair[] = [
       desktop: { file: 'desktop.html', tab: 'home' },
     },
   },
+  {
+    id: 'plan',
+    route: '/plan',
+    mocks: {
+      mobile: { file: 'mobile.html', tab: 'plan' },
+      desktop: { file: 'desktop.html', tab: 'plan' },
+    },
+  },
+  {
+    id: 'vehicles',
+    // The seeded vehicle id is generated at seed time: pass VISUAL_VEHICLE_ID to capture its detail.
+    route: process.env['VISUAL_VEHICLE_ID'] ? `/vehicles/${process.env['VISUAL_VEHICLE_ID']}` : '/vehicles',
+    mocks: {
+      mobile: { file: 'mobile.html', tab: 'vehicles' },
+      desktop: { file: 'desktop.html', tab: 'vehicles' },
+    },
+  },
 ];
