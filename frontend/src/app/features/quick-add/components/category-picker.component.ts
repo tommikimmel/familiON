@@ -23,18 +23,28 @@ function normalizeSearch(value: string): string {
   imports: [IconComponent],
   template: `
     <div class="space-y-2.5">
-      <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Categorías frecuentes">
+      <div
+        class="flex flex-wrap items-center gap-1.5 transition-colors"
+        [class.border-b-2]="categoryPrefilled() && selectedCategoryId() !== null"
+        [class.border-b-accent]="categoryPrefilled() && selectedCategoryId() !== null"
+        [class.pb-1.5]="categoryPrefilled() && selectedCategoryId() !== null"
+        role="group"
+        aria-label="Categorías frecuentes"
+      >
         @for (category of visibleChips(); track category.id) {
           @let selected = selectedCategoryId() === category.id;
           <button
             type="button"
             [attr.data-testid]="'category-chip-' + category.id"
+            [attr.data-prefilled]="selected && categoryPrefilled() ? 'true' : null"
             [attr.aria-pressed]="selected"
             (click)="toggleCategory(category.id)"
             class="fo-focus-ring inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150"
             [class.border-accent]="selected"
             [class.bg-accent]="selected"
             [class.text-accent-contrast]="selected"
+            [class.ring-2]="selected && categoryPrefilled()"
+            [class.ring-accent/35]="selected && categoryPrefilled()"
             [class.border-border]="!selected"
             [class.bg-surface-2]="!selected"
             [class.text-text]="!selected"
@@ -114,6 +124,7 @@ function normalizeSearch(value: string): string {
         <input
           id="fo-quick-add-description"
           data-testid="quick-add-description"
+          [attr.data-prefilled]="descriptionPrefilled() ? 'true' : null"
           type="text"
           maxlength="140"
           [value]="description()"
@@ -121,6 +132,8 @@ function normalizeSearch(value: string): string {
           (keydown.enter)="onDescriptionEnter($event)"
           placeholder="¿En qué?"
           class="fo-focus-ring w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 text-sm text-text placeholder:text-muted"
+          [class.border-b-2]="descriptionPrefilled()"
+          [class.border-b-accent]="descriptionPrefilled()"
         />
       </div>
     </div>
@@ -132,6 +145,8 @@ export class CategoryPickerComponent {
   readonly allCategories = input.required<readonly Category[]>();
   readonly selectedCategoryId = input<string | null>(null);
   readonly description = input<string>('');
+  readonly categoryPrefilled = input<boolean>(false);
+  readonly descriptionPrefilled = input<boolean>(false);
 
   readonly selectedCategoryIdChange = output<string | null>();
   readonly descriptionChange = output<string>();

@@ -225,10 +225,10 @@ describe('QuickAddHostComponent', () => {
 
     const recordUsageSpy = vi.spyOn(categoriesStore, 'recordUsage');
 
-    // Camera icon is disabled with "Próximamente"
+    // Camera icon is enabled for receipt scanning
     const cameraBtn = host.querySelector('[data-testid="quick-add-camera-btn"]') as HTMLButtonElement;
-    expect(cameraBtn.disabled).toBe(true);
-    expect(cameraBtn.title).toBe('Próximamente');
+    expect(cameraBtn.disabled).toBe(false);
+    expect(cameraBtn.title).toBe('Escanear ticket');
 
     // Save disabled initially
     const saveBtn = () =>
@@ -526,5 +526,324 @@ describe('QuickAddHostComponent', () => {
     expect(launcher.isOpen()).toBe(false);
 
     http.verify();
+  });
+
+  describe('receipt scanning', () => {
+    function selectReceiptFile(host: HTMLElement, file: File): HTMLInputElement {
+      const input = host.querySelector(
+        '[data-testid="quick-add-receipt-input"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        value: [file],
+        configurable: true,
+      });
+      input.dispatchEvent(new Event('change'));
+      return input;
+    }
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('polls until PARSED, prefills fields with accent markers, and submits receiptAttachmentId', async () => {
+      vi.useFakeTimers();
+      const { fixture, http, launcher, toast } = await setup({ desktop: true });
+      const host = fixture.nativeElement as HTMLElement;
+
+      const fileInput = host.querySelector(
+        '[data-testid="quick-add-receipt-input"]',
+      ) as HTMLInputElement;
+      expect(fileInput.getAttribute('accept')).toBe('image/*,application/pdf');
+      expect(fileInput.getAttribute('capture')).toBe('environment');
+
+      const clickSpy = vi.spyOn(fileInput, 'click');
+      (host.querySelector('[data-testid="quick-add-camera-btn"]') as HTMLButtonElement).click();
+      expect(clickSpy).toHaveBeenCalledOnce();
+
+      const receiptFile = new File(['ticket-bytes'], 'ticket.jpg', { type: 'image/jpeg' });
+      selectReceiptFile(host, receiptFile);
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="receipt-scanning-state"]')?.textContent).toContain(
+        'Leyendo ticket…',
+      );
+
+      const scanReq = http.expectOne('/bff/api/receipts/scan');
+      expect(scanReq.request.method).toBe('POST');
+      expect(scanReq.request.body instanceof FormData).toBe(true);
+      scanReq.flush(
+        {
+          id: 'rec-100',
+          status: 'PROCESSING',
+          mimeType: 'image/jpeg',
+          fileSizeBytes: 12,
+          createdAt: '2026-11-25T10:00:00Z',
+          draft: null,
+          fileUrl: '/api/v1/receipts/rec-100/file',
+        },
+        { status: 202, statusText: 'Accepted' },
+      );
+
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      // Still scanning after 1.5 s -> first poll returns PROCESSING
+      await vi.advanceTimersByTimeAsync(1500);
+      const poll1 = http.expectOne('/bff/api/receipts/rec-100');
+      poll1.flush({
+        id: 'rec-100',
+        status: 'PROCESSING',
+        mimeType: 'image/jpeg',
+        fileSizeBytes: 12,
+        createdAt: '2026-11-25T10:00:00Z',
+        draft: null,
+        fileUrl: '/api/v1/receipts/rec-100/file',
+      });
+      fixture.detectChanges();
+      expect(host.querySelector('[data-testid="receipt-scanning-state"]')).not.toBeNull();
+
+      // Second poll at 3.0 s returns PARSED
+      await vi.advanceTimersByTimeAsync(1500);
+      const poll2 = http.expectOne('/bff/api/receipts/rec-100');
+      poll2.flush({
+        id: 'rec-100',
+        status: 'PARSED',
+        mimeType: 'image/jpeg',
+        fileSizeBytes: 12,
+        createdAt: '2026-11-25T10:00:00Z',
+        draft: {
+          merchant: 'Coto Digital',
+          date: '2026-11-20',
+          totalAmount: '18450.50',
+          currencyCode: 'USD',
+          suggestedCategoryId: 'cat-food',
+          suggestedCategoryKey: 'FOOD',
+          confidence: '0.88',
+          rawText: 'COTO TOTAL 18450.50',
+        },
+        fileUrl: '/api/v1/receipts/rec-100/file',
+      });
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="receipt-scanning-state"]')).toBeNull();
+      expect(host.querySelector('[data-testid="receipt-scan-warning"]')).toBeNull();
+      expect(host.querySelector('[data-testid="receipt-attached-badge"]')).not.toBeNull();
+
+      const amountInput = host.querySelector(
+        '[data-testid="quick-add-amount-input"]',
+      ) as HTMLInputElement;
+      expect(amountInput.value).toBe('18450.50');
+      expect(amountInput.getAttribute('data-prefilled')).toBe('true');
+
+      const currencyChip = host.querySelector(
+        '[data-testid="quick-add-currency-chip"]',
+      ) as HTMLButtonElement;
+      expect(currencyChip.textContent).toContain('USD');
+      expect(currencyChip.getAttribute('data-prefilled')).toBe('true');
+
+      const descInput = host.querySelector(
+        '[data-testid="quick-add-description"]',
+      ) as HTMLInputElement;
+      expect(descInput.value).toBe('Coto Digital');
+      expect(descInput.getAttribute('data-prefilled')).toBe('true');
+
+      const foodChip = host.querySelector(
+        '[data-testid="category-chip-cat-food"]',
+      ) as HTMLButtonElement;
+      expect(foodChip.getAttribute('aria-pressed')).toBe('true');
+      expect(foodChip.getAttribute('data-prefilled')).toBe('true');
+
+      // Open advanced options to inspect prefilled date
+      (host.querySelector('[data-testid="quick-add-more-options-btn"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      const dateInput = host.querySelector('[data-testid="quick-add-date-input"]') as HTMLInputElement;
+      expect(dateInput.value).toBe('2026-11-20');
+      expect(dateInput.getAttribute('data-prefilled')).toBe('true');
+
+      // Manual edit clears prefilled highlight on that field
+      descInput.value = 'Coto Sucursal Centro';
+      descInput.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(descInput.getAttribute('data-prefilled')).toBeNull();
+
+      // Save submits receiptAttachmentId
+      const saveBtn = host.querySelector(
+        '[data-testid="quick-add-save-btn"] button',
+      ) as HTMLButtonElement;
+      saveBtn.click();
+      fixture.detectChanges();
+
+      const txReq = http.expectOne('/bff/api/transactions');
+      expect(txReq.request.body).toEqual({
+        type: 'EXPENSE',
+        amount: '18450.50',
+        currencyCode: 'USD',
+        transactionDate: '2026-11-20',
+        accountId: 'acc-bank-usd',
+        categoryId: 'cat-food',
+        description: 'Coto Sucursal Centro',
+        receiptAttachmentId: 'rec-100',
+      });
+
+      txReq.flush({ id: 'tx-rec-1' });
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      expect(toast.current()?.message).toBe('Gasto guardado');
+      expect(launcher.isOpen()).toBe(false);
+      http.verify();
+    });
+
+    it('shows low-confidence warning when parsed receipt confidence is below 0.5', async () => {
+      const { fixture, http } = await setup({ desktop: true });
+      const host = fixture.nativeElement as HTMLElement;
+
+      selectReceiptFile(host, new File(['img'], 'blurry.jpg', { type: 'image/jpeg' }));
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      http.expectOne('/bff/api/receipts/scan').flush({
+        id: 'rec-low',
+        status: 'PARSED',
+        mimeType: 'image/jpeg',
+        fileSizeBytes: 3,
+        createdAt: '2026-11-25T10:00:00Z',
+        draft: {
+          merchant: 'Kiosco',
+          date: null,
+          totalAmount: '1200',
+          currencyCode: 'ARS',
+          suggestedCategoryId: null,
+          suggestedCategoryKey: null,
+          confidence: '0.35',
+          rawText: 'KIOSCO 1200',
+        },
+        fileUrl: '/api/v1/receipts/rec-low/file',
+      });
+
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      const warning = host.querySelector('[data-testid="receipt-scan-warning"]') as HTMLElement;
+      expect(warning.textContent).toContain('Revisa los datos: la lectura no fue precisa');
+      http.verify();
+    });
+
+    it('shows error toast on FAILED status but keeps receipt attached on save', async () => {
+      vi.useFakeTimers();
+      const { fixture, http, toast } = await setup({ desktop: true });
+      const host = fixture.nativeElement as HTMLElement;
+
+      selectReceiptFile(host, new File(['img'], 'bad.jpg', { type: 'image/jpeg' }));
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      http.expectOne('/bff/api/receipts/scan').flush(
+        {
+          id: 'rec-fail',
+          status: 'UPLOADED',
+          mimeType: 'image/jpeg',
+          fileSizeBytes: 3,
+          createdAt: '2026-11-25T10:00:00Z',
+          draft: null,
+          fileUrl: '/api/v1/receipts/rec-fail/file',
+        },
+        { status: 202, statusText: 'Accepted' },
+      );
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      await vi.advanceTimersByTimeAsync(1500);
+      http.expectOne('/bff/api/receipts/rec-fail').flush({
+        id: 'rec-fail',
+        status: 'FAILED',
+        mimeType: 'image/jpeg',
+        fileSizeBytes: 3,
+        createdAt: '2026-11-25T10:00:00Z',
+        draft: null,
+        fileUrl: '/api/v1/receipts/rec-fail/file',
+      });
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="receipt-scanning-state"]')).toBeNull();
+      expect(toast.current()?.kind).toBe('error');
+      expect(toast.current()?.message).toBe(
+        'No se pudo leer el ticket; el comprobante quedó adjunto',
+      );
+      expect(host.querySelector('[data-testid="receipt-attached-badge"]')).not.toBeNull();
+
+      // User enters data manually and saves -> receiptAttachmentId is still included
+      const amountInput = host.querySelector(
+        '[data-testid="quick-add-amount-input"]',
+      ) as HTMLInputElement;
+      amountInput.value = '4500';
+      amountInput.dispatchEvent(new Event('input'));
+      (host.querySelector('[data-testid="category-chip-cat-food"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      (host.querySelector('[data-testid="quick-add-save-btn"] button') as HTMLButtonElement).click();
+      fixture.detectChanges();
+
+      const txReq = http.expectOne('/bff/api/transactions');
+      expect(txReq.request.body.receiptAttachmentId).toBe('rec-fail');
+      txReq.flush({ id: 'tx-fail-attached' });
+      await flushMicrotasks();
+      http.verify();
+    });
+
+    it('stops polling and shows warning notice after 30 s timeout', async () => {
+      vi.useFakeTimers();
+      const { fixture, http } = await setup({ desktop: true });
+      const host = fixture.nativeElement as HTMLElement;
+
+      selectReceiptFile(host, new File(['img'], 'slow.jpg', { type: 'image/jpeg' }));
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      http.expectOne('/bff/api/receipts/scan').flush(
+        {
+          id: 'rec-slow',
+          status: 'PROCESSING',
+          mimeType: 'image/jpeg',
+          fileSizeBytes: 3,
+          createdAt: '2026-11-25T10:00:00Z',
+          draft: null,
+          fileUrl: '/api/v1/receipts/rec-slow/file',
+        },
+        { status: 202, statusText: 'Accepted' },
+      );
+      await flushMicrotasks();
+      fixture.detectChanges();
+
+      // Advance through 19 polls (28.5 s) responding PROCESSING each time
+      for (let i = 0; i < 19; i++) {
+        await vi.advanceTimersByTimeAsync(1500);
+        const pollReq = http.expectOne('/bff/api/receipts/rec-slow');
+        pollReq.flush({
+          id: 'rec-slow',
+          status: 'PROCESSING',
+          mimeType: 'image/jpeg',
+          fileSizeBytes: 3,
+          createdAt: '2026-11-25T10:00:00Z',
+          draft: null,
+          fileUrl: '/api/v1/receipts/rec-slow/file',
+        });
+      }
+
+      // Advance final 1.5 s to hit 30 s timeout
+      await vi.advanceTimersByTimeAsync(1500);
+      fixture.detectChanges();
+
+      expect(host.querySelector('[data-testid="receipt-scanning-state"]')).toBeNull();
+      const warning = host.querySelector('[data-testid="receipt-scan-warning"]') as HTMLElement;
+      expect(warning).not.toBeNull();
+      expect(warning.textContent).toContain('tardó demasiado');
+      expect(host.querySelector('[data-testid="receipt-attached-badge"]')).not.toBeNull();
+
+      // No further polls after timeout
+      await vi.advanceTimersByTimeAsync(5000);
+      http.verify();
+    });
   });
 });
