@@ -27,9 +27,13 @@ import { formatYearMonthLong } from './utils/plan-overview.formatters';
   ],
   template: `
     <section class="pl-stack">
-      <header class="sr-only">
-        <h1>Planificación</h1>
-        <p>{{ monthLabel() }} · Vista {{ viewLabel() }}</p>
+      <header class="space-y-1" data-testid="plan-overview-intro">
+        <h1 class="fo-page-title text-text lg:sr-only">Planificación</h1>
+        <p class="text-[11px] text-muted">
+          <span class="font-semibold text-text">{{ monthLabel() }} · Vista {{ viewLabel() }}</span>
+          — Lo que tenés que pagar este mes, lo que ya comprometiste en cuotas y cómo vienen tus ahorros. Entrá a
+          cada sección con “Ver todo” para cargar o editar.
+        </p>
       </header>
 
       @if (store.loading() && !store.payload()) {
@@ -71,30 +75,15 @@ import { formatYearMonthLong } from './utils/plan-overview.formatters';
         </fo-card>
       } @else if (store.payload(); as payload) {
         <div data-testid="plan-overview-grid" class="pl-two-col">
-          <fo-exchanges-summary-card
-            class="lg:order-1"
-            [positions]="payload.positions"
-            [retrying]="store.loading()"
-            (retry)="store.reload()"
-          />
-
+          <!-- Most-used first: this month's bills, then commitments, then savings. Same order on mobile and desktop. -->
           <fo-recurring-summary-card
-            class="lg:order-3"
             [items]="payload.recurring"
             [baseCurrency]="baseCurrency()"
             [retrying]="store.loading()"
             (retry)="store.reload()"
           />
 
-          <fo-goals-summary-card
-            class="lg:order-2"
-            [goals]="payload.goals"
-            [retrying]="store.loading()"
-            (retry)="store.reload()"
-          />
-
           <fo-installments-summary-card
-            class="lg:order-4"
             [installments]="payload.installments"
             [commitment]="payload.commitment"
             [baseCurrency]="baseCurrency()"
@@ -102,9 +91,20 @@ import { formatYearMonthLong } from './utils/plan-overview.formatters';
             (retry)="store.reload()"
           />
 
+          <fo-goals-summary-card
+            [goals]="payload.goals"
+            [retrying]="store.loading()"
+            (retry)="store.reload()"
+          />
+
+          <fo-exchanges-summary-card
+            [positions]="payload.positions"
+            [retrying]="store.loading()"
+            (retry)="store.reload()"
+          />
+
           @if (showAllowancesCard()) {
             <fo-allowances-summary-card
-              class="lg:order-5"
               [allowances]="payload.allowances"
               [retrying]="store.loading()"
               (retry)="store.reload()"

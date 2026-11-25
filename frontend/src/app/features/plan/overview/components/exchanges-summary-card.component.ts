@@ -22,7 +22,7 @@ interface PositionChipViewModel {
       title="Ahorro en divisas"
       linkRoute="/plan/exchanges"
       testId="plan-exchanges-card"
-      [glow]="true"
+      description="Dólares y otras monedas que compraste, y cuánto ganás o perdés."
       [degraded]="positions() === null"
       [retrying]="retrying()"
       (retry)="retry.emit()"
@@ -30,7 +30,7 @@ interface PositionChipViewModel {
       @if (positions(); as list) {
         @if (list.length === 0) {
           <div data-testid="exchanges-empty-state" class="pl-empty">
-            <p class="fo-tx-title">Sin divisas registradas</p>
+            <p class="fo-tx-title">Todavía no registraste divisas</p>
             <p class="pl-sub">Registrá compras o ventas de moneda extranjera y seguí su resultado.</p>
             <a
               routerLink="/plan/exchanges"
@@ -38,7 +38,7 @@ interface PositionChipViewModel {
               class="fo-btn-primary fo-focus-ring mt-2 inline-flex items-center gap-1.5"
             >
               <fo-icon name="arrow-left-right" [size]="14" />
-              <span>Comprar/Vender</span>
+              <span>Registrar compra o venta</span>
             </a>
           </div>
         } @else {
@@ -74,7 +74,7 @@ interface PositionChipViewModel {
                 class="fo-pill-tag fo-pill-accent fo-focus-ring gap-1"
               >
                 <fo-icon name="arrow-left-right" [size]="11" />
-                <span>Comprar/Vender</span>
+                <span>Registrar compra o venta</span>
               </a>
             </div>
           </div>

@@ -17,6 +17,7 @@ const MAX_ROWS = 4;
     <fo-plan-section-card
       title="Gastos fijos del mes"
       linkRoute="/plan/recurring"
+      description="Alquiler, servicios y suscripciones: qué ya pagaste y qué falta."
       testId="plan-recurring-card"
       [flatOnMobile]="true"
       [degraded]="items() === null"
